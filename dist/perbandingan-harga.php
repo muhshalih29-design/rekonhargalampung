@@ -657,6 +657,11 @@ if ($global_max_abs == 0) {
         .pill { width: 100%; justify-content: space-between; }
         .pill select { width: 100%; }
         .cards { grid-template-columns: 1fr; }
+        .card { padding: 14px 16px; border-radius: 24px; }
+        .card h4 { font-size: 16px; }
+        .metric { font-size: 28px; }
+        .trend { font-size: 22px; }
+        .metric-wrap { gap: 8px; }
         .mini-bars { overflow-x: auto; padding-bottom: 6px; }
         .mini-row, .mini-header { min-width: 720px; }
       }
