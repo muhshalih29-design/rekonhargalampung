@@ -1,0 +1,751 @@
+<?php
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
+
+require_once __DIR__ . '/db.php';
+$pdo = db();
+
+$komoditas_list = [];
+$komoditas_seen = [];
+$tables = ['shk', 'hpb', 'hd', 'hkd'];
+$parts = [];
+foreach ($tables as $t) {
+    if (table_exists($pdo, $t)) {
+        $parts[] = "SELECT DISTINCT komoditas FROM {$t}";
+    }
+}
+$sql = $parts ? (implode(' UNION ', $parts) . ' ORDER BY komoditas ASC') : '';
+if ($sql) {
+    $res = $pdo->query($sql);
+    foreach ($res as $row) {
+        $k = trim((string)$row['komoditas']);
+        if ($k !== '') {
+            $key = strtolower($k);
+            if (!isset($komoditas_seen[$key])) {
+                $komoditas_list[] = $k;
+                $komoditas_seen[$key] = true;
+            }
+        }
+    }
+}
+
+$komoditas_selected = isset($_GET['komoditas']) ? trim($_GET['komoditas']) : '';
+if ($komoditas_selected === '') {
+    $komoditas_selected = 'Beras';
+}
+$komoditas_filter = strtolower(trim($komoditas_selected));
+$bulan = isset($_GET['bulan']) ? trim($_GET['bulan']) : '';
+$tahun = isset($_GET['tahun']) ? trim($_GET['tahun']) : '';
+
+if ($bulan === '' || $tahun === '') {
+    $lastMonth = new DateTime('first day of last month');
+    $map = [
+        'january' => 'januari',
+        'february' => 'februari',
+        'march' => 'maret',
+        'april' => 'april',
+        'may' => 'mei',
+        'june' => 'juni',
+        'july' => 'juli',
+        'august' => 'agustus',
+        'september' => 'september',
+        'october' => 'oktober',
+        'november' => 'november',
+        'december' => 'desember',
+    ];
+    if ($bulan === '') {
+        $bulan = $map[strtolower($lastMonth->format('F'))] ?? strtolower($lastMonth->format('F'));
+    }
+    if ($tahun === '') {
+        $tahun = $lastMonth->format('Y');
+    }
+}
+
+$display_komoditas = $komoditas_selected !== '' ? $komoditas_selected : 'Semua';
+
+$avg_map = [
+    'HK' => null,
+    'HPB' => null,
+    'HD' => null,
+    'HKD' => null,
+];
+$table_map = [
+    'HK' => 'shk',
+    'HPB' => 'hpb',
+    'HD' => 'hd',
+    'HKD' => 'hkd',
+];
+foreach ($table_map as $label => $tbl) {
+    if (!table_exists($pdo, $tbl)) {
+        continue;
+    }
+    $sql = "SELECT AVG(NULLIF(perubahan,0)) AS avg_perubahan FROM {$tbl}";
+    $where = [];
+    $params = [];
+    if ($komoditas_selected !== '') {
+        $where[] = 'TRIM(LOWER(komoditas)) = ?';
+        $params[] = $komoditas_filter;
+    }
+    if ($bulan !== '') {
+        $where[] = 'TRIM(LOWER(bulan)) = ?';
+        $params[] = strtolower(trim($bulan));
+    }
+    if ($tahun !== '' && ctype_digit($tahun)) {
+        $where[] = 'tahun = ?';
+        $params[] = (int)$tahun;
+    }
+    if ($where) {
+        $sql .= ' WHERE ' . implode(' AND ', $where);
+    }
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $row = $stmt->fetch();
+    if ($row) {
+        $avg_map[$label] = $row['avg_perubahan'];
+    }
+}
+
+$chart_labels = [];
+$chart_data = [
+    'HK' => [],
+    'HPB' => [],
+    'HD' => [],
+    'HKD' => [],
+];
+ $chart_names = [];
+ $global_max_abs = 0;
+$tables = ['shk', 'hpb', 'hd', 'hkd'];
+$label_set = [];
+foreach ($tables as $tbl) {
+    if (!table_exists($pdo, $tbl)) {
+        continue;
+    }
+    $sql = "SELECT DISTINCT kode_kabupaten, nama_kabupaten FROM {$tbl}";
+    $where = [];
+    $params = [];
+    if ($komoditas_selected !== '') {
+        $where[] = 'TRIM(LOWER(komoditas)) = ?';
+        $params[] = $komoditas_filter;
+    }
+    if ($bulan !== '') {
+        $where[] = 'TRIM(LOWER(bulan)) = ?';
+        $params[] = strtolower(trim($bulan));
+    }
+    if ($tahun !== '' && ctype_digit($tahun)) {
+        $where[] = 'tahun = ?';
+        $params[] = (int)$tahun;
+    }
+    if ($where) {
+        $sql .= ' WHERE ' . implode(' AND ', $where);
+    }
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    while ($row = $stmt->fetch()) {
+        $k = (string)$row['kode_kabupaten'];
+        if ($k !== '') {
+            $label_set[$k] = true;
+            if (!isset($chart_names[$k])) {
+                $chart_names[$k] = (string)$row['nama_kabupaten'];
+            }
+        }
+    }
+}
+$chart_labels = array_keys($label_set);
+usort($chart_labels, function ($a, $b) { return (int)$a <=> (int)$b; });
+
+foreach ($table_map as $label => $tbl) {
+    if (!table_exists($pdo, $tbl)) {
+        $chart_data[$label] = array_fill(0, count($chart_labels), null);
+        continue;
+    }
+    $sql = "SELECT kode_kabupaten, AVG(NULLIF(perubahan,0)) AS avg_perubahan FROM {$tbl}";
+    $where = [];
+    $params = [];
+    if ($komoditas_selected !== '') {
+        $where[] = 'TRIM(LOWER(komoditas)) = ?';
+        $params[] = $komoditas_filter;
+    }
+    if ($bulan !== '') {
+        $where[] = 'TRIM(LOWER(bulan)) = ?';
+        $params[] = strtolower(trim($bulan));
+    }
+    if ($tahun !== '' && ctype_digit($tahun)) {
+        $where[] = 'tahun = ?';
+        $params[] = (int)$tahun;
+    }
+    if ($where) {
+        $sql .= ' WHERE ' . implode(' AND ', $where);
+    }
+    $sql .= ' GROUP BY kode_kabupaten';
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $data_map = [];
+    while ($row = $stmt->fetch()) {
+        $data_map[(string)$row['kode_kabupaten']] = $row['avg_perubahan'];
+    }
+    $series = [];
+    foreach ($chart_labels as $k) {
+        $val = array_key_exists($k, $data_map) ? $data_map[$k] : null;
+        $series[] = $val;
+        if ($val !== null) {
+            $global_max_abs = max($global_max_abs, abs((float)$val));
+        }
+    }
+    $chart_data[$label] = $series;
+}
+if ($global_max_abs == 0) {
+    $global_max_abs = 1;
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Perbandingan Harga</title>
+    <link rel="stylesheet" href="assets/vendors/mdi/css/materialdesignicons.min.css">
+    <link rel="stylesheet" href="assets/vendors/ti-icons/css/themify-icons.css">
+    <link rel="stylesheet" href="assets/vendors/css/vendor.bundle.base.css">
+    <link rel="stylesheet" href="assets/vendors/font-awesome/css/font-awesome.min.css">
+    <link rel="shortcut icon" href="assets/images/favicon.png" />
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+      :root {
+        --bg: #f7f5f6;
+        --bg-2: #f1eaee;
+        --card: #ffffff;
+        --ink: #374151;
+        --muted: #8a93a0;
+        --accent: #f28b2b;
+        --accent-2: #ff8ea3;
+        --shadow: 0 20px 50px rgba(56, 65, 80, 0.12);
+        --pill: 16px;
+        --radius: 18px;
+        --sidebar: #ffffff;
+        --sidebar-border: #eef0f4;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Poppins", sans-serif;
+        color: var(--ink);
+        background: radial-gradient(1200px 600px at 30% 0%, #f7f0f3 0%, var(--bg) 50%, var(--bg-2) 100%);
+      }
+
+      .app {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 84px 1fr;
+        gap: 18px;
+        padding: 22px;
+      }
+
+      .sidebar {
+        background: var(--sidebar);
+        border-radius: 22px;
+        border: 1px solid var(--sidebar-border);
+        padding: 16px 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        box-shadow: var(--shadow);
+      }
+
+      .logo {
+        width: 42px;
+        height: 42px;
+        border-radius: 14px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, #ff7ab6, #ffb36b);
+        color: #fff;
+        font-weight: 700;
+        font-size: 14px;
+      }
+
+      .nav-dot {
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        background: #f4f6f9;
+        display: grid;
+        place-items: center;
+        color: #7b8794;
+        text-decoration: none;
+        transition: all .2s ease;
+      }
+      .nav-text { font-size: 12px; font-weight: 700; color: inherit; letter-spacing: 0.5px; }
+      .nav-dot.active, .nav-dot:hover {
+        background: #fff;
+        color: var(--accent);
+        box-shadow: 0 12px 24px rgba(242, 139, 43, 0.2);
+      }
+
+      .main {
+        background: transparent;
+        padding-right: 8px;
+      }
+
+      .topbar {
+        display: grid;
+        grid-template-columns: 1fr auto auto auto auto auto;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .hello {
+        font-size: 24px;
+        font-weight: 700;
+      }
+      .subhello { color: var(--muted); font-size: 12px; }
+
+      .pill {
+        background: var(--card);
+        border-radius: var(--pill);
+        padding: 8px 12px;
+        border: 1px solid #eef0f4;
+        box-shadow: 0 12px 24px rgba(56, 65, 80, 0.08);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .pill select, .pill input {
+        border: 0;
+        outline: none;
+        background: transparent;
+        font-size: 12px;
+        color: var(--ink);
+      }
+
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .icon-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        background: var(--card);
+        border: 1px solid #eef0f4;
+        display: grid;
+        place-items: center;
+        box-shadow: 0 10px 22px rgba(56, 65, 80, 0.08);
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin-bottom: 16px;
+      }
+      .subinfo {
+        margin: 12px 0 18px;
+        color: #3a4a5a;
+        font-size: 13px;
+        font-weight: 700;
+        background: #ffffff;
+        border: 1px solid #eef0f4;
+        border-radius: 14px;
+        padding: 8px 14px;
+        box-shadow: 0 10px 22px rgba(56, 65, 80, 0.08);
+        display: inline-flex;
+        gap: 8px;
+      }
+      .card {
+        background: #ffffff;
+        border-radius: 9999px;
+        padding: 16px 24px;
+        box-shadow: 0 12px 28px rgba(56, 65, 80, 0.10);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .card h4 {
+        margin: 0;
+        font-size: 18px;
+        color: #9aa3ad;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+      }
+      .metric {
+        font-size: 36px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        color: #4a5a6a;
+      }
+      .metric-pos { color: #41B38A !important; }
+      .metric-neg { color: #ffb36b !important; }
+      .metric-wrap { display: flex; align-items: center; gap: 12px; }
+      .trend {
+        font-size: 28px;
+        font-weight: 900;
+        display: inline-flex;
+        align-items: center;
+        line-height: 1;
+      }
+      .trend-up { color: #22c55e; }
+      .trend-down { color: #ef4444; }
+      .hk, .hpb, .hd, .hkd { color: inherit; }
+
+
+      .panel {
+        background: var(--card);
+        border-radius: var(--radius);
+        padding: 16px;
+        box-shadow: 0 14px 28px rgba(56, 65, 80, 0.10);
+      }
+
+      .panel-title {
+        font-size: 13px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+      .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+      }
+      .panel-subpill {
+        background: linear-gradient(135deg, #ff7ab6, #ffb36b);
+        color: #ffffff;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+        box-shadow: 0 10px 22px rgba(255, 122, 182, 0.25);
+      }
+      .divider {
+        height: 1px;
+        background: #eef0f4;
+        margin: 16px 0;
+      }
+      .legend-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 11px;
+        color: #6b7280;
+        margin-bottom: 8px;
+      }
+      .legend-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+      .legend-pos { background: #41B38A; }
+      .legend-neg { background: linear-gradient(135deg, #ff7ab6, #ffb36b); }
+      .legend-zero { background: #9aa3ad; }
+      .heatmap {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+      }
+      .heatmap th, .heatmap td {
+        padding: 8px 6px;
+        text-align: center;
+        font-size: 11px;
+        border-bottom: 1px solid #eef0f4;
+      }
+      .heatmap th {
+        text-align: left;
+        color: #6b7280;
+        font-weight: 700;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 28px;
+        padding: 4px 6px;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: 11px;
+      }
+      .badge-pos { background: rgba(22,163,74,0.12); color: #168f4a; }
+      .badge-neg { background: rgba(229,83,83,0.12); color: #d94b4b; }
+      .badge-zero { background: rgba(148,163,184,0.15); color: #6b7280; }
+      .mini-bars {
+        display: grid;
+        gap: 8px;
+      }
+      .mini-row {
+        display: grid;
+        grid-template-columns: 160px 1fr 1fr 1fr 1fr;
+        align-items: center;
+        column-gap: 28px;
+        row-gap: 0;
+        font-size: 11px;
+        margin-bottom: 10px;
+      }
+      .mini-header {
+        display: grid;
+        grid-template-columns: 160px 1fr 1fr 1fr 1fr;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 6px;
+        color: #6b7280;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+      }
+      .mini-header div { text-align: center; }
+      .mini-label { color: #6b7280; font-weight: 600; }
+      .mini-label { white-space: nowrap; }
+      .mini-cell {
+        display: grid;
+        grid-template-columns: 1fr 50px;
+        align-items: center;
+        gap: 6px;
+      }
+      .mini-out {
+        font-size: 10px;
+        color: #6b7280;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+      }
+      .mini-out.right {
+        text-align: center;
+        width: 50px;
+        height: 18px;
+        line-height: 18px;
+        border-radius: 6px;
+        background: #f3f4f6;
+        color: #374151;
+        border: 1px solid #e5e7eb;
+        font-size: 10px;
+      }
+      .mini-out.pos {
+        background: rgba(68,84,104,0.12);
+        color: #41B38A;
+        border-color: rgba(68,84,104,0.25);
+      }
+      .mini-out.neg {
+        background: rgba(255, 122, 182, 0.12);
+        color: #ffb36b;
+        border-color: rgba(255, 122, 182, 0.35);
+      }
+      .mini-value {
+        position: static;
+      }
+      .mini-value.left {
+        text-align: left;
+      }
+      .mini-track {
+        position: relative;
+        height: 18px;
+        background: #f1f5f9;
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .mini-track::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 3px;
+        bottom: 3px;
+        border-left: 1px dashed rgba(55, 65, 81, 0.35);
+      }
+      .mini-fill {
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        transform-origin: left center;
+      }
+      .mini-pos { background: #41B38A; }
+      .mini-neg { background: linear-gradient(135deg, #ff7ab6, #ffb36b); }
+      .mini-zero { background: #cbd5f5; }
+
+      @media (max-width: 1200px) {
+        .cards { grid-template-columns: repeat(2, 1fr); }
+        .grid { grid-template-columns: 1fr; }
+      }
+      @media (max-width: 768px) {
+        .app { grid-template-columns: 1fr; }
+        .sidebar { flex-direction: row; justify-content: center; }
+        .topbar { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="logo">RH</div>
+        <a class="nav-dot" href="/rekonkako/index.php" title="Dashboard"><i class="mdi mdi-view-dashboard"></i></a>
+        <a class="nav-dot active" href="/rekonkako/perbandingan-harga.php" title="Perbandingan Harga"><i class="mdi mdi-chart-line"></i></a>
+        <a class="nav-dot" href="/rekonkako/shk.php" title="SHK"><span class="nav-text">HK</span></a>
+        <a class="nav-dot" href="/rekonkako/hpb.php" title="HPB"><span class="nav-text">HPB</span></a>
+        <a class="nav-dot" href="/rekonkako/hd.php" title="HD"><span class="nav-text">HD</span></a>
+        <a class="nav-dot" href="/rekonkako/hkd.php" title="HKD"><span class="nav-text">HKD</span></a>
+      </aside>
+
+      <main class="main">
+        <form class="topbar" method="get" action="perbandingan-harga.php">
+          <div>
+            <div class="hello">Hello Admin!</div>
+            <div class="subhello">Ringkasan perbandingan harga komoditas.</div>
+          </div>
+          <div class="pill" style="min-width:240px;">
+            <i class="mdi mdi-filter-variant"></i>
+            <select name="komoditas" style="min-width: 180px;" onchange="this.form.submit()">
+              <option value="">Semua Komoditas</option>
+              <?php foreach ($komoditas_list as $k): ?>
+                <?php $selected = (strtolower(trim($komoditas_selected)) === strtolower(trim($k))) ? 'selected' : ''; ?>
+                <option value="<?php echo htmlspecialchars($k); ?>" <?php echo $selected; ?>><?php echo htmlspecialchars($k); ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="pill">
+            <i class="mdi mdi-calendar"></i>
+            <select name="bulan" onchange="this.form.submit()">
+              <option value="">Semua</option>
+              <?php
+                $bulan_list = ['januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember'];
+                foreach ($bulan_list as $b) {
+                  $selected = ($bulan === $b) ? 'selected' : '';
+                  echo '<option value="' . htmlspecialchars($b) . '" ' . $selected . '>' . htmlspecialchars(ucfirst($b)) . '</option>';
+                }
+              ?>
+            </select>
+          </div>
+          <div class="pill">
+            <i class="mdi mdi-calendar-month"></i>
+            <select name="tahun" onchange="this.form.submit()">
+              <option value="">Semua</option>
+              <?php
+                $tahun_list = range(2020, 2030);
+                foreach ($tahun_list as $t) {
+                  $selected = ((string)$tahun === (string)$t) ? 'selected' : '';
+                  echo '<option value="' . $t . '" ' . $selected . '>' . $t . '</option>';
+                }
+              ?>
+            </select>
+          </div>
+          <div class="actions">
+            <div class="icon-btn"><i class="mdi mdi-account-circle"></i></div>
+          </div>
+        </form>
+
+
+        <div class="cards">
+          <?php
+            $cards = [
+              'HK' => 'hk',
+              'HPB' => 'hpb',
+              'HD' => 'hd',
+              'HKD' => 'hkd',
+            ];
+            foreach ($cards as $label => $class):
+              $avg = $avg_map[$label];
+              $has = ($avg !== null);
+              if ($has) {
+                $display = number_format((float)$avg, 2, ',', '.') . '%';
+              } else {
+                $display = '-';
+              }
+              $trend = '';
+              if ($has) {
+                if ($avg > 0) $trend = 'up';
+                elseif ($avg < 0) $trend = 'down';
+                else $trend = 'zero';
+              }
+          ?>
+            <div class="card label-offset">
+              <h4><?php echo $label; ?></h4>
+              <div class="metric-wrap">
+                <div class="metric <?php echo $class; ?><?php echo $has ? ($avg >= 0 ? ' metric-pos' : ' metric-neg') : ''; ?>"><?php echo $display; ?></div>
+              </div>
+              <?php if ($has && $trend !== 'zero'): ?>
+                <div class="trend trend-<?php echo $trend; ?>"><?php echo $trend === 'up' ? '▲' : '▼'; ?></div>
+              <?php endif; ?>
+            </div>
+          <?php endforeach; ?>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Perbandingan HK/HPB/HD/HKD per Kabupaten/Kota</div>
+            <div class="panel-subpill">
+              Komoditas: <?php echo htmlspecialchars($display_komoditas); ?> · Bulan: <?php echo htmlspecialchars(ucfirst($bulan)); ?> · Tahun: <?php echo htmlspecialchars($tahun); ?>
+            </div>
+          </div>
+          <div class="legend-row">
+            <span class="legend-dot legend-pos"></span> Positif
+            <span class="legend-dot legend-neg"></span> Negatif
+            <span class="legend-dot legend-zero"></span> 0 / Tidak ada
+          </div>
+          <div class="mini-header">
+            <div></div>
+            <div>HK</div>
+            <div>HPB</div>
+            <div>HD</div>
+            <div>HKD</div>
+          </div>
+          <div class="mini-bars">
+            <?php
+              foreach ($chart_labels as $idx => $kode):
+                $valHK  = $chart_data['HK'][$idx] ?? null;
+                $valHPB = $chart_data['HPB'][$idx] ?? null;
+                $valHD  = $chart_data['HD'][$idx] ?? null;
+                $valHKD = $chart_data['HKD'][$idx] ?? null;
+                $label_text = $kode;
+                if (isset($chart_names[$kode]) && $chart_names[$kode] !== '') {
+                  $label_text = $chart_names[$kode];
+                }
+                $rows = [
+                  'HK' => $valHK,
+                  'HPB' => $valHPB,
+                  'HD' => $valHD,
+                  'HKD' => $valHKD,
+                ];
+                $maxAbs = (float)$global_max_abs;
+            ?>
+              <div class="mini-row">
+                <div class="mini-label"><?php echo htmlspecialchars($label_text); ?></div>
+                <?php foreach ($rows as $label => $v): 
+                  $val = ($v === null) ? 0 : (float)$v;
+                  $width = min(50, (abs($val) / $maxAbs) * 50);
+                  $cls = $val > 0 ? 'mini-pos' : ($val < 0 ? 'mini-neg' : 'mini-zero');
+                  $dir = $val >= 0 ? 1 : -1;
+                  $val_display = ($v === null) ? '-' : number_format((float)$v, 2, ',', '.');
+                ?>
+                  <div class="mini-cell">
+                    <div class="mini-track" title="<?php echo $label . ': ' . number_format($val, 2, ',', '.'); ?>">
+                      <div class="mini-fill <?php echo $cls; ?>" style="width: <?php echo $width; ?>%; transform: translateX(<?php echo $dir >= 0 ? 0 : -100; ?>%);"></div>
+                    </div>
+                    <?php if ($val != 0): ?>
+                      <div class="mini-out right <?php echo ($val > 0 ? 'pos' : 'neg'); ?>">
+                        <?php echo ($val > 0 ? '▲' : '▼') . ' ' . htmlspecialchars($val_display); ?>
+                      </div>
+                    <?php else: ?>
+                      <div></div>
+                    <?php endif; ?>
+                  </div>
+                <?php endforeach; ?>
+              </div>
+            <?php endforeach; ?>
+          </div>
+
+        </div>
+      </main>
+    </div>
+
+    <script></script>
+  </body>
+</html>
