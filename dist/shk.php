@@ -445,12 +445,12 @@ $columns = [
     <div class="app">
       <aside class="sidebar">
         <div class="logo">RH</div>
-        <a class="nav-dot" href="/rekonkako/index.php" title="Dashboard"><i class="mdi mdi-view-dashboard"></i></a>
-        <a class="nav-dot" href="/rekonkako/perbandingan-harga.php" title="Perbandingan Harga"><i class="mdi mdi-chart-line"></i></a>
-        <a class="nav-dot active" href="/rekonkako/shk.php" title="SHK"><span class="nav-text">HK</span></a>
-        <a class="nav-dot" href="/rekonkako/hpb.php" title="HPB"><span class="nav-text">HPB</span></a>
-        <a class="nav-dot" href="/rekonkako/hd.php" title="HD"><span class="nav-text">HD</span></a>
-        <a class="nav-dot" href="/rekonkako/hkd.php" title="HKD"><span class="nav-text">HKD</span></a>
+        <a class="nav-dot" href="index.php" title="Dashboard"><i class="mdi mdi-view-dashboard"></i></a>
+        <a class="nav-dot" href="perbandingan-harga.php" title="Perbandingan Harga"><i class="mdi mdi-chart-line"></i></a>
+        <a class="nav-dot active" href="shk.php" title="SHK"><span class="nav-text">HK</span></a>
+        <a class="nav-dot" href="hpb.php" title="HPB"><span class="nav-text">HPB</span></a>
+        <a class="nav-dot" href="hd.php" title="HD"><span class="nav-text">HD</span></a>
+        <a class="nav-dot" href="hkd.php" title="HKD"><span class="nav-text">HKD</span></a>
       </aside>
 
       <main class="main">
