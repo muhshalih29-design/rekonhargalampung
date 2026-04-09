@@ -23,7 +23,11 @@ function db(): PDO
     }
 
     $hostaddr = gethostbyname($host);
-    $dsn = sprintf('pgsql:host=%s;hostaddr=%s;port=%s;dbname=%s;sslmode=require', $host, $hostaddr, $port, $db);
+    if ($hostaddr && $hostaddr !== $host) {
+        $dsn = sprintf('pgsql:host=%s;hostaddr=%s;port=%s;dbname=%s;sslmode=require', $host, $hostaddr, $port, $db);
+    } else {
+        $dsn = sprintf('pgsql:host=%s;port=%s;dbname=%s;sslmode=require', $host, $port, $db);
+    }
     $pdo = new PDO($dsn, $user, $pass, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
