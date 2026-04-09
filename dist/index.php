@@ -476,17 +476,21 @@ $progress_rows = array_values($base);
                     <td><?php echo htmlspecialchars($row['nama']); ?></td>
                     <?php
                       $labels = ['HK' => 'fill-hk', 'HPB' => 'fill-hpb', 'HD' => 'fill-hd', 'HKD' => 'fill-hkd'];
-                      foreach ($labels as $key => $class):
-                        $p = $row['progress'][$key] ?? ['filled' => 0, 'total' => 0, 'percent' => 0];
-                        $percent = (int)$p['percent'];
-                    ?>
-                      <td class="progress-cell">
+                    foreach ($labels as $key => $class):
+                      $p = $row['progress'][$key] ?? ['filled' => 0, 'total' => 0, 'percent' => 0];
+                      $percent = (int)$p['percent'];
+                  ?>
+                    <td class="progress-cell">
+                      <?php if (!empty($p['total'])): ?>
                         <div class="progress-bar">
                           <div class="progress-fill <?php echo $class; ?>" style="width: <?php echo $percent; ?>%;"></div>
                           <div class="progress-text"><?php echo $percent; ?>%</div>
                         </div>
-                      </td>
-                    <?php endforeach; ?>
+                      <?php else: ?>
+                        <div style="height:21px;"></div>
+                      <?php endif; ?>
+                    </td>
+                  <?php endforeach; ?>
                   </tr>
                 <?php endforeach; ?>
               </tbody>
