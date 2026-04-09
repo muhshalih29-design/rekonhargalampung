@@ -9,11 +9,15 @@ $pdo = db();
 $komoditas_list = [];
 $komoditas_seen = [];
 $tables = ['shk', 'hpb', 'hd', 'hkd'];
-$parts = [];
+$existing_tables = [];
 foreach ($tables as $t) {
     if (table_exists($pdo, $t)) {
-        $parts[] = "SELECT DISTINCT komoditas FROM {$t}";
+        $existing_tables[] = $t;
     }
+}
+$parts = [];
+foreach ($existing_tables as $t) {
+    $parts[] = "SELECT DISTINCT komoditas FROM {$t}";
 }
 $sql = $parts ? (implode(' UNION ', $parts) . ' ORDER BY komoditas ASC') : '';
 if ($sql) {
@@ -77,7 +81,7 @@ $table_map = [
     'HKD' => 'hkd',
 ];
 foreach ($table_map as $label => $tbl) {
-    if (!table_exists($pdo, $tbl)) {
+    if (!in_array($tbl, $existing_tables, true)) {
         continue;
     }
     $sql = "SELECT AVG(NULLIF(perubahan,0)) AS avg_perubahan FROM {$tbl}";
@@ -115,12 +119,8 @@ $chart_data = [
 ];
  $chart_names = [];
  $global_max_abs = 0;
-$tables = ['shk', 'hpb', 'hd', 'hkd'];
 $label_set = [];
-foreach ($tables as $tbl) {
-    if (!table_exists($pdo, $tbl)) {
-        continue;
-    }
+foreach ($existing_tables as $tbl) {
     $sql = "SELECT DISTINCT kode_kabupaten, nama_kabupaten FROM {$tbl}";
     $where = [];
     $params = [];
@@ -155,7 +155,7 @@ $chart_labels = array_keys($label_set);
 usort($chart_labels, function ($a, $b) { return (int)$a <=> (int)$b; });
 
 foreach ($table_map as $label => $tbl) {
-    if (!table_exists($pdo, $tbl)) {
+    if (!in_array($tbl, $existing_tables, true)) {
         $chart_data[$label] = array_fill(0, count($chart_labels), null);
         continue;
     }
