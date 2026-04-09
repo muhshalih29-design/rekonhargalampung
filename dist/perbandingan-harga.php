@@ -682,7 +682,7 @@ if ($global_max_abs == 0) {
       <main class="main">
         <form class="topbar" method="get" action="perbandingan-harga.php">
           <div>
-            <div class="hello">Hello Admin!</div>
+            <div class="hello">Perbandingan Perubahan Harga</div>
             <div class="subhello">Ringkasan perbandingan harga komoditas.</div>
           </div>
           <div class="pill" style="min-width:240px;">

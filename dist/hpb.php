@@ -451,7 +451,7 @@ $columns = [
       <main class="main">
         <form class="topbar" method="get" action="hpb.php">
           <div>
-            <div class="hello">HPB</div>
+            <div class="hello">Konfirmasi Perubahan Harga Perdagangan Besar</div>
             <div class="subhello">Rekon Harga Perdagangan Besar</div>
           </div>
           <div class="pill">

@@ -416,7 +416,7 @@ $progress_rows = array_values($base);
       <main class="main">
         <form class="topbar" method="get" action="index.php">
           <div>
-            <div class="hello">Hello Admin!</div>
+            <div class="hello">Progres Pengisian Konfirmasi Perubahan Harga</div>
             <div class="subhello">Progress pengisian penjelasan per kabupaten/kota.</div>
           </div>
           <div class="pill">

@@ -234,6 +234,8 @@ $columns = [
       .main {
         background: transparent;
         padding-right: 8px;
+        max-width: 1400px;
+        width: 100%;
       }
 
       .topbar {
@@ -451,7 +453,7 @@ $columns = [
       <main class="main">
         <form class="topbar" method="get" action="hd.php">
           <div>
-            <div class="hello">HD</div>
+            <div class="hello">Konfirmasi Perubahan Harga Produsen Pedesaan</div>
             <div class="subhello">Rekon Harga Perdagangan Besar</div>
           </div>
           <div class="pill">

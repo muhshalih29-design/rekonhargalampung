@@ -469,7 +469,7 @@ $columns = [
       <main class="main">
         <form class="topbar" method="get" action="shk.php">
           <div>
-            <div class="hello">SHK</div>
+            <div class="hello">Konfirmasi Perubahan Harga Konsumen</div>
             <div class="subhello">Rekon Harga Komoditas</div>
           </div>
           <div class="pill">
