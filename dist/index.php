@@ -379,15 +379,25 @@ $progress_rows = array_values($base);
         transform: translateY(-50%);
         background: rgba(255,255,255,0.7);
       }
+      .progress-table { min-width: 760px; }
+      .progress-table-wrap { overflow-x: auto; }
 
       @media (max-width: 1200px) {
         .cards { grid-template-columns: repeat(2, 1fr); }
         .grid { grid-template-columns: 1fr; }
+        .app { grid-template-columns: 1fr; }
+        .sidebar { flex-direction: row; justify-content: flex-start; overflow-x: auto; }
+        .main { padding-right: 0; }
       }
       @media (max-width: 768px) {
-        .app { grid-template-columns: 1fr; }
-        .sidebar { flex-direction: row; justify-content: center; }
+        .app { grid-template-columns: 1fr; padding: 14px; }
+        .sidebar { gap: 10px; }
+        .logo { width: 38px; height: 38px; }
+        .nav-dot { width: 40px; height: 40px; }
         .topbar { grid-template-columns: 1fr; }
+        .pill { width: 100%; justify-content: space-between; }
+        .pill select { width: 100%; }
+        .cards { grid-template-columns: 1fr; }
       }
     </style>
   </head>
@@ -449,37 +459,39 @@ $progress_rows = array_values($base);
 
         <div class="panel" style="margin-top:16px;">
           <div class="panel-title">Progress Pengisian Penjelasan Perubahan Harga per Kabupaten/Kota</div>
-          <table class="progress-table">
-            <thead>
-              <tr>
-                <th>Kabupaten/Kota</th>
-                <th>HK</th>
-                <th>HPB</th>
-                <th>HD</th>
-                <th>HKD</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php foreach ($progress_rows as $row): ?>
-                <tr class="progress-row">
-                  <td><?php echo htmlspecialchars($row['nama']); ?></td>
-                  <?php
-                    $labels = ['HK' => 'fill-hk', 'HPB' => 'fill-hpb', 'HD' => 'fill-hd', 'HKD' => 'fill-hkd'];
-                    foreach ($labels as $key => $class):
-                      $p = $row['progress'][$key] ?? ['filled' => 0, 'total' => 0, 'percent' => 0];
-                      $percent = (int)$p['percent'];
-                  ?>
-                    <td class="progress-cell">
-                      <div class="progress-bar">
-                        <div class="progress-fill <?php echo $class; ?>" style="width: <?php echo $percent; ?>%;"></div>
-                        <div class="progress-text"><?php echo $percent; ?>%</div>
-                      </div>
-                    </td>
-                  <?php endforeach; ?>
+          <div class="progress-table-wrap">
+            <table class="progress-table">
+              <thead>
+                <tr>
+                  <th>Kabupaten/Kota</th>
+                  <th>HK</th>
+                  <th>HPB</th>
+                  <th>HD</th>
+                  <th>HKD</th>
                 </tr>
-              <?php endforeach; ?>
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                <?php foreach ($progress_rows as $row): ?>
+                  <tr class="progress-row">
+                    <td><?php echo htmlspecialchars($row['nama']); ?></td>
+                    <?php
+                      $labels = ['HK' => 'fill-hk', 'HPB' => 'fill-hpb', 'HD' => 'fill-hd', 'HKD' => 'fill-hkd'];
+                      foreach ($labels as $key => $class):
+                        $p = $row['progress'][$key] ?? ['filled' => 0, 'total' => 0, 'percent' => 0];
+                        $percent = (int)$p['percent'];
+                    ?>
+                      <td class="progress-cell">
+                        <div class="progress-bar">
+                          <div class="progress-fill <?php echo $class; ?>" style="width: <?php echo $percent; ?>%;"></div>
+                          <div class="progress-text"><?php echo $percent; ?>%</div>
+                        </div>
+                      </td>
+                    <?php endforeach; ?>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
         </div>
       </main>
     </div>

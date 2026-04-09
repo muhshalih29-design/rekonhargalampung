@@ -4,6 +4,46 @@ ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/db.php';
+
+ob_start();
+
+$cache_ttl = 300;
+$page_cache_ttl = 120;
+function cache_path(string $key, string $suffix = 'json'): string {
+    return sys_get_temp_dir() . '/rekon_cache_' . md5($key) . '.' . $suffix;
+}
+function cache_get(string $key, int $ttl): ?array {
+    $path = cache_path($key, 'json');
+    if (!file_exists($path)) return null;
+    if (time() - filemtime($path) > $ttl) return null;
+    $raw = file_get_contents($path);
+    if ($raw === false) return null;
+    $data = json_decode($raw, true);
+    return is_array($data) ? $data : null;
+}
+function cache_set(string $key, array $data): void {
+    $path = cache_path($key, 'json');
+    @file_put_contents($path, json_encode($data));
+}
+function cache_get_html(string $key, int $ttl): ?string {
+    $path = cache_path($key, 'html');
+    if (!file_exists($path)) return null;
+    if (time() - filemtime($path) > $ttl) return null;
+    $raw = file_get_contents($path);
+    return ($raw === false) ? null : $raw;
+}
+function cache_set_html(string $key, string $html): void {
+    $path = cache_path($key, 'html');
+    @file_put_contents($path, $html);
+}
+
+$page_cache_key = 'page_perbandingan_' . md5($_SERVER['QUERY_STRING'] ?? '');
+$page_cached = cache_get_html($page_cache_key, $page_cache_ttl);
+if ($page_cached !== null) {
+    echo $page_cached;
+    exit;
+}
+
 $pdo = db();
 
 $komoditas_list = [];
@@ -21,16 +61,23 @@ foreach ($existing_tables as $t) {
 }
 $sql = $parts ? (implode(' UNION ', $parts) . ' ORDER BY komoditas ASC') : '';
 if ($sql) {
-    $res = $pdo->query($sql);
-    foreach ($res as $row) {
-        $k = trim((string)$row['komoditas']);
-        if ($k !== '') {
-            $key = strtolower($k);
-            if (!isset($komoditas_seen[$key])) {
-                $komoditas_list[] = $k;
-                $komoditas_seen[$key] = true;
+    $cache_key = 'komoditas_list';
+    $cached = cache_get($cache_key, $cache_ttl);
+    if ($cached) {
+        $komoditas_list = $cached['list'] ?? [];
+    } else {
+        $res = $pdo->query($sql);
+        foreach ($res as $row) {
+            $k = trim((string)$row['komoditas']);
+            if ($k !== '') {
+                $key = strtolower($k);
+                if (!isset($komoditas_seen[$key])) {
+                    $komoditas_list[] = $k;
+                    $komoditas_seen[$key] = true;
+                }
             }
         }
+        cache_set($cache_key, ['list' => $komoditas_list]);
     }
 }
 
@@ -102,11 +149,18 @@ foreach ($table_map as $label => $tbl) {
     if ($where) {
         $sql .= ' WHERE ' . implode(' AND ', $where);
     }
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    $row = $stmt->fetch();
-    if ($row) {
-        $avg_map[$label] = $row['avg_perubahan'];
+    $cache_key = 'avg_' . $label . '_' . md5(json_encode([$komoditas_filter, $bulan, $tahun]));
+    $cached = cache_get($cache_key, $cache_ttl);
+    if ($cached && array_key_exists('avg', $cached)) {
+        $avg_map[$label] = $cached['avg'];
+    } else {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $row = $stmt->fetch();
+        if ($row) {
+            $avg_map[$label] = $row['avg_perubahan'];
+        }
+        cache_set($cache_key, ['avg' => $avg_map[$label]]);
     }
 }
 
@@ -120,6 +174,14 @@ $chart_data = [
  $chart_names = [];
  $global_max_abs = 0;
 $label_set = [];
+$chart_cache_key = 'chart_' . md5(json_encode([$komoditas_filter, $bulan, $tahun]));
+$chart_cached = cache_get($chart_cache_key, $cache_ttl);
+if ($chart_cached) {
+    $chart_labels = $chart_cached['labels'] ?? [];
+    $chart_data = $chart_cached['data'] ?? $chart_data;
+    $chart_names = $chart_cached['names'] ?? [];
+    $global_max_abs = $chart_cached['max'] ?? $global_max_abs;
+} else {
 foreach ($existing_tables as $tbl) {
     $sql = "SELECT DISTINCT kode_kabupaten, nama_kabupaten FROM {$tbl}";
     $where = [];
@@ -196,6 +258,13 @@ foreach ($table_map as $label => $tbl) {
 }
 if ($global_max_abs == 0) {
     $global_max_abs = 1;
+}
+    cache_set($chart_cache_key, [
+        'labels' => $chart_labels,
+        'data' => $chart_data,
+        'names' => $chart_names,
+        'max' => $global_max_abs,
+    ]);
 }
 ?>
 <!DOCTYPE html>
@@ -575,11 +644,21 @@ if ($global_max_abs == 0) {
       @media (max-width: 1200px) {
         .cards { grid-template-columns: repeat(2, 1fr); }
         .grid { grid-template-columns: 1fr; }
+        .app { grid-template-columns: 1fr; }
+        .sidebar { flex-direction: row; justify-content: flex-start; overflow-x: auto; }
+        .main { padding-right: 0; }
       }
       @media (max-width: 768px) {
-        .app { grid-template-columns: 1fr; }
-        .sidebar { flex-direction: row; justify-content: center; }
+        .app { grid-template-columns: 1fr; padding: 14px; }
+        .sidebar { gap: 10px; }
+        .logo { width: 38px; height: 38px; }
+        .nav-dot { width: 40px; height: 40px; }
         .topbar { grid-template-columns: 1fr; }
+        .pill { width: 100%; justify-content: space-between; }
+        .pill select { width: 100%; }
+        .cards { grid-template-columns: 1fr; }
+        .mini-bars { overflow-x: auto; padding-bottom: 6px; }
+        .mini-row, .mini-header { min-width: 720px; }
       }
     </style>
   </head>
@@ -749,3 +828,12 @@ if ($global_max_abs == 0) {
     <script></script>
   </body>
 </html>
+<?php
+if (!headers_sent()) {
+    header('Cache-Control: public, max-age=' . $page_cache_ttl);
+}
+$page_html = ob_get_contents();
+if ($page_html !== false) {
+    cache_set_html($page_cache_key, $page_html);
+}
+?>

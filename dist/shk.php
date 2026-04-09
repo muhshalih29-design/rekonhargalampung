@@ -431,13 +431,26 @@ $columns = [
 
       .komoditas-alt-a > td { background: #ffffff !important; }
       .komoditas-alt-b > td { background: #e3f2fd !important; }
+      .table-responsive { overflow-x: auto; }
+      .table-responsive table { min-width: 980px; }
+      .tabs { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
+      .tab-btn { white-space: nowrap; }
 
       @media (max-width: 1200px) {
         .app { grid-template-columns: 1fr; }
-        .sidebar { flex-direction: row; justify-content: center; }
+        .sidebar { flex-direction: row; justify-content: flex-start; overflow-x: auto; }
+        .main { padding-right: 0; }
       }
       @media (max-width: 768px) {
+        .app { padding: 14px; }
+        .sidebar { gap: 10px; }
+        .logo { width: 38px; height: 38px; }
+        .nav-dot { width: 40px; height: 40px; }
         .topbar { grid-template-columns: 1fr; }
+        .pill { width: 100%; justify-content: space-between; }
+        .pill select { width: 100%; }
+        .tabs { margin: 32px 0 16px; }
+        .table-card { padding: 12px; }
       }
     </style>
   </head>
