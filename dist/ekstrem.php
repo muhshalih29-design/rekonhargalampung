@@ -780,9 +780,9 @@ $columns = [
                   <td>
                     <input type="text" class="form-control form-control-sm text-input editable-cell" data-field="bulan" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="Maret" <?php echo $disabled_all; ?>>
                   </td>
-                <?php elseif ($key === 'subsektor' || $key === 'kab' || $key === 'kecamatan' || $key === 'komoditas' || $key === 'kualitas' || $key === 'satuan'): ?>
+                  <?php elseif ($key === 'subsektor' || $key === 'kab' || $key === 'kecamatan' || $key === 'komoditas' || $key === 'kualitas' || $key === 'satuan'): ?>
                   <td>
-                    <?php $compact = ($key === 'subsektor' || $key === 'kab' || $key === 'kecamatan') ? ' compact-input' : ''; ?>
+                    <?php $compact = ($key === 'subsektor' || $key === 'kab' || $key === 'kecamatan' || $key === 'satuan') ? ' compact-input' : ''; ?>
                     <?php if ($key === 'kab' || $key === 'kecamatan'): ?>
                       <input type="text" inputmode="numeric" maxlength="3" pattern="\\d*" class="form-control form-control-sm text-input int-input<?php echo $compact; ?> editable-cell" data-field="<?php echo htmlspecialchars($key); ?>" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="0" <?php echo $disabled_all; ?>>
                     <?php else: ?>
