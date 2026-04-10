@@ -4,6 +4,8 @@ ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth.php';
+$user = require_auth();
 
 ob_start();
 
@@ -734,7 +736,7 @@ if ($global_max_abs == 0) {
             </select>
           </div>
           <div class="actions">
-            <div class="icon-btn"><i class="mdi mdi-account-circle"></i></div>
+            <a class="icon-btn" href="logout.php" title="Logout"><i class="mdi mdi-logout"></i></a>
           </div>
         </form>
 

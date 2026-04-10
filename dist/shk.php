@@ -4,6 +4,8 @@ ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth.php';
+$user = require_auth();
 $pdo = db();
 
 $all = isset($_GET['all']) ? trim($_GET['all']) : '';
@@ -48,6 +50,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         http_response_code(400);
         echo 'Invalid request';
         exit;
+    }
+    if (is_kabupaten($user) && $field !== 'penjelasan') {
+        http_response_code(403);
+        echo 'Forbidden';
+        exit;
+    }
+    if (is_kabupaten($user)) {
+        $stmt_kab = $pdo->prepare('SELECT kode_kabupaten FROM shk WHERE id = ?');
+        $stmt_kab->execute([$id]);
+        $row_kab = $stmt_kab->fetch();
+        $kode = $row_kab ? (string)$row_kab['kode_kabupaten'] : '';
+        if (!can_edit_penjelasan($user, $kode)) {
+            http_response_code(403);
+            echo 'Forbidden';
+            exit;
+        }
     }
 
     $type = $allowed[$field];
@@ -503,7 +521,7 @@ $columns = [
             <button type="submit">Filter</button>
           </div>
           <div class="actions">
-            <div class="icon-btn"><i class="mdi mdi-account-circle"></i></div>
+            <a class="icon-btn" href="logout.php" title="Logout"><i class="mdi mdi-logout"></i></a>
           </div>
         </form>
         <?php if (!empty($komoditas_tabs)): ?>
@@ -547,6 +565,12 @@ $columns = [
                 }
                 echo '</tr></thead><tbody>';
               endif;
+              $row_kode = isset($row['kode_kabupaten']) ? (string)$row['kode_kabupaten'] : '';
+              $can_edit_row = is_provinsi($user) || (is_kabupaten($user) && (string)$user['kab_kode'] === $row_kode);
+              $can_edit_other = is_provinsi($user);
+              $can_edit_penjelasan = $can_edit_row;
+              $disabled_other = $can_edit_other ? '' : 'disabled';
+              $disabled_penjelasan = $can_edit_penjelasan ? '' : 'disabled';
             ?>
             <tr data-row="<?php echo $row_index; ?>" data-id="<?php echo (int)$row['id']; ?>">
               <?php foreach ($columns as $key => $label): ?>
@@ -572,7 +596,7 @@ $columns = [
                   ?>
                   <td>
                     <div class="d-flex align-items-center">
-                      <input type="text" inputmode="decimal" class="form-control form-control-sm perubahan-input editable-cell <?php echo $class; ?>" data-field="perubahan" data-col="0" name="perubahan[]" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="0,00">
+                      <input type="text" inputmode="decimal" class="form-control form-control-sm perubahan-input editable-cell <?php echo $class; ?>" data-field="perubahan" data-col="0" name="perubahan[]" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="0,00" <?php echo $disabled_other; ?>>
                       <?php if ($num !== null): ?>
                         <?php if ($num >= 0): ?>
                           <span class="trend trend-up">▲</span>
@@ -584,15 +608,15 @@ $columns = [
                   </td>
                 <?php elseif ($key === 'sp2kp'): ?>
                   <td>
-                    <input type="text" inputmode="decimal" class="form-control form-control-sm sp2kp-input editable-cell" data-field="sp2kp" data-col="1" name="sp2kp[]" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="0,00">
+                    <input type="text" inputmode="decimal" class="form-control form-control-sm sp2kp-input editable-cell" data-field="sp2kp" data-col="1" name="sp2kp[]" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="0,00" <?php echo $disabled_other; ?>>
                   </td>
                 <?php elseif ($key === 'catatan'): ?>
                   <td>
-                    <textarea class="form-control form-control-sm wrap-textarea editable-cell" data-field="catatan" data-col="2" name="catatan[]" rows="1" placeholder="Isi catatan"><?php echo htmlspecialchars($value_display); ?></textarea>
+                    <textarea class="form-control form-control-sm wrap-textarea editable-cell" data-field="catatan" data-col="2" name="catatan[]" rows="1" placeholder="Isi catatan" <?php echo $disabled_other; ?>><?php echo htmlspecialchars($value_display); ?></textarea>
                   </td>
                 <?php elseif ($key === 'penurunan_konsumsi'): ?>
                   <td>
-                    <select class="form-select form-select-sm penurunan-select editable-cell" data-field="penurunan_konsumsi" data-col="3" name="penurunan_konsumsi[]">
+                    <select class="form-select form-select-sm penurunan-select editable-cell" data-field="penurunan_konsumsi" data-col="3" name="penurunan_konsumsi[]" <?php echo $disabled_other; ?>>
                       <option value="" <?php echo $value_display === '' ? 'selected' : ''; ?>>-</option>
                       <option value="ya" <?php echo strtolower($value_display) === 'ya' ? 'selected' : ''; ?>>Ya</option>
                       <option value="tidak" <?php echo strtolower($value_display) === 'tidak' ? 'selected' : ''; ?>>Tidak</option>
@@ -600,7 +624,7 @@ $columns = [
                   </td>
                 <?php elseif ($key === 'penjelasan'): ?>
                   <td>
-                    <textarea class="form-control form-control-sm wrap-textarea editable-cell" data-field="penjelasan" data-col="4" name="penjelasan[]" rows="1" placeholder="Isi penjelasan"><?php echo htmlspecialchars($value_display); ?></textarea>
+                    <textarea class="form-control form-control-sm wrap-textarea editable-cell" data-field="penjelasan" data-col="4" name="penjelasan[]" rows="1" placeholder="Isi penjelasan" <?php echo $disabled_penjelasan; ?>><?php echo htmlspecialchars($value_display); ?></textarea>
                   </td>
                 <?php else: ?>
                   <td><?php echo htmlspecialchars($value_display === '' ? '-' : $value_display); ?></td>

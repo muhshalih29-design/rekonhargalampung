@@ -4,6 +4,8 @@ ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth.php';
+$user = require_auth();
 $pdo = db();
 
 $all = isset($_GET['all']) ? trim($_GET['all']) : '';
@@ -32,6 +34,11 @@ if ($all === '' && $bulan === '' && $tahun === '') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update') {
+    if (is_kabupaten($user)) {
+        http_response_code(403);
+        echo 'Forbidden';
+        exit;
+    }
     $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
     $field = isset($_POST['field']) ? trim($_POST['field']) : '';
     $value = isset($_POST['value']) ? $_POST['value'] : null;
@@ -107,6 +114,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'batch_update') {
+    if (is_kabupaten($user)) {
+        http_response_code(403);
+        echo 'Forbidden';
+        exit;
+    }
     $payload = isset($_POST['payload']) ? $_POST['payload'] : '';
     $items = json_decode($payload, true);
     if (!is_array($items)) {
@@ -644,7 +656,7 @@ $columns = [
           </div>
           <div class="actions">
             <div class="paste-status" id="paste-status">Siap</div>
-            <div class="icon-btn"><i class="mdi mdi-account-circle"></i></div>
+            <a class="icon-btn" href="logout.php" title="Logout"><i class="mdi mdi-logout"></i></a>
           </div>
         </form>
         <?php if (empty($rows)): ?>
@@ -684,16 +696,17 @@ $columns = [
                   if ($value === null || $value === '') {
                     $value_display = '';
                   } else {
-                  if (is_numeric($value)) {
+                    if (is_numeric($value)) {
                       if ($key === 'kab' || $key === 'kecamatan' || $key === 'tahun') {
                           $value_display = number_format((float)$value, 0, ',', '.');
                       } else {
                           $value_display = number_format((float)$value, 2, ',', '.');
                       }
-                  } else {
+                    } else {
                       $value_display = (string)$value;
+                    }
                   }
-                  }
+                  $disabled_all = is_kabupaten($user) ? 'disabled' : '';
                 ?>
                 <?php if ($key === 'perubahan_rata_rata'): ?>
                   <?php
@@ -714,36 +727,36 @@ $columns = [
                       <?php else: ?>
                         <span class="trend trend-zero">=</span>
                       <?php endif; ?>
-                      <input type="text" inputmode="decimal" class="form-control form-control-sm perubahan-input editable-cell <?php echo $class; ?>" data-field="perubahan_rata_rata" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="0,00">
+                      <input type="text" inputmode="decimal" class="form-control form-control-sm perubahan-input editable-cell <?php echo $class; ?>" data-field="perubahan_rata_rata" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="0,00" <?php echo $disabled_all; ?>>
                     </div>
                   </td>
                 <?php elseif ($key === 'harga_bulan_ini'): ?>
                   <td>
-                    <input type="text" inputmode="decimal" class="form-control form-control-sm harga-input editable-cell" data-field="harga_bulan_ini" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="0,00">
+                    <input type="text" inputmode="decimal" class="form-control form-control-sm harga-input editable-cell" data-field="harga_bulan_ini" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="0,00" <?php echo $disabled_all; ?>>
                   </td>
                 <?php elseif ($key === 'harga_bulan_lalu'): ?>
                   <td>
-                    <input type="text" inputmode="decimal" class="form-control form-control-sm harga-input editable-cell" data-field="harga_bulan_lalu" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="0,00">
+                    <input type="text" inputmode="decimal" class="form-control form-control-sm harga-input editable-cell" data-field="harga_bulan_lalu" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="0,00" <?php echo $disabled_all; ?>>
                   </td>
                 <?php elseif ($key === 'konfirmasi_kab'): ?>
                   <td>
-                    <textarea class="form-control form-control-sm editable-cell wrap-textarea" data-field="konfirmasi_kab" rows="1" placeholder="Isi konfirmasi"><?php echo htmlspecialchars($value_display); ?></textarea>
+                    <textarea class="form-control form-control-sm editable-cell wrap-textarea" data-field="konfirmasi_kab" rows="1" placeholder="Isi konfirmasi" <?php echo $disabled_all; ?>><?php echo htmlspecialchars($value_display); ?></textarea>
                   </td>
                 <?php elseif ($key === 'tahun'): ?>
                   <td>
-                    <input type="text" inputmode="numeric" class="form-control form-control-sm text-input year-input editable-cell" data-field="tahun" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="2026">
+                    <input type="text" inputmode="numeric" class="form-control form-control-sm text-input year-input editable-cell" data-field="tahun" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="2026" <?php echo $disabled_all; ?>>
                   </td>
                 <?php elseif ($key === 'bulan'): ?>
                   <td>
-                    <input type="text" class="form-control form-control-sm text-input editable-cell" data-field="bulan" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="Maret">
+                    <input type="text" class="form-control form-control-sm text-input editable-cell" data-field="bulan" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="Maret" <?php echo $disabled_all; ?>>
                   </td>
                 <?php elseif ($key === 'subsektor' || $key === 'kab' || $key === 'kecamatan' || $key === 'komoditas' || $key === 'kualitas' || $key === 'satuan'): ?>
                   <td>
                     <?php $compact = ($key === 'subsektor' || $key === 'kab' || $key === 'kecamatan') ? ' compact-input' : ''; ?>
                     <?php if ($key === 'kab' || $key === 'kecamatan'): ?>
-                      <input type="text" inputmode="numeric" maxlength="3" pattern="\\d*" class="form-control form-control-sm text-input int-input<?php echo $compact; ?> editable-cell" data-field="<?php echo htmlspecialchars($key); ?>" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="0">
+                      <input type="text" inputmode="numeric" maxlength="3" pattern="\\d*" class="form-control form-control-sm text-input int-input<?php echo $compact; ?> editable-cell" data-field="<?php echo htmlspecialchars($key); ?>" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="0" <?php echo $disabled_all; ?>>
                     <?php else: ?>
-                      <input type="text" class="form-control form-control-sm text-input<?php echo $compact; ?> editable-cell" data-field="<?php echo htmlspecialchars($key); ?>" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="-">
+                      <input type="text" class="form-control form-control-sm text-input<?php echo $compact; ?> editable-cell" data-field="<?php echo htmlspecialchars($key); ?>" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="-" <?php echo $disabled_all; ?>>
                     <?php endif; ?>
                   </td>
                 <?php else: ?>

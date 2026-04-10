@@ -4,6 +4,8 @@ ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth.php';
+$user = require_auth();
 $pdo = db();
 
 $bulan = isset($_GET['bulan']) ? trim($_GET['bulan']) : '';
@@ -450,7 +452,7 @@ $progress_rows = array_values($base);
             <button type="submit" class="icon-btn" title="Filter"><i class="mdi mdi-filter"></i></button>
           </div>
           <div class="actions">
-            <div class="icon-btn"><i class="mdi mdi-account-circle"></i></div>
+            <a class="icon-btn" href="logout.php" title="Logout"><i class="mdi mdi-logout"></i></a>
           </div>
         </form>
 
