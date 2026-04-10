@@ -307,17 +307,17 @@ $progress_rows = array_values($base);
       .progress-table {
         width: 100%;
         border-collapse: separate;
-        border-spacing: 0 8px;
+        border-spacing: 0 6px;
       }
       .progress-table th {
         text-align: left;
-        font-size: 12px;
+        font-size: 11px;
         color: var(--muted);
         font-weight: 700;
-        padding: 4px 8px;
+        padding: 4px 6px;
       }
       .progress-table td {
-        padding: 8px;
+        padding: 6px;
         background: #fff;
       }
       .progress-row {
@@ -334,32 +334,30 @@ $progress_rows = array_values($base);
         border-radius: 0 12px 12px 0;
       }
       .progress-cell {
-        min-width: 170px;
+        min-width: 140px;
       }
       .progress-bar {
-        height: 21px;
+        height: 16px;
         background: #eef2f7;
         border-radius: 999px;
         overflow: hidden;
-        box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
         position: relative;
       }
       .progress-fill {
         height: 100%;
         border-radius: 999px;
         position: relative;
-        box-shadow: 0 6px 12px rgba(15, 23, 42, 0.18);
       }
       .progress-text {
         position: absolute;
-        right: 10px;
+        right: 6px;
         top: 50%;
         transform: translateY(-50%);
         display: flex;
         align-items: center;
         justify-content: flex-end;
-        font-size: 11px;
-        font-weight: 600;
+        font-size: 10px;
+        font-weight: 700;
         color: #5b6471;
         letter-spacing: 0.2px;
         z-index: 2;
@@ -370,17 +368,7 @@ $progress_rows = array_values($base);
       .fill-hkd {
         background: linear-gradient(135deg, #ff7ab6, #ffb36b);
       }
-      .progress-fill::after {
-        content: "";
-        position: absolute;
-        right: 6px;
-        top: 50%;
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        transform: translateY(-50%);
-        background: rgba(255,255,255,0.7);
-      }
+      .progress-fill::after { display: none; }
       .progress-table { min-width: 760px; }
       .progress-table-wrap { overflow-x: auto; }
 
@@ -458,9 +446,6 @@ $progress_rows = array_values($base);
           </div>
         </form>
 
-        <div class="subinfo">
-          Bulan: <?php echo htmlspecialchars(ucfirst($bulan)); ?> · Tahun: <?php echo htmlspecialchars($tahun); ?>
-        </div>
 
         <div class="panel" style="margin-top:16px;">
           <div class="panel-title">Progress Pengisian Penjelasan Perubahan Harga per Kabupaten/Kota</div>
