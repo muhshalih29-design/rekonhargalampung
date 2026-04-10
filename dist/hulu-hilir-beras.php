@@ -71,6 +71,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         exit;
     }
 
+    $stmt_kab = $pdo->prepare('SELECT kabupaten_kota FROM hulu_hilir_beras WHERE id = ?');
+    $stmt_kab->execute([$id]);
+    $row_kab = $stmt_kab->fetch();
+    $kab = $row_kab ? strtolower(trim((string)$row_kab['kabupaten_kota'])) : '';
+    $lock_shped = in_array($kab, ['bandar lampung','metro'], true);
+    $lock_shp_hpb = in_array($kab, ['lampung barat','lampung utara','way kanan','tulang bawang','pesawaran','mesuji','tulang bawang barat','pesisir barat'], true);
+    $allow_hk = in_array($kab, ['lampung timur','mesuji','metro','bandar lampung'], true);
+    if (in_array($field, ['shped_hd_n1','shped_hd_n','shped_hd_rh','shped_hkd_n1','shped_hkd_n','shped_hkd_rh'], true) && $lock_shped) {
+        http_response_code(403);
+        echo 'Forbidden';
+        exit;
+    }
+    if (in_array($field, ['shp_n2','shp_n','shp_rh','hpb_n1','hpb_n','hpb_rh'], true) && $lock_shp_hpb) {
+        http_response_code(403);
+        echo 'Forbidden';
+        exit;
+    }
+    if (in_array($field, ['hk_n1','hk_n','hk_rh'], true) && !$allow_hk) {
+        http_response_code(403);
+        echo 'Forbidden';
+        exit;
+    }
+
     $type = $allowed[$field];
     if ($type === 'decimal') {
         $raw = is_string($value) ? trim($value) : '';
@@ -268,8 +291,12 @@ $rows = $stmt->fetchAll();
       .head-pink { background: #e9edf3; color: #445468; font-weight: 700; }
       .subhead { background: #58697d; color: #fff; font-weight: 700; }
       .subhead-dark { background: #3f4f63; color: #fff; font-weight: 700; }
-      .col-fixed { background: #fff2cc; font-weight: 600; }
-      .rh-col { background: #ffd966; }
+      .col-fixed { background: #ffffff; font-weight: 600; }
+      .rh-col { background: #fff3c4; }
+      .cell-disabled {
+        background: #e0e5ec !important;
+        color: #6b7280 !important;
+      }
       td { padding: 6px; font-size: 12px; background: #ffffff; }
       .cell-input {
         width: 100%;
@@ -288,8 +315,24 @@ $rows = $stmt->fetchAll();
       }
       .cell-input:disabled,
       .cell-text:disabled {
-        background: #f3f4f6;
-        color: #9aa3ad;
+        background: #e0e5ec;
+        color: #6b7280;
+      }
+      .cell-wrap {
+        position: relative;
+        width: 100%;
+      }
+      .cell-wrap .trend {
+        position: absolute;
+        left: 6px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 11px;
+        font-weight: 800;
+        pointer-events: none;
+      }
+      .cell-wrap .cell-input {
+        padding-left: 18px;
       }
       @media (max-width: 1200px) {
         .app { grid-template-columns: 1fr; }
@@ -418,19 +461,19 @@ $rows = $stmt->fetchAll();
                   <td class="col-fixed"><input class="cell-text" data-field="kabupaten_kota" value="<?php echo htmlspecialchars($row['kabupaten_kota'] ?? ''); ?>" <?php echo $disabled_all; ?>></td>
                   <td><input class="cell-input" data-field="shped_hd_n1" value="<?php echo htmlspecialchars($val('shped_hd_n1')); ?>" <?php echo $is_locked('shped_hd_n1'); ?>></td>
                   <td><input class="cell-input" data-field="shped_hd_n" value="<?php echo htmlspecialchars($val('shped_hd_n')); ?>" <?php echo $is_locked('shped_hd_n'); ?>></td>
-                  <td class="rh-col"><input class="cell-input" data-field="shped_hd_rh" value="<?php echo htmlspecialchars($val('shped_hd_rh')); ?>" <?php echo $is_locked('shped_hd_rh'); ?>></td>
+                  <td class="rh-col"><div class="cell-wrap"><span class="trend"></span><input class="cell-input rh-input" data-field="shped_hd_rh" value="<?php echo htmlspecialchars($val('shped_hd_rh')); ?>" <?php echo $is_locked('shped_hd_rh'); ?>></div></td>
                   <td><input class="cell-input" data-field="shped_hkd_n1" value="<?php echo htmlspecialchars($val('shped_hkd_n1')); ?>" <?php echo $is_locked('shped_hkd_n1'); ?>></td>
                   <td><input class="cell-input" data-field="shped_hkd_n" value="<?php echo htmlspecialchars($val('shped_hkd_n')); ?>" <?php echo $is_locked('shped_hkd_n'); ?>></td>
-                  <td class="rh-col"><input class="cell-input" data-field="shped_hkd_rh" value="<?php echo htmlspecialchars($val('shped_hkd_rh')); ?>" <?php echo $is_locked('shped_hkd_rh'); ?>></td>
+                  <td class="rh-col"><div class="cell-wrap"><span class="trend"></span><input class="cell-input rh-input" data-field="shped_hkd_rh" value="<?php echo htmlspecialchars($val('shped_hkd_rh')); ?>" <?php echo $is_locked('shped_hkd_rh'); ?>></div></td>
                   <td><input class="cell-input" data-field="shp_n2" value="<?php echo htmlspecialchars($val('shp_n2')); ?>" <?php echo $is_locked('shp_n2'); ?>></td>
                   <td><input class="cell-input" data-field="shp_n" value="<?php echo htmlspecialchars($val('shp_n')); ?>" <?php echo $is_locked('shp_n'); ?>></td>
-                  <td class="rh-col"><input class="cell-input" data-field="shp_rh" value="<?php echo htmlspecialchars($val('shp_rh')); ?>" <?php echo $is_locked('shp_rh'); ?>></td>
+                  <td class="rh-col"><div class="cell-wrap"><span class="trend"></span><input class="cell-input rh-input" data-field="shp_rh" value="<?php echo htmlspecialchars($val('shp_rh')); ?>" <?php echo $is_locked('shp_rh'); ?>></div></td>
                   <td><input class="cell-input" data-field="hpb_n1" value="<?php echo htmlspecialchars($val('hpb_n1')); ?>" <?php echo $is_locked('hpb_n1'); ?>></td>
                   <td><input class="cell-input" data-field="hpb_n" value="<?php echo htmlspecialchars($val('hpb_n')); ?>" <?php echo $is_locked('hpb_n'); ?>></td>
-                  <td class="rh-col"><input class="cell-input" data-field="hpb_rh" value="<?php echo htmlspecialchars($val('hpb_rh')); ?>" <?php echo $is_locked('hpb_rh'); ?>></td>
+                  <td class="rh-col"><div class="cell-wrap"><span class="trend"></span><input class="cell-input rh-input" data-field="hpb_rh" value="<?php echo htmlspecialchars($val('hpb_rh')); ?>" <?php echo $is_locked('hpb_rh'); ?>></div></td>
                   <td><input class="cell-input" data-field="hk_n1" value="<?php echo htmlspecialchars($val('hk_n1')); ?>" <?php echo $is_locked('hk_n1'); ?>></td>
                   <td><input class="cell-input" data-field="hk_n" value="<?php echo htmlspecialchars($val('hk_n')); ?>" <?php echo $is_locked('hk_n'); ?>></td>
-                  <td class="rh-col"><input class="cell-input" data-field="hk_rh" value="<?php echo htmlspecialchars($val('hk_rh')); ?>" <?php echo $is_locked('hk_rh'); ?>></td>
+                  <td class="rh-col"><div class="cell-wrap"><span class="trend"></span><input class="cell-input rh-input" data-field="hk_rh" value="<?php echo htmlspecialchars($val('hk_rh')); ?>" <?php echo $is_locked('hk_rh'); ?>></div></td>
                 </tr>
               <?php endforeach; ?>
             </tbody>
@@ -456,6 +499,26 @@ $rows = $stmt->fetchAll();
           formData.append('value', value);
           fetch('hulu-hilir-beras.php', { method: 'POST', body: formData }).catch(function () {});
         }
+        function updateTrend(el) {
+          if (!el.classList.contains('rh-input')) return;
+          var wrap = el.closest('.cell-wrap');
+          if (!wrap) return;
+          var trend = wrap.querySelector('.trend');
+          var raw = (el.value || '').replace(/\./g, '').replace(/,/g, '.');
+          var num = parseFloat(raw);
+          if (isNaN(num) || num === 0) {
+            trend.textContent = '=';
+            trend.style.color = '#6b7280';
+            return;
+          }
+          if (num > 0) {
+            trend.textContent = '▲';
+            trend.style.color = '#16a34a';
+          } else {
+            trend.textContent = '▼';
+            trend.style.color = '#dc2626';
+          }
+        }
         var timers = new WeakMap();
         function scheduleSave(el) {
           if (timers.has(el)) clearTimeout(timers.get(el));
@@ -464,8 +527,42 @@ $rows = $stmt->fetchAll();
         }
         inputs.forEach(function (el) {
           if (el.disabled) return;
+          if (el.classList.contains('rh-input')) updateTrend(el);
           el.addEventListener('input', function () { scheduleSave(el); });
           el.addEventListener('blur', function () { saveCell(el); });
+          el.addEventListener('input', function () { updateTrend(el); });
+        });
+
+        document.addEventListener('paste', function (e) {
+          var target = e.target;
+          if (!target || !target.classList || !target.classList.contains('cell-input')) return;
+          var text = (e.clipboardData || window.clipboardData).getData('text');
+          if (!text || (text.indexOf('\t') === -1 && text.indexOf('\n') === -1 && text.indexOf('\r') === -1)) return;
+          e.preventDefault();
+          var rows = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+          if (rows.length && rows[rows.length - 1].trim() === '') rows.pop();
+
+          var startRow = target.closest('tr');
+          if (!startRow) return;
+          var rowList = Array.prototype.slice.call(startRow.closest('tbody').querySelectorAll('tr'));
+          var startRowIdx = rowList.indexOf(startRow);
+          if (startRowIdx < 0) return;
+          var startColIdx = Array.prototype.indexOf.call(startRow.querySelectorAll('.cell-input, .cell-text'), target);
+          if (startColIdx < 0) return;
+
+          rows.forEach(function (rowText, rIdx) {
+            var cols = rowText.split('\t');
+            var rowEl = rowList[startRowIdx + rIdx];
+            if (!rowEl) return;
+            var editables = rowEl.querySelectorAll('.cell-input, .cell-text');
+            cols.forEach(function (cellText, cIdx) {
+              var el = editables[startColIdx + cIdx];
+              if (!el || el.disabled) return;
+              el.value = cellText.trim();
+              updateTrend(el);
+              saveCell(el);
+            });
+          });
         });
       })();
     </script>
