@@ -34,11 +34,6 @@ if ($all === '' && $bulan === '' && $tahun === '') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update') {
-    if (is_kabupaten($user)) {
-        http_response_code(403);
-        echo 'Forbidden';
-        exit;
-    }
     $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
     $field = isset($_POST['field']) ? trim($_POST['field']) : '';
     $value = isset($_POST['value']) ? $_POST['value'] : null;
@@ -62,6 +57,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         http_response_code(400);
         echo 'Invalid request';
         exit;
+    }
+    if (is_kabupaten($user) && $field !== 'konfirmasi_kab') {
+        http_response_code(403);
+        echo 'Forbidden';
+        exit;
+    }
+    if (is_kabupaten($user)) {
+        $stmt_kab = $pdo->prepare('SELECT kab FROM ekstrem WHERE id = ?');
+        $stmt_kab->execute([$id]);
+        $row_kab = $stmt_kab->fetch();
+        $kab = $row_kab ? (string)$row_kab['kab'] : '';
+        $kab_code = (int)($user['kab_kode'] ?? 0);
+        $kab_short = $kab_code > 0 ? (string)($kab_code % 100) : '';
+        if ($kab_short === '' || $kab !== $kab_short) {
+            http_response_code(403);
+            echo 'Forbidden';
+            exit;
+        }
     }
 
     $type = $allowed[$field];
@@ -723,6 +736,7 @@ $columns = [
                     }
                   }
                   $disabled_all = is_kabupaten($user) ? 'disabled' : '';
+                  $disabled_konfirmasi = is_kabupaten($user) ? '' : '';
                 ?>
                 <?php if ($key === 'perubahan_rata_rata'): ?>
                   <?php
@@ -756,7 +770,7 @@ $columns = [
                   </td>
                 <?php elseif ($key === 'konfirmasi_kab'): ?>
                   <td>
-                    <textarea class="form-control form-control-sm editable-cell wrap-textarea" data-field="konfirmasi_kab" rows="1" placeholder="Isi konfirmasi" <?php echo $disabled_all; ?>><?php echo htmlspecialchars($value_display); ?></textarea>
+                    <textarea class="form-control form-control-sm editable-cell wrap-textarea" data-field="konfirmasi_kab" rows="1" placeholder="Isi konfirmasi" <?php echo (is_kabupaten($user) ? '' : $disabled_all); ?>><?php echo htmlspecialchars($value_display); ?></textarea>
                   </td>
                 <?php elseif ($key === 'tahun'): ?>
                   <td>
