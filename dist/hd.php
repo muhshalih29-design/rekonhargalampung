@@ -250,6 +250,7 @@ $columns = [
         display: flex;
         flex-wrap: wrap;
         gap: 10px;
+        overflow-x: hidden;
       }
       .tab-btn {
         border: 1px solid #e5e7eb;
@@ -417,7 +418,7 @@ $columns = [
       .komoditas-alt-b > td { background: #e3f2fd !important; }
       .table-responsive { overflow-x: auto; }
       .table-responsive table { min-width: 980px; }
-      .tabs { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
+      .tabs { overflow-x: hidden; flex-wrap: wrap; padding-bottom: 4px; }
       .tab-btn { white-space: nowrap; }
 
       @media (max-width: 1200px) {
