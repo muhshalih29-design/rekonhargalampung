@@ -106,6 +106,87 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'batch_update') {
+    $payload = isset($_POST['payload']) ? $_POST['payload'] : '';
+    $items = json_decode($payload, true);
+    if (!is_array($items)) {
+        http_response_code(400);
+        echo 'Invalid payload';
+        exit;
+    }
+    $allowed = [
+        'subsektor' => 'text',
+        'kab' => 'int',
+        'kecamatan' => 'int',
+        'komoditas' => 'text',
+        'kualitas' => 'text',
+        'satuan' => 'text',
+        'harga_bulan_ini' => 'decimal',
+        'harga_bulan_lalu' => 'decimal',
+        'perubahan_rata_rata' => 'decimal',
+        'konfirmasi_kab' => 'text',
+        'bulan' => 'text',
+        'tahun' => 'int',
+    ];
+    $pdo->beginTransaction();
+    try {
+        foreach ($items as $item) {
+            $id = isset($item['id']) ? (int)$item['id'] : 0;
+            $field = isset($item['field']) ? trim($item['field']) : '';
+            $value = isset($item['value']) ? $item['value'] : null;
+            if ($id <= 0 || !isset($allowed[$field])) {
+                continue;
+            }
+            $type = $allowed[$field];
+            if ($type === 'decimal') {
+                $raw = is_string($value) ? trim($value) : '';
+                if ($raw === '') {
+                    $sql = "UPDATE ekstrem SET {$field} = NULL WHERE id = ?";
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute([$id]);
+                } else {
+                    $normalized = str_replace('.', '', $raw);
+                    $normalized = str_replace(',', '.', $normalized);
+                    $num = is_numeric($normalized) ? (float)$normalized : null;
+                    if ($num === null) {
+                        continue;
+                    }
+                    $sql = "UPDATE ekstrem SET {$field} = ? WHERE id = ?";
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute([$num, $id]);
+                }
+            } elseif ($type === 'int') {
+                $raw = is_string($value) ? trim($value) : '';
+                if ($raw === '') {
+                    $sql = "UPDATE ekstrem SET {$field} = NULL WHERE id = ?";
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute([$id]);
+                } else {
+                    if (!ctype_digit($raw)) {
+                        continue;
+                    }
+                    $sql = "UPDATE ekstrem SET {$field} = ? WHERE id = ?";
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute([(int)$raw, $id]);
+                }
+            } else {
+                $raw = is_string($value) ? $value : '';
+                $sql = "UPDATE ekstrem SET {$field} = ? WHERE id = ?";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([$raw, $id]);
+            }
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        http_response_code(500);
+        echo 'Batch failed';
+        exit;
+    }
+    echo 'OK';
+    exit;
+}
+
 $where = [];
 $types = '';
 $params = [];
@@ -1029,6 +1110,7 @@ $columns = [
           var done = 0;
           setPasteStatus('Menempel 0/' + total, true);
 
+          var batch = [];
           rows.forEach(function (rowText, rIdx) {
             var cols = rowText.split('\t');
             var rowEl = rowList[startRowIdx + rIdx];
@@ -1037,16 +1119,32 @@ $columns = [
             cols.forEach(function (cellText, cIdx) {
               var el = editables[startColIdx + cIdx];
               if (!el) return;
-              setEditableValue(el, cellText.trim());
+              var val = cellText.trim();
+              setEditableValue(el, val);
+              var rowId = rowEl.getAttribute('data-id');
+              var field = el.getAttribute('data-field');
+              if (rowId && field) {
+                batch.push({ id: rowId, field: field, value: val });
+              }
               done += 1;
               setPasteStatus('Menempel ' + done + '/' + total, true);
             });
           });
+          if (batch.length) {
+            var fd = new FormData();
+            fd.append('action', 'batch_update');
+            fd.append('payload', JSON.stringify(batch));
+            fetch('ekstrem.php', { method: 'POST', body: fd })
+              .then(function () { setPasteStatus('Selesai', false); })
+              .catch(function () { setPasteStatus('Gagal', false); });
+          }
           if (card) buildHeaderFilters(card);
           applyHeaderFilters();
-          setTimeout(function () {
-            setPasteStatus('Selesai', false);
-          }, 400);
+          if (!batch.length) {
+            setTimeout(function () {
+              setPasteStatus('Selesai', false);
+            }, 400);
+          }
         });
       })();
     </script>
