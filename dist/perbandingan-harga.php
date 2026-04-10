@@ -513,23 +513,6 @@ if ($global_max_abs == 0) {
         background: #eef0f4;
         margin: 16px 0;
       }
-      .legend-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        font-size: 11px;
-        color: #6b7280;
-        margin-bottom: 8px;
-      }
-      .legend-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        display: inline-block;
-      }
-      .legend-pos { background: #41B38A; }
-      .legend-neg { background: linear-gradient(135deg, #ff7ab6, #ffb36b); }
-      .legend-zero { background: #9aa3ad; }
       .heatmap {
         width: 100%;
         border-collapse: separate;
@@ -577,6 +560,7 @@ if ($global_max_abs == 0) {
         grid-template-columns: 160px 1fr 1fr 1fr 1fr;
         gap: 10px;
         align-items: center;
+        height: 18px;
         margin-bottom: 6px;
         color: #6b7280;
         font-size: 10px;
@@ -584,7 +568,7 @@ if ($global_max_abs == 0) {
         letter-spacing: 0.3px;
         text-transform: uppercase;
       }
-      .mini-header div { text-align: center; }
+      .mini-header div { text-align: center; line-height: 18px; }
       .mini-label { color: #6b7280; font-weight: 600; }
       .mini-label { white-space: nowrap; }
       .mini-cell {
@@ -783,11 +767,6 @@ if ($global_max_abs == 0) {
             <div class="panel-subpill">
               Komoditas: <?php echo htmlspecialchars($display_komoditas); ?> · Bulan: <?php echo htmlspecialchars(ucfirst($bulan)); ?> · Tahun: <?php echo htmlspecialchars($tahun); ?>
             </div>
-          </div>
-          <div class="legend-row">
-            <span class="legend-dot legend-pos"></span> Positif
-            <span class="legend-dot legend-neg"></span> Negatif
-            <span class="legend-dot legend-zero"></span> 0 / Tidak ada
           </div>
           <div class="mini-header">
             <div></div>
