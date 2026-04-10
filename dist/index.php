@@ -413,6 +413,7 @@ $progress_rows = array_values($base);
         <a class="nav-dot" href="hpb.php" title="HPB"><span class="nav-text">HPB</span></a>
         <a class="nav-dot" href="hd.php" title="HD"><span class="nav-text">HD</span></a>
         <a class="nav-dot" href="hkd.php" title="HKD"><span class="nav-text">HKD</span></a>
+        <a class="nav-dot" href="hulu-hilir-beras.php" title="Hulu Hilir Beras"><i class="mdi mdi-rice"></i></a>
         <a class="nav-dot" href="ekstrem.php" title="Ekstrem"><i class="mdi mdi-alert-circle-outline"></i></a>
       </aside>
 
