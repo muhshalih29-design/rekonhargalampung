@@ -397,6 +397,12 @@ $columns = [
       .avg-pill .avg-trend.zero { color: #6b7280; }
 
       table { width: 100%; border-collapse: separate; border-spacing: 0; }
+      .ekstrem-table th:nth-child(1),
+      .ekstrem-table td:nth-child(1) { width: 90px; }
+      .ekstrem-table th:nth-child(2),
+      .ekstrem-table td:nth-child(2) { width: 80px; }
+      .ekstrem-table th:nth-child(3),
+      .ekstrem-table td:nth-child(3) { width: 80px; }
       thead th {
         background: #445468; color: #ffffff; padding: 10px 12px; font-size: 12px; font-weight: 700; white-space: normal; line-height: 1.1;
       }
@@ -421,6 +427,7 @@ $columns = [
       .sp2kp-input { max-width: 12ch; text-align: right; }
       .perubahan-input { text-align: right; max-width: 12ch; }
       .text-input { width: 100%; min-width: 140px; }
+      .text-input.compact-input { min-width: 70px; max-width: 90px; }
       .year-input { max-width: 8ch; text-align: right; }
       .harga-input { text-align: right; max-width: 12ch; }
       .perubahan-cell { text-align: center; }
@@ -565,7 +572,7 @@ $columns = [
                 echo '<div style="font-weight:700;">' . htmlspecialchars($current_komoditas) . '</div>';
                 echo '<div class="avg-pill"><span class="avg-trend zero">=</span>Rata-rata perubahan: <span class="avg-value">' . htmlspecialchars($avg_display) . '</span></div>';
                 echo '</div>';
-                echo '<div class="table-responsive"><table><thead><tr>';
+                echo '<div class="table-responsive"><table class="ekstrem-table"><thead><tr>';
                 foreach ($columns as $key => $label) {
                   echo '<th>' . $label . '</th>';
                 }
@@ -642,7 +649,8 @@ $columns = [
                   </td>
                 <?php elseif ($key === 'subsektor' || $key === 'kab' || $key === 'kecamatan' || $key === 'komoditas' || $key === 'kualitas' || $key === 'satuan'): ?>
                   <td>
-                    <input type="text" class="form-control form-control-sm text-input editable-cell" data-field="<?php echo htmlspecialchars($key); ?>" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="-">
+                    <?php $compact = ($key === 'subsektor' || $key === 'kab' || $key === 'kecamatan') ? ' compact-input' : ''; ?>
+                    <input type="text" class="form-control form-control-sm text-input<?php echo $compact; ?> editable-cell" data-field="<?php echo htmlspecialchars($key); ?>" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="-">
                   </td>
                 <?php else: ?>
                   <td><?php echo htmlspecialchars($value_display === '' ? '-' : $value_display); ?></td>
