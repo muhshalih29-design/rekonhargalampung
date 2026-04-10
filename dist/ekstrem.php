@@ -284,7 +284,7 @@ $columns = [
         display: block;
         margin-top: 6px;
       }
-      .th-filter input {
+      .th-filter select {
         width: 100%;
         border: 1px solid #e5e7eb;
         border-radius: 8px;
@@ -611,7 +611,7 @@ $columns = [
                   echo '<th>';
                   echo '<span class="th-label">' . $label . '</span>';
                   if ($filterable) {
-                    echo '<span class="th-filter"><input type="text" class="ekstrem-filter" data-col="' . $col_index . '" placeholder="Filter"></span>';
+                    echo '<span class="th-filter"><select class="ekstrem-filter" data-col="' . $col_index . '"><option value="">Semua</option></select></span>';
                   }
                   echo '</th>';
                   $col_index++;
@@ -886,37 +886,70 @@ $columns = [
         function getCellValue(cell) {
           if (!cell) return '';
           var input = cell.querySelector('input, textarea, select');
-          if (input) return (input.value || '').toLowerCase();
-          return (cell.textContent || '').toLowerCase();
+          if (input) return (input.value || '').toString().trim();
+          return (cell.textContent || '').toString().trim();
+        }
+
+        function buildHeaderFilters(card) {
+          if (!card) return;
+          var selects = card.querySelectorAll('.ekstrem-filter');
+          selects.forEach(function (sel) {
+            var col = parseInt(sel.getAttribute('data-col'), 10);
+            var rows = card.querySelectorAll('tbody tr');
+            var values = [];
+            rows.forEach(function (row) {
+              var cell = row.cells[col];
+              var val = getCellValue(cell);
+              if (val !== '') values.push(val);
+            });
+            var uniq = Array.from(new Set(values.map(function (v) { return v.toLowerCase(); })))
+              .map(function (v) {
+                var original = values.find(function (x) { return x.toLowerCase() === v; }) || v;
+                return original;
+              })
+              .sort(function (a, b) { return a.localeCompare(b, 'id'); });
+            var current = sel.value;
+            sel.innerHTML = '<option value=\"\">Semua</option>';
+            uniq.forEach(function (v) {
+              var opt = document.createElement('option');
+              opt.value = v;
+              opt.textContent = v;
+              sel.appendChild(opt);
+            });
+            sel.value = current;
+          });
         }
 
         function applyHeaderFilters() {
-          var filters = document.querySelectorAll('.ekstrem-filter');
-          var active = [];
-          filters.forEach(function (f) {
-            var val = (f.value || '').trim().toLowerCase();
-            if (val !== '') {
-              active.push({ col: parseInt(f.getAttribute('data-col'), 10), val: val });
-            }
-          });
           var cards = document.querySelectorAll('.table-card');
           cards.forEach(function (card) {
+            var filters = card.querySelectorAll('.ekstrem-filter');
+            var active = [];
+            filters.forEach(function (f) {
+              var val = (f.value || '').trim().toLowerCase();
+              if (val !== '') {
+                active.push({ col: parseInt(f.getAttribute('data-col'), 10), val: val });
+              }
+            });
             var rows = card.querySelectorAll('tbody tr');
             rows.forEach(function (row) {
               var show = true;
               active.forEach(function (f) {
                 var cell = row.cells[f.col];
-                var text = getCellValue(cell);
-                if (text.indexOf(f.val) === -1) show = false;
+                var text = getCellValue(cell).toLowerCase();
+                if (text !== f.val) show = false;
               });
               row.style.display = show ? '' : 'none';
             });
           });
         }
 
+        document.querySelectorAll('.table-card').forEach(function (card) {
+          buildHeaderFilters(card);
+        });
         var headerFilters = document.querySelectorAll('.ekstrem-filter');
-        headerFilters.forEach(function (inp) {
-          inp.addEventListener('input', applyHeaderFilters);
+        headerFilters.forEach(function (sel) {
+          sel.addEventListener('change', applyHeaderFilters);
         });
 
         function saveCell(el) {
@@ -962,6 +995,10 @@ $columns = [
           if (el.tagName.toLowerCase() === 'textarea') {
             el.addEventListener('input', function () { autoResize(el); });
           }
+          el.addEventListener('blur', function () {
+            var card = el.closest('.table-card');
+            if (card) buildHeaderFilters(card);
+          });
           el.addEventListener('keydown', function (e) {
             var row = el.closest('tr');
             if (!row) return;
@@ -1064,6 +1101,8 @@ $columns = [
               setPasteStatus('Menempel ' + done + '/' + total, true);
             });
           });
+          if (card) buildHeaderFilters(card);
+          applyHeaderFilters();
           setTimeout(function () {
             setPasteStatus('Selesai', false);
           }, 400);
