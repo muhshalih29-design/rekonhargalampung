@@ -116,10 +116,14 @@ $stmt_avg = $pdo->prepare($avg_sql);
 $stmt_avg->execute($params);
 foreach ($stmt_avg as $avg_row) {
     $k = isset($avg_row['komoditas']) ? trim((string)$avg_row['komoditas']) : '';
-    $avg_map[$k] = $avg_row['avg_perubahan'];
+    $key = strtolower($k);
+    if ($key !== '' && !isset($avg_map[$key])) {
+        $avg_map[$key] = $avg_row['avg_perubahan'];
+    }
 }
 
 $komoditas_tabs = [];
+$komoditas_tab_map = [];
 $tab_sql = 'SELECT DISTINCT komoditas FROM hkd';
 if ($where) {
     $tab_sql .= ' WHERE ' . implode(' AND ', $where);
@@ -130,12 +134,16 @@ $stmt_tabs->execute($params);
 foreach ($stmt_tabs as $row) {
     $k = isset($row['komoditas']) ? trim((string)$row['komoditas']) : '';
     if ($k !== '') {
-        $komoditas_tabs[] = $k;
+        $key = strtolower($k);
+        if (!isset($komoditas_tab_map[$key])) {
+            $komoditas_tab_map[$key] = $k;
+            $komoditas_tabs[] = ['key' => $key, 'label' => $k];
+        }
     }
 }
-$komoditas_selected = isset($_GET['komoditas']) ? trim($_GET['komoditas']) : '';
+$komoditas_selected = isset($_GET['komoditas']) ? strtolower(trim($_GET['komoditas'])) : '';
 if ($komoditas_selected === '' && !empty($komoditas_tabs)) {
-    $komoditas_selected = $komoditas_tabs[0];
+    $komoditas_selected = $komoditas_tabs[0]['key'];
 }
 
 $columns = [
@@ -493,10 +501,10 @@ $columns = [
         </form>
         <?php if (!empty($komoditas_tabs)): ?>
           <div class="tabs" data-selected="<?php echo htmlspecialchars($komoditas_selected); ?>">
-            <?php foreach ($komoditas_tabs as $k): ?>
-              <?php $is_active = ($k === $komoditas_selected) ? 'active' : ''; ?>
-              <button type="button" class="tab-btn <?php echo $is_active; ?>" data-komoditas="<?php echo htmlspecialchars($k); ?>">
-                <?php echo htmlspecialchars($k); ?>
+            <?php foreach ($komoditas_tabs as $item): ?>
+              <?php $is_active = ($item['key'] === $komoditas_selected) ? 'active' : ''; ?>
+              <button type="button" class="tab-btn <?php echo $is_active; ?>" data-komoditas="<?php echo htmlspecialchars($item['key']); ?>">
+                <?php echo htmlspecialchars($item['label']); ?>
               </button>
             <?php endforeach; ?>
           </div>
@@ -509,19 +517,26 @@ $columns = [
         <?php else: ?>
           <?php
             $current_komoditas = null;
+            $current_key = null;
+            $komoditas_display_map = [];
             $row_index = 0;
           ?>
           <?php foreach ($rows as $row): ?>
             <?php
               $komoditas = isset($row['komoditas']) ? trim((string)$row['komoditas']) : '';
-              if ($komoditas !== $current_komoditas):
+              $komoditas_key = strtolower($komoditas);
+              if ($komoditas_key !== $current_key):
                 if ($current_komoditas !== null) {
                   echo '</tbody></table></div></div>';
                 }
-                $current_komoditas = $komoditas;
-                $avg_val = array_key_exists($current_komoditas, $avg_map) ? $avg_map[$current_komoditas] : null;
+                if (!isset($komoditas_display_map[$komoditas_key])) {
+                  $komoditas_display_map[$komoditas_key] = $komoditas;
+                }
+                $current_key = $komoditas_key;
+                $current_komoditas = $komoditas_display_map[$komoditas_key];
+                $avg_val = array_key_exists($current_key, $avg_map) ? $avg_map[$current_key] : null;
                 $avg_display = ($avg_val === null) ? '-' : number_format((float)$avg_val, 2, ',', '.');
-                echo '<div class="table-card" data-komoditas="' . htmlspecialchars($current_komoditas) . '" style="margin-bottom:16px;">';
+                echo '<div class="table-card" data-komoditas="' . htmlspecialchars($current_key) . '" style="margin-bottom:16px;">';
                 echo '<div class="komoditas-head">';
                 echo '<div style="font-weight:700;">' . htmlspecialchars($current_komoditas) . '</div>';
                 echo '<div class="avg-pill"><span class="avg-trend zero">=</span>Rata-rata perubahan: <span class="avg-value">' . htmlspecialchars($avg_display) . '</span></div>';
