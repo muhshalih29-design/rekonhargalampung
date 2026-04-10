@@ -213,6 +213,14 @@ if ($tahun !== '' && ctype_digit($tahun)) {
     $types .= 'i';
     $params[] = (int)$tahun;
 }
+if (is_kabupaten($user)) {
+    $kab_code = (int)($user['kab_kode'] ?? 0);
+    if ($kab_code > 0) {
+        $kab_short = $kab_code % 100;
+        $where[] = 'kab = ?';
+        $params[] = (string)$kab_short;
+    }
+}
 
 $sql = 'SELECT * FROM ekstrem';
 if ($where) {
