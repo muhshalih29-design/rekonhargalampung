@@ -210,6 +210,7 @@ $columns = [
         font-family: "Poppins", sans-serif;
         color: var(--ink);
         background: radial-gradient(1200px 600px at 30% 0%, #f7f0f3 0%, var(--bg) 50%, var(--bg-2) 100%);
+        overflow-x: hidden;
       }
 
       .app {
@@ -218,6 +219,7 @@ $columns = [
         grid-template-columns: 84px 1fr;
         gap: 18px;
         padding: 22px;
+        width: 100%;
       }
 
       .sidebar {
@@ -267,6 +269,7 @@ $columns = [
         padding-right: 8px;
         max-width: 1400px;
         width: 100%;
+        min-width: 0;
       }
 
       .topbar {
@@ -362,6 +365,7 @@ $columns = [
         padding: 16px;
         box-shadow: 0 14px 28px rgba(56, 65, 80, 0.10);
         overflow-x: auto;
+        max-width: 100%;
       }
       .komoditas-head {
         display: flex;
