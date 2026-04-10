@@ -433,8 +433,8 @@ foreach ($rows as $r) {
             <thead>
               <tr>
                 <th colspan="1" class="head-yellow">Komoditas</th>
-                <th colspan="6" class="head-yellow">Gabah</th>
-                <th colspan="9" class="head-pink">Beras</th>
+                <th colspan="3" class="head-yellow">Gabah</th>
+                <th colspan="12" class="head-pink">Beras</th>
               </tr>
               <tr>
                 <th rowspan="2" class="subhead">Kabupaten/kota</th>
@@ -518,19 +518,19 @@ foreach ($rows as $r) {
                 ?>
                 <td><?php echo htmlspecialchars($fmt_int($avg_val('shped_hd_n1'))); ?></td>
                 <td><?php echo htmlspecialchars($fmt_int($avg_val('shped_hd_n'))); ?></td>
-                <td class="rh-col"><?php echo htmlspecialchars($fmt_dec($avg_val('shped_hd_rh'))); ?></td>
+                <td class="rh-col"><?php echo htmlspecialchars($fmt_int($avg_val('shped_hd_rh'))); ?></td>
                 <td><?php echo htmlspecialchars($fmt_int($avg_val('shped_hkd_n1'))); ?></td>
                 <td><?php echo htmlspecialchars($fmt_int($avg_val('shped_hkd_n'))); ?></td>
-                <td class="rh-col"><?php echo htmlspecialchars($fmt_dec($avg_val('shped_hkd_rh'))); ?></td>
+                <td class="rh-col"><?php echo htmlspecialchars($fmt_int($avg_val('shped_hkd_rh'))); ?></td>
                 <td class="beras-col"><?php echo htmlspecialchars($fmt_int($avg_val('shp_n2'))); ?></td>
                 <td class="beras-col"><?php echo htmlspecialchars($fmt_int($avg_val('shp_n'))); ?></td>
-                <td class="rh-col beras-col"><?php echo htmlspecialchars($fmt_dec($avg_val('shp_rh'))); ?></td>
+                <td class="rh-col beras-col"><?php echo htmlspecialchars($fmt_int($avg_val('shp_rh'))); ?></td>
                 <td class="beras-col"><?php echo htmlspecialchars($fmt_int($avg_val('hpb_n1'))); ?></td>
                 <td class="beras-col"><?php echo htmlspecialchars($fmt_int($avg_val('hpb_n'))); ?></td>
-                <td class="rh-col beras-col"><?php echo htmlspecialchars($fmt_dec($avg_val('hpb_rh'))); ?></td>
+                <td class="rh-col beras-col"><?php echo htmlspecialchars($fmt_int($avg_val('hpb_rh'))); ?></td>
                 <td class="beras-col"><?php echo htmlspecialchars($fmt_int($avg_val('hk_n1'))); ?></td>
                 <td class="beras-col"><?php echo htmlspecialchars($fmt_int($avg_val('hk_n'))); ?></td>
-                <td class="rh-col beras-col"><?php echo htmlspecialchars($fmt_dec($avg_val('hk_rh'))); ?></td>
+                <td class="rh-col beras-col"><?php echo htmlspecialchars($fmt_int($avg_val('hk_rh'))); ?></td>
               </tr>
             </tbody>
           </table>
@@ -581,22 +581,51 @@ foreach ($rows as $r) {
           var t = setTimeout(function () { saveCell(el); timers.delete(el); }, 700);
           timers.set(el, t);
         }
+        function formatInt(el) {
+          var raw = (el.value || '').replace(/\./g, '').replace(/,/g, '');
+          if (raw === '') { el.value = ''; return; }
+          var num = parseInt(raw, 10);
+          if (isNaN(num)) return;
+          el.value = num.toString();
+        }
         inputs.forEach(function (el) {
           if (el.disabled) return;
           if (el.classList.contains('rh-input')) updateTrend(el);
-          if (el.classList.contains('n-int')) {
-            var raw = (el.value || '').replace(/\./g, '').replace(/,/g, '');
-            if (raw !== '') el.value = raw;
-          }
-          el.addEventListener('input', function () { scheduleSave(el); });
-          el.addEventListener('blur', function () {
-            if (el.classList.contains('n-int')) {
-              var raw = (el.value || '').replace(/\./g, '').replace(/,/g, '');
-              if (raw !== '') el.value = raw;
-            }
-            saveCell(el);
+          formatInt(el);
+          el.addEventListener('input', function () {
+            formatInt(el);
+            scheduleSave(el);
           });
+          el.addEventListener('blur', function () { saveCell(el); });
           el.addEventListener('input', function () { updateTrend(el); });
+          el.addEventListener('keydown', function (e) {
+            var row = el.closest('tr');
+            if (!row) return;
+            var rowIndex = Array.prototype.indexOf.call(row.parentElement.querySelectorAll('tr'), row);
+            var colIndex = Array.prototype.indexOf.call(row.querySelectorAll('.cell-input, .cell-text'), el);
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              saveCell(el);
+              var nextRow = row.parentElement.querySelectorAll('tr')[rowIndex + 1];
+              if (nextRow) {
+                var nextEl = nextRow.querySelectorAll('.cell-input, .cell-text')[colIndex];
+                if (nextEl) nextEl.focus();
+              }
+            } else if (e.key === 'Tab') {
+              e.preventDefault();
+              saveCell(el);
+              var nextCol = e.shiftKey ? colIndex - 1 : colIndex + 1;
+              var curRow = row;
+              var maxCol = row.querySelectorAll('.cell-input, .cell-text').length - 1;
+              if (nextCol < 0) { nextCol = maxCol; rowIndex -= 1; }
+              if (nextCol > maxCol) { nextCol = 0; rowIndex += 1; }
+              var targetRow = row.parentElement.querySelectorAll('tr')[rowIndex];
+              if (targetRow) {
+                var targetEl = targetRow.querySelectorAll('.cell-input, .cell-text')[nextCol];
+                if (targetEl) targetEl.focus();
+              }
+            }
+          });
         });
 
         document.addEventListener('paste', function (e) {
@@ -625,9 +654,7 @@ foreach ($rows as $r) {
               var el = editables[startColIdx + cIdx];
               if (!el || el.disabled) return;
               el.value = cellText.trim();
-              if (el.classList.contains('n-int')) {
-                el.value = el.value.replace(/\./g, '').replace(/,/g, '');
-              }
+              formatInt(el);
               updateTrend(el);
               saveCell(el);
             });
