@@ -1,5 +1,15 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) {
+    $params = session_get_cookie_params();
+    session_set_cookie_params([
+        'lifetime' => 60 * 60 * 24 * 30,
+        'path' => $params['path'] ?? '/',
+        'domain' => $params['domain'] ?? '',
+        'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    ini_set('session.gc_maxlifetime', (string)(60 * 60 * 24 * 30));
     session_start();
 }
 

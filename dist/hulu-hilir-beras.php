@@ -155,6 +155,28 @@ $sql .= ' ORDER BY kd_kako ASC, kabupaten_kota ASC';
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $rows = $stmt->fetchAll();
+
+$avg_fields = [
+    'shped_hd_n1','shped_hd_n','shped_hd_rh',
+    'shped_hkd_n1','shped_hkd_n','shped_hkd_rh',
+    'shp_n2','shp_n','shp_rh',
+    'hpb_n1','hpb_n','hpb_rh',
+    'hk_n1','hk_n','hk_rh'
+];
+$avg_sum = [];
+$avg_count = [];
+foreach ($avg_fields as $f) { $avg_sum[$f] = 0; $avg_count[$f] = 0; }
+foreach ($rows as $r) {
+    foreach ($avg_fields as $f) {
+        if (!isset($r[$f])) continue;
+        $v = $r[$f];
+        if ($v === null || $v === '' || !is_numeric($v)) continue;
+        $num = (float)$v;
+        if ($num == 0) continue;
+        $avg_sum[$f] += $num;
+        $avg_count[$f] += 1;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -293,9 +315,10 @@ $rows = $stmt->fetchAll();
       .subhead-dark { background: #3f4f63; color: #fff; font-weight: 700; }
       .col-fixed { background: #ffffff; font-weight: 600; }
       .rh-col { background: #fff3c4; }
+      .beras-col { background: linear-gradient(135deg, rgba(255,122,182,0.12), rgba(255,179,107,0.12)); }
       .cell-disabled {
-        background: #e0e5ec !important;
-        color: #6b7280 !important;
+        background: #cbd5e1 !important;
+        color: #475569 !important;
       }
       td { padding: 6px; font-size: 12px; background: #ffffff; }
       .cell-input {
@@ -315,8 +338,8 @@ $rows = $stmt->fetchAll();
       }
       .cell-input:disabled,
       .cell-text:disabled {
-        background: #e0e5ec;
-        color: #6b7280;
+        background: #cbd5e1;
+        color: #475569;
       }
       .cell-wrap {
         position: relative;
@@ -333,6 +356,10 @@ $rows = $stmt->fetchAll();
       }
       .cell-wrap .cell-input {
         padding-left: 18px;
+      }
+      .avg-row td {
+        background: #e9edf3;
+        font-weight: 700;
       }
       @media (max-width: 1200px) {
         .app { grid-template-columns: 1fr; }
@@ -465,17 +492,46 @@ $rows = $stmt->fetchAll();
                   <td><input class="cell-input" data-field="shped_hkd_n1" value="<?php echo htmlspecialchars($val('shped_hkd_n1')); ?>" <?php echo $is_locked('shped_hkd_n1'); ?>></td>
                   <td><input class="cell-input" data-field="shped_hkd_n" value="<?php echo htmlspecialchars($val('shped_hkd_n')); ?>" <?php echo $is_locked('shped_hkd_n'); ?>></td>
                   <td class="rh-col"><div class="cell-wrap"><span class="trend"></span><input class="cell-input rh-input" data-field="shped_hkd_rh" value="<?php echo htmlspecialchars($val('shped_hkd_rh')); ?>" <?php echo $is_locked('shped_hkd_rh'); ?>></div></td>
-                  <td><input class="cell-input" data-field="shp_n2" value="<?php echo htmlspecialchars($val('shp_n2')); ?>" <?php echo $is_locked('shp_n2'); ?>></td>
-                  <td><input class="cell-input" data-field="shp_n" value="<?php echo htmlspecialchars($val('shp_n')); ?>" <?php echo $is_locked('shp_n'); ?>></td>
-                  <td class="rh-col"><div class="cell-wrap"><span class="trend"></span><input class="cell-input rh-input" data-field="shp_rh" value="<?php echo htmlspecialchars($val('shp_rh')); ?>" <?php echo $is_locked('shp_rh'); ?>></div></td>
-                  <td><input class="cell-input" data-field="hpb_n1" value="<?php echo htmlspecialchars($val('hpb_n1')); ?>" <?php echo $is_locked('hpb_n1'); ?>></td>
-                  <td><input class="cell-input" data-field="hpb_n" value="<?php echo htmlspecialchars($val('hpb_n')); ?>" <?php echo $is_locked('hpb_n'); ?>></td>
-                  <td class="rh-col"><div class="cell-wrap"><span class="trend"></span><input class="cell-input rh-input" data-field="hpb_rh" value="<?php echo htmlspecialchars($val('hpb_rh')); ?>" <?php echo $is_locked('hpb_rh'); ?>></div></td>
-                  <td><input class="cell-input" data-field="hk_n1" value="<?php echo htmlspecialchars($val('hk_n1')); ?>" <?php echo $is_locked('hk_n1'); ?>></td>
-                  <td><input class="cell-input" data-field="hk_n" value="<?php echo htmlspecialchars($val('hk_n')); ?>" <?php echo $is_locked('hk_n'); ?>></td>
-                  <td class="rh-col"><div class="cell-wrap"><span class="trend"></span><input class="cell-input rh-input" data-field="hk_rh" value="<?php echo htmlspecialchars($val('hk_rh')); ?>" <?php echo $is_locked('hk_rh'); ?>></div></td>
+                  <td class="beras-col"><input class="cell-input n-int" data-field="shp_n2" value="<?php echo htmlspecialchars($val('shp_n2')); ?>" <?php echo $is_locked('shp_n2'); ?>></td>
+                  <td class="beras-col"><input class="cell-input n-int" data-field="shp_n" value="<?php echo htmlspecialchars($val('shp_n')); ?>" <?php echo $is_locked('shp_n'); ?>></td>
+                  <td class="rh-col beras-col"><div class="cell-wrap"><span class="trend"></span><input class="cell-input rh-input" data-field="shp_rh" value="<?php echo htmlspecialchars($val('shp_rh')); ?>" <?php echo $is_locked('shp_rh'); ?>></div></td>
+                  <td class="beras-col"><input class="cell-input n-int" data-field="hpb_n1" value="<?php echo htmlspecialchars($val('hpb_n1')); ?>" <?php echo $is_locked('hpb_n1'); ?>></td>
+                  <td class="beras-col"><input class="cell-input n-int" data-field="hpb_n" value="<?php echo htmlspecialchars($val('hpb_n')); ?>" <?php echo $is_locked('hpb_n'); ?>></td>
+                  <td class="rh-col beras-col"><div class="cell-wrap"><span class="trend"></span><input class="cell-input rh-input" data-field="hpb_rh" value="<?php echo htmlspecialchars($val('hpb_rh')); ?>" <?php echo $is_locked('hpb_rh'); ?>></div></td>
+                  <td class="beras-col"><input class="cell-input n-int" data-field="hk_n1" value="<?php echo htmlspecialchars($val('hk_n1')); ?>" <?php echo $is_locked('hk_n1'); ?>></td>
+                  <td class="beras-col"><input class="cell-input n-int" data-field="hk_n" value="<?php echo htmlspecialchars($val('hk_n')); ?>" <?php echo $is_locked('hk_n'); ?>></td>
+                  <td class="rh-col beras-col"><div class="cell-wrap"><span class="trend"></span><input class="cell-input rh-input" data-field="hk_rh" value="<?php echo htmlspecialchars($val('hk_rh')); ?>" <?php echo $is_locked('hk_rh'); ?>></div></td>
                 </tr>
               <?php endforeach; ?>
+              <tr class="avg-row">
+                <td class="col-fixed">Rata-rata</td>
+                <?php
+                  $fmt_int = function($v) {
+                    return $v === null ? '' : number_format($v, 0, ',', '.');
+                  };
+                  $fmt_dec = function($v) {
+                    return $v === null ? '' : number_format($v, 2, ',', '.');
+                  };
+                  $avg_val = function($f) use ($avg_sum, $avg_count) {
+                    return ($avg_count[$f] ?? 0) > 0 ? ($avg_sum[$f] / $avg_count[$f]) : null;
+                  };
+                ?>
+                <td><?php echo htmlspecialchars($fmt_int($avg_val('shped_hd_n1'))); ?></td>
+                <td><?php echo htmlspecialchars($fmt_int($avg_val('shped_hd_n'))); ?></td>
+                <td class="rh-col"><?php echo htmlspecialchars($fmt_dec($avg_val('shped_hd_rh'))); ?></td>
+                <td><?php echo htmlspecialchars($fmt_int($avg_val('shped_hkd_n1'))); ?></td>
+                <td><?php echo htmlspecialchars($fmt_int($avg_val('shped_hkd_n'))); ?></td>
+                <td class="rh-col"><?php echo htmlspecialchars($fmt_dec($avg_val('shped_hkd_rh'))); ?></td>
+                <td class="beras-col"><?php echo htmlspecialchars($fmt_int($avg_val('shp_n2'))); ?></td>
+                <td class="beras-col"><?php echo htmlspecialchars($fmt_int($avg_val('shp_n'))); ?></td>
+                <td class="rh-col beras-col"><?php echo htmlspecialchars($fmt_dec($avg_val('shp_rh'))); ?></td>
+                <td class="beras-col"><?php echo htmlspecialchars($fmt_int($avg_val('hpb_n1'))); ?></td>
+                <td class="beras-col"><?php echo htmlspecialchars($fmt_int($avg_val('hpb_n'))); ?></td>
+                <td class="rh-col beras-col"><?php echo htmlspecialchars($fmt_dec($avg_val('hpb_rh'))); ?></td>
+                <td class="beras-col"><?php echo htmlspecialchars($fmt_int($avg_val('hk_n1'))); ?></td>
+                <td class="beras-col"><?php echo htmlspecialchars($fmt_int($avg_val('hk_n'))); ?></td>
+                <td class="rh-col beras-col"><?php echo htmlspecialchars($fmt_dec($avg_val('hk_rh'))); ?></td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -528,8 +584,18 @@ $rows = $stmt->fetchAll();
         inputs.forEach(function (el) {
           if (el.disabled) return;
           if (el.classList.contains('rh-input')) updateTrend(el);
+          if (el.classList.contains('n-int')) {
+            var raw = (el.value || '').replace(/\./g, '').replace(/,/g, '');
+            if (raw !== '') el.value = raw;
+          }
           el.addEventListener('input', function () { scheduleSave(el); });
-          el.addEventListener('blur', function () { saveCell(el); });
+          el.addEventListener('blur', function () {
+            if (el.classList.contains('n-int')) {
+              var raw = (el.value || '').replace(/\./g, '').replace(/,/g, '');
+              if (raw !== '') el.value = raw;
+            }
+            saveCell(el);
+          });
           el.addEventListener('input', function () { updateTrend(el); });
         });
 
@@ -559,6 +625,9 @@ $rows = $stmt->fetchAll();
               var el = editables[startColIdx + cIdx];
               if (!el || el.disabled) return;
               el.value = cellText.trim();
+              if (el.classList.contains('n-int')) {
+                el.value = el.value.replace(/\./g, '').replace(/,/g, '');
+              }
               updateTrend(el);
               saveCell(el);
             });
