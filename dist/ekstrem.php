@@ -37,10 +37,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $value = isset($_POST['value']) ? $_POST['value'] : null;
 
     $allowed = [
+        'subsektor' => 'text',
+        'kab' => 'text',
+        'kecamatan' => 'text',
+        'komoditas' => 'text',
+        'kualitas' => 'text',
+        'satuan' => 'text',
         'harga_bulan_ini' => 'decimal',
         'harga_bulan_lalu' => 'decimal',
         'perubahan_rata_rata' => 'decimal',
         'konfirmasi_kab' => 'text',
+        'bulan' => 'text',
+        'tahun' => 'int',
     ];
 
     if ($id <= 0 || !isset($allowed[$field])) {
@@ -69,6 +77,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $sql = "UPDATE ekstrem SET {$field} = ? WHERE id = ?";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$num, $id]);
+        }
+    } elseif ($type === 'int') {
+        $raw = is_string($value) ? trim($value) : '';
+        if ($raw === '') {
+            $sql = "UPDATE ekstrem SET {$field} = NULL WHERE id = ?";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$id]);
+        } else {
+            if (!ctype_digit($raw)) {
+                http_response_code(400);
+                echo 'Invalid number';
+                exit;
+            }
+            $sql = "UPDATE ekstrem SET {$field} = ? WHERE id = ?";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([(int)$raw, $id]);
         }
     } elseif ($type === 'enum') {
     } else {
@@ -391,6 +415,8 @@ $columns = [
 
       .sp2kp-input { max-width: 12ch; text-align: right; }
       .perubahan-input { text-align: right; max-width: 12ch; }
+      .text-input { width: 100%; min-width: 140px; }
+      .year-input { max-width: 8ch; text-align: right; }
       .harga-input { text-align: right; max-width: 12ch; }
       .perubahan-cell { text-align: center; }
       .penurunan-select { max-width: 8ch; }
@@ -600,6 +626,18 @@ $columns = [
                 <?php elseif ($key === 'konfirmasi_kab'): ?>
                   <td>
                     <textarea class="form-control form-control-sm editable-cell wrap-textarea" data-field="konfirmasi_kab" rows="1" placeholder="Isi konfirmasi"><?php echo htmlspecialchars($value_display); ?></textarea>
+                  </td>
+                <?php elseif ($key === 'tahun'): ?>
+                  <td>
+                    <input type="text" inputmode="numeric" class="form-control form-control-sm text-input year-input editable-cell" data-field="tahun" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="2026">
+                  </td>
+                <?php elseif ($key === 'bulan'): ?>
+                  <td>
+                    <input type="text" class="form-control form-control-sm text-input editable-cell" data-field="bulan" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="Maret">
+                  </td>
+                <?php elseif ($key === 'subsektor' || $key === 'kab' || $key === 'kecamatan' || $key === 'komoditas' || $key === 'kualitas' || $key === 'satuan'): ?>
+                  <td>
+                    <input type="text" class="form-control form-control-sm text-input editable-cell" data-field="<?php echo htmlspecialchars($key); ?>" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="-">
                   </td>
                 <?php else: ?>
                   <td><?php echo htmlspecialchars($value_display === '' ? '-' : $value_display); ?></td>
