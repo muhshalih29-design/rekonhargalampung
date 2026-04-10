@@ -437,6 +437,12 @@ $columns = [
         box-shadow: 0 0 0 3px rgba(255, 122, 182, 0.18);
       }
       .wrap-textarea.form-control { height: auto; min-height: 36px; }
+      .form-control:disabled,
+      .form-select:disabled {
+        background: #f3f4f6 !important;
+        color: #9aa3ad !important;
+        border-color: #e5e7eb !important;
+      }
       .form-select {
         -webkit-appearance: none;
         -moz-appearance: none;
