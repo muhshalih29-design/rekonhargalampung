@@ -795,6 +795,68 @@ $columns = [
             .catch(function () { /* silent */ });
         }
 
+        function setEditableValue(el, value) {
+          if (!el) return;
+          if (el.tagName.toLowerCase() === 'select') {
+            var found = false;
+            for (var i = 0; i < el.options.length; i++) {
+              if (el.options[i].value === value) {
+                el.selectedIndex = i;
+                found = true;
+                break;
+              }
+            }
+            if (!found) el.value = value;
+          } else {
+            el.value = value;
+          }
+          if (el.classList.contains('perubahan-input') || el.classList.contains('sp2kp-input')) {
+            el.value = formatIdNumber(el.value);
+          }
+          if (el.tagName.toLowerCase() === 'textarea') {
+            autoResize(el);
+          }
+          if (el.classList.contains('perubahan-input')) {
+            updateTrend(el);
+            updateRowHighlight(el);
+            updateAvgForCard(el.closest('.table-card'));
+          }
+          saveCell(el);
+        }
+
+        document.addEventListener('paste', function (e) {
+          var target = e.target;
+          if (!target || !target.classList || !target.classList.contains('editable-cell')) return;
+          var text = (e.clipboardData || window.clipboardData).getData('text');
+          if (!text || (text.indexOf('\t') === -1 && text.indexOf('\n') === -1 && text.indexOf('\r') === -1)) return;
+          e.preventDefault();
+
+          var rows = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+          if (rows.length && rows[rows.length - 1].trim() === '') rows.pop();
+
+          var startRow = target.closest('tr');
+          if (!startRow) return;
+          var card = target.closest('.table-card');
+          if (!card) return;
+          var rowList = Array.prototype.slice.call(card.querySelectorAll('tbody tr'));
+          var startRowIdx = rowList.indexOf(startRow);
+          if (startRowIdx < 0) return;
+          var startColIdx = Array.prototype.indexOf.call(startRow.querySelectorAll('.editable-cell'), target);
+          if (startColIdx < 0) return;
+
+          rows.forEach(function (rowText, rIdx) {
+            var cols = rowText.split('\t');
+            var rowEl = rowList[startRowIdx + rIdx];
+            if (!rowEl) return;
+            var editables = rowEl.querySelectorAll('.editable-cell');
+            cols.forEach(function (cellText, cIdx) {
+              var el = editables[startColIdx + cIdx];
+              if (!el) return;
+              setEditableValue(el, cellText.trim());
+            });
+          });
+        });
+
         function focusCell(rowIndex, colIndex) {
           var row = document.querySelector('tr[data-row="' + rowIndex + '"]');
           if (!row) return;
