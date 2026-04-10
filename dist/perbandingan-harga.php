@@ -47,6 +47,7 @@ if ($page_cached !== null) {
 $pdo = db();
 
 $komoditas_list = [];
+$komoditas_map = [];
 $komoditas_seen = [];
 $tables = ['shk', 'hpb', 'hd', 'hkd'];
 $existing_tables = [];
@@ -65,6 +66,7 @@ if ($sql) {
     $cached = cache_get($cache_key, $cache_ttl);
     if ($cached) {
         $komoditas_list = $cached['list'] ?? [];
+        $komoditas_map = $cached['map'] ?? [];
     } else {
         $res = $pdo->query($sql);
         foreach ($res as $row) {
@@ -72,20 +74,28 @@ if ($sql) {
             if ($k !== '') {
                 $key = strtolower($k);
                 if (!isset($komoditas_seen[$key])) {
-                    $komoditas_list[] = $k;
                     $komoditas_seen[$key] = true;
+                    $komoditas_map[$key] = $k;
+                } else {
+                    $current = $komoditas_map[$key] ?? '';
+                    if ($current !== '' && $current === strtolower($current) && $k !== strtolower($k)) {
+                        $komoditas_map[$key] = $k;
+                    }
                 }
             }
         }
-        cache_set($cache_key, ['list' => $komoditas_list]);
+        $komoditas_list = array_keys($komoditas_map);
+        sort($komoditas_list, SORT_STRING);
+        cache_set($cache_key, ['list' => $komoditas_list, 'map' => $komoditas_map]);
     }
 }
 
 $komoditas_selected = isset($_GET['komoditas']) ? trim($_GET['komoditas']) : '';
-if ($komoditas_selected === '') {
-    $komoditas_selected = 'Beras';
+$komoditas_selected_key = strtolower(trim($komoditas_selected));
+if ($komoditas_selected_key === '') {
+    $komoditas_selected_key = 'beras';
 }
-$komoditas_filter = strtolower(trim($komoditas_selected));
+$komoditas_filter = $komoditas_selected_key;
 $bulan = isset($_GET['bulan']) ? trim($_GET['bulan']) : '';
 $tahun = isset($_GET['tahun']) ? trim($_GET['tahun']) : '';
 
@@ -113,7 +123,7 @@ if ($bulan === '' || $tahun === '') {
     }
 }
 
-$display_komoditas = $komoditas_selected !== '' ? $komoditas_selected : 'Semua';
+$display_komoditas = $komoditas_map[$komoditas_selected_key] ?? ($komoditas_selected_key !== '' ? ucfirst($komoditas_selected_key) : 'Semua');
 
 $avg_map = [
     'HK' => null,
@@ -134,7 +144,7 @@ foreach ($table_map as $label => $tbl) {
     $sql = "SELECT AVG(NULLIF(perubahan,0)) AS avg_perubahan FROM {$tbl}";
     $where = [];
     $params = [];
-    if ($komoditas_selected !== '') {
+    if ($komoditas_selected_key !== '') {
         $where[] = 'TRIM(LOWER(komoditas)) = ?';
         $params[] = $komoditas_filter;
     }
@@ -186,7 +196,7 @@ foreach ($existing_tables as $tbl) {
     $sql = "SELECT DISTINCT kode_kabupaten, nama_kabupaten FROM {$tbl}";
     $where = [];
     $params = [];
-    if ($komoditas_selected !== '') {
+    if ($komoditas_selected_key !== '') {
         $where[] = 'TRIM(LOWER(komoditas)) = ?';
         $params[] = $komoditas_filter;
     }
@@ -224,7 +234,7 @@ foreach ($table_map as $label => $tbl) {
     $sql = "SELECT kode_kabupaten, AVG(NULLIF(perubahan,0)) AS avg_perubahan FROM {$tbl}";
     $where = [];
     $params = [];
-    if ($komoditas_selected !== '') {
+    if ($komoditas_selected_key !== '') {
         $where[] = 'TRIM(LOWER(komoditas)) = ?';
         $params[] = $komoditas_filter;
     }
@@ -690,9 +700,10 @@ if ($global_max_abs == 0) {
             <i class="mdi mdi-filter-variant"></i>
             <select name="komoditas" style="min-width: 180px;" onchange="this.form.submit()">
               <option value="">Semua Komoditas</option>
-              <?php foreach ($komoditas_list as $k): ?>
-                <?php $selected = (strtolower(trim($komoditas_selected)) === strtolower(trim($k))) ? 'selected' : ''; ?>
-                <option value="<?php echo htmlspecialchars($k); ?>" <?php echo $selected; ?>><?php echo htmlspecialchars($k); ?></option>
+              <?php foreach ($komoditas_list as $key): ?>
+                <?php $label = $komoditas_map[$key] ?? $key; ?>
+                <?php $selected = ($komoditas_selected_key === $key) ? 'selected' : ''; ?>
+                <option value="<?php echo htmlspecialchars($key); ?>" <?php echo $selected; ?>><?php echo htmlspecialchars($label); ?></option>
               <?php endforeach; ?>
             </select>
           </div>
