@@ -38,8 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
     $allowed = [
         'subsektor' => 'text',
-        'kab' => 'text',
-        'kecamatan' => 'text',
+        'kab' => 'int',
+        'kecamatan' => 'int',
         'komoditas' => 'text',
         'kualitas' => 'text',
         'satuan' => 'text',
@@ -144,29 +144,10 @@ foreach ($stmt_avg as $avg_row) {
     $avg_map[$k] = $avg_row['avg_perubahan'];
 }
 
-$komoditas_tabs = [];
-$tab_sql = 'SELECT DISTINCT komoditas FROM ekstrem';
-if ($where) {
-    $tab_sql .= ' WHERE ' . implode(' AND ', $where);
-}
-$tab_sql .= ' ORDER BY komoditas ASC';
-$stmt_tabs = $pdo->prepare($tab_sql);
-$stmt_tabs->execute($params);
-foreach ($stmt_tabs as $row) {
-    $k = isset($row['komoditas']) ? trim((string)$row['komoditas']) : '';
-    if ($k !== '') {
-        $komoditas_tabs[] = $k;
-    }
-}
-$komoditas_selected = isset($_GET['komoditas']) ? trim($_GET['komoditas']) : '';
-if ($komoditas_selected === '' && !empty($komoditas_tabs)) {
-    $komoditas_selected = $komoditas_tabs[0];
-}
-
 $columns = [
     'subsektor' => 'Subsektor',
-    'kab' => 'Kabupaten/Kota',
-    'kecamatan' => 'Kecamatan',
+    'kab' => 'Kab/Kot',
+    'kecamatan' => 'Kec',
     'komoditas' => 'Komoditas',
     'kualitas' => 'Kualitas',
     'satuan' => 'Satuan',
@@ -459,6 +440,23 @@ $columns = [
       .perubahan-input { text-align: right; max-width: 12ch; }
       .text-input { width: 100%; min-width: 140px; }
       .text-input.compact-input { min-width: 70px; max-width: 90px; }
+      .int-input { text-align: center; max-width: 80px; }
+      .input-with-icon {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        width: 100%;
+      }
+      .input-with-icon .trend {
+        position: absolute;
+        left: 8px;
+        font-size: 12px;
+        font-weight: 800;
+        pointer-events: none;
+      }
+      .input-with-icon .perubahan-input {
+        padding-left: 22px;
+      }
       .year-input { max-width: 8ch; text-align: right; }
       .harga-input { text-align: right; max-width: 12ch; }
       .perubahan-cell { text-align: center; }
@@ -569,17 +567,6 @@ $columns = [
             <div class="icon-btn"><i class="mdi mdi-account-circle"></i></div>
           </div>
         </form>
-        <?php if (!empty($komoditas_tabs)): ?>
-          <div class="tabs" data-selected="<?php echo htmlspecialchars($komoditas_selected); ?>">
-            <?php foreach ($komoditas_tabs as $k): ?>
-              <?php $is_active = ($k === $komoditas_selected) ? 'active' : ''; ?>
-              <button type="button" class="tab-btn <?php echo $is_active; ?>" data-komoditas="<?php echo htmlspecialchars($k); ?>">
-                <?php echo htmlspecialchars($k); ?>
-              </button>
-            <?php endforeach; ?>
-          </div>
-        <?php endif; ?>
-
         <?php if (empty($rows)): ?>
           <div class="table-card">
             <div class="text-center">Belum ada data.</div>
@@ -599,7 +586,7 @@ $columns = [
                 $current_komoditas = $komoditas;
                 $avg_val = array_key_exists($current_komoditas, $avg_map) ? $avg_map[$current_komoditas] : null;
                 $avg_display = ($avg_val === null) ? '-' : number_format((float)$avg_val, 2, ',', '.');
-                echo '<div class="table-card" data-komoditas="' . htmlspecialchars($current_komoditas) . '" style="margin-bottom:16px;">';
+                echo '<div class="table-card" style="margin-bottom:16px;">';
                 echo '<div class="komoditas-head">';
                 echo '<div style="font-weight:700;">' . htmlspecialchars($current_komoditas) . '</div>';
                 echo '<div class="avg-pill"><span class="avg-trend zero">=</span>Rata-rata perubahan: <span class="avg-value">' . htmlspecialchars($avg_display) . '</span></div>';
@@ -656,15 +643,17 @@ $columns = [
                     }
                   ?>
                   <td class="perubahan-cell">
-                    <div class="d-flex align-items-center justify-content-center">
-                      <input type="text" inputmode="decimal" class="form-control form-control-sm perubahan-input editable-cell <?php echo $class; ?>" data-field="perubahan_rata_rata" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="0,00">
+                    <div class="input-with-icon">
                       <?php if ($num !== null): ?>
                         <?php if ($num >= 0): ?>
                           <span class="trend trend-up">▲</span>
                         <?php else: ?>
                           <span class="trend trend-down">▼</span>
                         <?php endif; ?>
+                      <?php else: ?>
+                        <span class="trend trend-zero">=</span>
                       <?php endif; ?>
+                      <input type="text" inputmode="decimal" class="form-control form-control-sm perubahan-input editable-cell <?php echo $class; ?>" data-field="perubahan_rata_rata" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="0,00">
                     </div>
                   </td>
                 <?php elseif ($key === 'harga_bulan_ini'): ?>
@@ -690,7 +679,11 @@ $columns = [
                 <?php elseif ($key === 'subsektor' || $key === 'kab' || $key === 'kecamatan' || $key === 'komoditas' || $key === 'kualitas' || $key === 'satuan'): ?>
                   <td>
                     <?php $compact = ($key === 'subsektor' || $key === 'kab' || $key === 'kecamatan') ? ' compact-input' : ''; ?>
-                    <input type="text" class="form-control form-control-sm text-input<?php echo $compact; ?> editable-cell" data-field="<?php echo htmlspecialchars($key); ?>" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="-">
+                    <?php if ($key === 'kab' || $key === 'kecamatan'): ?>
+                      <input type="text" inputmode="numeric" maxlength="3" pattern="\\d*" class="form-control form-control-sm text-input int-input<?php echo $compact; ?> editable-cell" data-field="<?php echo htmlspecialchars($key); ?>" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="0">
+                    <?php else: ?>
+                      <input type="text" class="form-control form-control-sm text-input<?php echo $compact; ?> editable-cell" data-field="<?php echo htmlspecialchars($key); ?>" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="-">
+                    <?php endif; ?>
                   </td>
                 <?php else: ?>
                   <td><?php echo htmlspecialchars($value_display === '' ? '-' : $value_display); ?></td>
@@ -845,43 +838,6 @@ $columns = [
           updateAvgForCard(inp.closest('.table-card'));
         });
         updateAllAverages();
-
-        var tabsWrap = document.querySelector('.tabs');
-        if (tabsWrap) {
-          function setActiveTab(name) {
-            var buttons = tabsWrap.querySelectorAll('.tab-btn');
-            buttons.forEach(function (btn) {
-              btn.classList.toggle('active', btn.getAttribute('data-komoditas') === name);
-            });
-            var cards = document.querySelectorAll('.table-card[data-komoditas]');
-            cards.forEach(function (card) {
-              card.classList.toggle('hidden', card.getAttribute('data-komoditas') !== name);
-            });
-            applyHeaderFilters();
-          }
-          tabsWrap.addEventListener('click', function (e) {
-            var btn = e.target.closest('.tab-btn');
-            if (!btn) return;
-            var name = btn.getAttribute('data-komoditas');
-            if (!name) return;
-            setActiveTab(name);
-          });
-          var initial = tabsWrap.getAttribute('data-selected') || '';
-          if (!initial) {
-            var first = tabsWrap.querySelector('.tab-btn');
-            if (first) initial = first.getAttribute('data-komoditas') || '';
-          }
-          if (initial) {
-            setActiveTab(initial);
-            var anyActive = tabsWrap.querySelector('.tab-btn.active');
-            if (!anyActive) {
-              var firstBtn = tabsWrap.querySelector('.tab-btn');
-              if (firstBtn) {
-                setActiveTab(firstBtn.getAttribute('data-komoditas') || '');
-              }
-            }
-          }
-        }
 
         function getCellValue(cell) {
           if (!cell) return '';
