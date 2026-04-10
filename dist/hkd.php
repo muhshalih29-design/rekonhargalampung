@@ -823,10 +823,21 @@ $columns = [
           }
         }
 
+        var saveTimers = new WeakMap();
+        function scheduleSave(el) {
+          if (saveTimers.has(el)) clearTimeout(saveTimers.get(el));
+          var t = setTimeout(function () {
+            saveCell(el);
+            saveTimers.delete(el);
+          }, 700);
+          saveTimers.set(el, t);
+        }
+
         var editable = document.querySelectorAll('.editable-cell');
         editable.forEach(function (el) {
           el.addEventListener('blur', function () { saveCell(el); });
           el.addEventListener('change', function () { saveCell(el); });
+          el.addEventListener('input', function () { scheduleSave(el); });
           if (el.tagName.toLowerCase() === 'textarea') {
             el.addEventListener('input', function () { autoResize(el); });
           }
