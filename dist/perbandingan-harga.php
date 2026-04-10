@@ -544,7 +544,7 @@ if ($global_max_abs == 0) {
       .badge-zero { background: rgba(148,163,184,0.15); color: #6b7280; }
       .mini-bars {
         display: grid;
-        gap: 8px;
+        gap: 4px;
       }
       .mini-row {
         display: grid;
@@ -553,7 +553,7 @@ if ($global_max_abs == 0) {
         column-gap: 28px;
         row-gap: 0;
         font-size: 11px;
-        margin-bottom: 10px;
+        margin-bottom: 6px;
       }
       .mini-header {
         display: grid;
@@ -561,7 +561,7 @@ if ($global_max_abs == 0) {
         gap: 10px;
         align-items: center;
         height: 18px;
-        margin-bottom: 6px;
+        margin-bottom: 4px;
         color: #6b7280;
         font-size: 10px;
         font-weight: 700;
@@ -673,7 +673,7 @@ if ($global_max_abs == 0) {
         <a class="nav-dot" href="hpb.php" title="HPB"><span class="nav-text">HPB</span></a>
         <a class="nav-dot" href="hd.php" title="HD"><span class="nav-text">HD</span></a>
         <a class="nav-dot" href="hkd.php" title="HKD"><span class="nav-text">HKD</span></a>
-        <a class="nav-dot" href="hulu-hilir-beras.php" title="Hulu Hilir Beras"><i class="mdi mdi-wheat"></i></a>
+        <a class="nav-dot" href="hulu-hilir-beras.php" title="Hulu Hilir Beras"><i class="mdi mdi-grain"></i></a>
         <a class="nav-dot" href="ekstrem.php" title="Ekstrem"><i class="mdi mdi-alert-circle-outline"></i></a>
         <a class="nav-dot" href="panduan.php" title="Panduan"><i class="mdi mdi-book-open-variant"></i></a>
       </aside>
