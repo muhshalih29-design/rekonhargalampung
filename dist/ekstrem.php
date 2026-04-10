@@ -9,11 +9,6 @@ $pdo = db();
 $all = isset($_GET['all']) ? trim($_GET['all']) : '';
 $bulan = isset($_GET['bulan']) ? trim($_GET['bulan']) : '';
 $tahun = isset($_GET['tahun']) ? trim($_GET['tahun']) : '';
-$filter_subsektor = isset($_GET['subsektor']) ? trim($_GET['subsektor']) : '';
-$filter_kab = isset($_GET['kab']) ? trim($_GET['kab']) : '';
-$filter_kecamatan = isset($_GET['kecamatan']) ? trim($_GET['kecamatan']) : '';
-$filter_komoditas = isset($_GET['komoditas']) ? trim($_GET['komoditas']) : '';
-$filter_kualitas = isset($_GET['kualitas']) ? trim($_GET['kualitas']) : '';
 
 if ($all === '' && $bulan === '' && $tahun === '') {
     $lastMonth = new DateTime('first day of last month');
@@ -124,26 +119,6 @@ if ($tahun !== '' && ctype_digit($tahun)) {
     $where[] = 'tahun = ?';
     $types .= 'i';
     $params[] = (int)$tahun;
-}
-if ($filter_subsektor !== '') {
-    $where[] = 'subsektor ILIKE ?';
-    $params[] = '%' . $filter_subsektor . '%';
-}
-if ($filter_kab !== '') {
-    $where[] = 'kab ILIKE ?';
-    $params[] = '%' . $filter_kab . '%';
-}
-if ($filter_kecamatan !== '') {
-    $where[] = 'kecamatan ILIKE ?';
-    $params[] = '%' . $filter_kecamatan . '%';
-}
-if ($filter_komoditas !== '') {
-    $where[] = 'komoditas ILIKE ?';
-    $params[] = '%' . $filter_komoditas . '%';
-}
-if ($filter_kualitas !== '') {
-    $where[] = 'kualitas ILIKE ?';
-    $params[] = '%' . $filter_kualitas . '%';
 }
 
 $sql = 'SELECT * FROM ekstrem';
@@ -304,20 +279,19 @@ $columns = [
         gap: 12px;
         margin-bottom: 16px;
       }
-      .filter-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin: 12px 0 6px;
+      .th-label { display: block; font-size: 12px; font-weight: 700; }
+      .th-filter {
+        display: block;
+        margin-top: 6px;
       }
-      .filter-row .pill { min-width: 150px; }
-      .pill input {
-        border: 0;
-        outline: none;
-        background: transparent;
-        font-size: 12px;
-        color: var(--ink);
-        width: 120px;
+      .th-filter input {
+        width: 100%;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 4px 6px;
+        font-size: 11px;
+        background: #ffffff;
+        color: #334155;
       }
       .tabs {
         margin: 54px 0 18px;
@@ -518,9 +492,8 @@ $columns = [
         .logo { width: 38px; height: 38px; }
         .nav-dot { width: 40px; height: 40px; }
         .topbar { grid-template-columns: 1fr; }
-        .filter-row { margin-top: 6px; }
         .pill { width: 100%; justify-content: space-between; }
-        .pill select, .pill input { width: 100%; }
+        .pill select { width: 100%; }
         .tabs { margin: 32px 0 16px; }
         .table-card { padding: 12px; }
       }
@@ -545,11 +518,6 @@ $columns = [
             <div class="hello">Ekstrem Harga</div>
             <div class="subhello">Rekon Harga Perdagangan Besar</div>
           </div>
-          <input type="hidden" name="subsektor" value="<?php echo htmlspecialchars($filter_subsektor); ?>">
-          <input type="hidden" name="kab" value="<?php echo htmlspecialchars($filter_kab); ?>">
-          <input type="hidden" name="kecamatan" value="<?php echo htmlspecialchars($filter_kecamatan); ?>">
-          <input type="hidden" name="komoditas" value="<?php echo htmlspecialchars($filter_komoditas); ?>">
-          <input type="hidden" name="kualitas" value="<?php echo htmlspecialchars($filter_kualitas); ?>">
           <div class="pill">
             <i class="mdi mdi-calendar"></i>
             <select name="bulan">
@@ -581,33 +549,6 @@ $columns = [
           </div>
           <div class="actions">
             <div class="icon-btn"><i class="mdi mdi-account-circle"></i></div>
-          </div>
-        </form>
-        <form class="filter-row" method="get" action="ekstrem.php">
-          <input type="hidden" name="bulan" value="<?php echo htmlspecialchars($bulan); ?>">
-          <input type="hidden" name="tahun" value="<?php echo htmlspecialchars($tahun); ?>">
-          <div class="pill">
-            <i class="mdi mdi-filter-variant"></i>
-            <input type="text" name="subsektor" placeholder="Subsektor" value="<?php echo htmlspecialchars($filter_subsektor); ?>">
-          </div>
-          <div class="pill">
-            <i class="mdi mdi-filter-variant"></i>
-            <input type="text" name="kab" placeholder="Kabupaten/Kota" value="<?php echo htmlspecialchars($filter_kab); ?>">
-          </div>
-          <div class="pill">
-            <i class="mdi mdi-filter-variant"></i>
-            <input type="text" name="kecamatan" placeholder="Kecamatan" value="<?php echo htmlspecialchars($filter_kecamatan); ?>">
-          </div>
-          <div class="pill">
-            <i class="mdi mdi-filter-variant"></i>
-            <input type="text" name="komoditas" placeholder="Komoditas" value="<?php echo htmlspecialchars($filter_komoditas); ?>">
-          </div>
-          <div class="pill">
-            <i class="mdi mdi-filter-variant"></i>
-            <input type="text" name="kualitas" placeholder="Kualitas" value="<?php echo htmlspecialchars($filter_kualitas); ?>">
-          </div>
-          <div class="filters">
-            <button type="submit">Filter</button>
           </div>
         </form>
         <?php if (!empty($komoditas_tabs)): ?>
@@ -646,8 +587,16 @@ $columns = [
                 echo '<div class="avg-pill"><span class="avg-trend zero">=</span>Rata-rata perubahan: <span class="avg-value">' . htmlspecialchars($avg_display) . '</span></div>';
                 echo '</div>';
                 echo '<div class="table-responsive"><table class="ekstrem-table"><thead><tr>';
+                $col_index = 0;
                 foreach ($columns as $key => $label) {
-                  echo '<th>' . $label . '</th>';
+                  $filterable = in_array($key, ['subsektor','kab','kecamatan','komoditas','kualitas'], true);
+                  echo '<th>';
+                  echo '<span class="th-label">' . $label . '</span>';
+                  if ($filterable) {
+                    echo '<span class="th-filter"><input type="text" class="ekstrem-filter" data-col="' . $col_index . '" placeholder="Filter"></span>';
+                  }
+                  echo '</th>';
+                  $col_index++;
                 }
                 echo '</tr></thead><tbody>';
               endif;
@@ -890,6 +839,7 @@ $columns = [
             cards.forEach(function (card) {
               card.classList.toggle('hidden', card.getAttribute('data-komoditas') !== name);
             });
+            applyHeaderFilters();
           }
           tabsWrap.addEventListener('click', function (e) {
             var btn = e.target.closest('.tab-btn');
@@ -914,6 +864,42 @@ $columns = [
             }
           }
         }
+
+        function getCellValue(cell) {
+          if (!cell) return '';
+          var input = cell.querySelector('input, textarea, select');
+          if (input) return (input.value || '').toLowerCase();
+          return (cell.textContent || '').toLowerCase();
+        }
+
+        function applyHeaderFilters() {
+          var filters = document.querySelectorAll('.ekstrem-filter');
+          var active = [];
+          filters.forEach(function (f) {
+            var val = (f.value || '').trim().toLowerCase();
+            if (val !== '') {
+              active.push({ col: parseInt(f.getAttribute('data-col'), 10), val: val });
+            }
+          });
+          var cards = document.querySelectorAll('.table-card');
+          cards.forEach(function (card) {
+            var rows = card.querySelectorAll('tbody tr');
+            rows.forEach(function (row) {
+              var show = true;
+              active.forEach(function (f) {
+                var cell = row.cells[f.col];
+                var text = getCellValue(cell);
+                if (text.indexOf(f.val) === -1) show = false;
+              });
+              row.style.display = show ? '' : 'none';
+            });
+          });
+        }
+
+        var headerFilters = document.querySelectorAll('.ekstrem-filter');
+        headerFilters.forEach(function (inp) {
+          inp.addEventListener('input', applyHeaderFilters);
+        });
 
         function saveCell(el) {
           var row = el.closest('tr');
