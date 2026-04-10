@@ -381,6 +381,23 @@ $columns = [
         overflow-x: auto;
         max-width: 100%;
       }
+      .paste-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #6b7280;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+      }
+      .paste-status.active {
+        color: #1f6f4f;
+        background: rgba(65,179,138,0.12);
+        border-color: rgba(65,179,138,0.35);
+      }
       .komoditas-head {
         display: flex;
         align-items: center;
@@ -548,6 +565,7 @@ $columns = [
             <button type="submit">Filter</button>
           </div>
           <div class="actions">
+            <div class="paste-status" id="paste-status">Siap</div>
             <div class="icon-btn"><i class="mdi mdi-account-circle"></i></div>
           </div>
         </form>
@@ -999,6 +1017,13 @@ $columns = [
           saveCell(el);
         }
 
+        var pasteStatusEl = document.getElementById('paste-status');
+        function setPasteStatus(text, active) {
+          if (!pasteStatusEl) return;
+          pasteStatusEl.textContent = text;
+          pasteStatusEl.classList.toggle('active', !!active);
+        }
+
         document.addEventListener('paste', function (e) {
           var target = e.target;
           if (!target || !target.classList || !target.classList.contains('editable-cell')) return;
@@ -1019,6 +1044,13 @@ $columns = [
           var startColIdx = Array.prototype.indexOf.call(startRow.querySelectorAll('.editable-cell'), target);
           if (startColIdx < 0) return;
 
+          var total = 0;
+          rows.forEach(function (rowText) {
+            total += rowText.split('\t').length;
+          });
+          var done = 0;
+          setPasteStatus('Menempel 0/' + total, true);
+
           rows.forEach(function (rowText, rIdx) {
             var cols = rowText.split('\t');
             var rowEl = rowList[startRowIdx + rIdx];
@@ -1028,8 +1060,13 @@ $columns = [
               var el = editables[startColIdx + cIdx];
               if (!el) return;
               setEditableValue(el, cellText.trim());
+              done += 1;
+              setPasteStatus('Menempel ' + done + '/' + total, true);
             });
           });
+          setTimeout(function () {
+            setPasteStatus('Selesai', false);
+          }, 400);
         });
       })();
     </script>
