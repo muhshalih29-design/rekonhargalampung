@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <?php endif; ?>
       <form method="post">
         <div class="field">
-          <input type="email" name="email" placeholder="Email" required>
+          <input type="text" name="email" placeholder="Username" required>
         </div>
         <div class="field">
           <input type="password" name="password" placeholder="Password" required>
