@@ -338,7 +338,7 @@ foreach ($rows as $r) {
       }
       .cell-input:disabled,
       .cell-text:disabled {
-        background: #cbd5e1;
+        background: transparent;
         color: #475569;
       }
       .cell-wrap {
@@ -610,17 +610,25 @@ foreach ($rows as $r) {
           el.value = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
         }
         inputs.forEach(function (el) {
-          if (el.disabled) return;
+          if (el.disabled) {
+            var td = el.closest('td');
+            if (td) td.classList.add('cell-disabled');
+            return;
+          }
           if (el.classList.contains('rh-input')) updateTrend(el);
           if (el.classList.contains('num-int')) formatInt(el);
-          if (el.classList.contains('num-dec')) formatDec(el);
+          if (el.classList.contains('num-dec')) updateTrend(el);
           el.addEventListener('input', function () {
             if (el.classList.contains('num-int')) formatInt(el);
-            if (el.classList.contains('num-dec')) formatDec(el);
+            if (el.classList.contains('num-dec')) updateTrend(el);
             scheduleSave(el);
           });
-          el.addEventListener('blur', function () { saveCell(el); updateAvgRow(); });
-          el.addEventListener('input', function () { updateTrend(el); });
+          el.addEventListener('blur', function () {
+            if (el.classList.contains('num-dec')) formatDec(el);
+            if (el.classList.contains('num-int')) formatInt(el);
+            saveCell(el);
+            updateAvgRow();
+          });
           el.addEventListener('keydown', function (e) {
             var row = el.closest('tr');
             if (!row) return;
