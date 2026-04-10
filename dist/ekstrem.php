@@ -131,17 +131,16 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $rows = $stmt->fetchAll();
 
-$avg_map = [];
-$avg_sql = 'SELECT komoditas, AVG(NULLIF(perubahan_rata_rata,0)) AS avg_perubahan FROM ekstrem';
+$avg_all = null;
+$avg_sql = 'SELECT AVG(NULLIF(perubahan_rata_rata,0)) AS avg_perubahan FROM ekstrem';
 if ($where) {
     $avg_sql .= ' WHERE ' . implode(' AND ', $where);
 }
-$avg_sql .= ' GROUP BY komoditas';
 $stmt_avg = $pdo->prepare($avg_sql);
 $stmt_avg->execute($params);
-foreach ($stmt_avg as $avg_row) {
-    $k = isset($avg_row['komoditas']) ? trim((string)$avg_row['komoditas']) : '';
-    $avg_map[$k] = $avg_row['avg_perubahan'];
+$avg_row = $stmt_avg->fetch();
+if ($avg_row) {
+    $avg_all = $avg_row['avg_perubahan'];
 }
 
 $columns = [
@@ -573,25 +572,16 @@ $columns = [
           </div>
         <?php else: ?>
           <?php
-            $current_komoditas = null;
             $row_index = 0;
+            $avg_display = ($avg_all === null) ? '-' : number_format((float)$avg_all, 2, ',', '.');
           ?>
-          <?php foreach ($rows as $row): ?>
-            <?php
-              $komoditas = isset($row['komoditas']) ? trim((string)$row['komoditas']) : '';
-              if ($komoditas !== $current_komoditas):
-                if ($current_komoditas !== null) {
-                  echo '</tbody></table></div></div>';
-                }
-                $current_komoditas = $komoditas;
-                $avg_val = array_key_exists($current_komoditas, $avg_map) ? $avg_map[$current_komoditas] : null;
-                $avg_display = ($avg_val === null) ? '-' : number_format((float)$avg_val, 2, ',', '.');
-                echo '<div class="table-card" style="margin-bottom:16px;">';
-                echo '<div class="komoditas-head">';
-                echo '<div style="font-weight:700;">' . htmlspecialchars($current_komoditas) . '</div>';
-                echo '<div class="avg-pill"><span class="avg-trend zero">=</span>Rata-rata perubahan: <span class="avg-value">' . htmlspecialchars($avg_display) . '</span></div>';
-                echo '</div>';
-                echo '<div class="table-responsive"><table class="ekstrem-table"><thead><tr>';
+          <div class="table-card" style="margin-bottom:16px;">
+            <div class="komoditas-head">
+              <div style="font-weight:700;">Tabel Ekstrem</div>
+              <div class="avg-pill"><span class="avg-trend zero">=</span>Rata-rata perubahan: <span class="avg-value"><?php echo htmlspecialchars($avg_display); ?></span></div>
+            </div>
+            <div class="table-responsive"><table class="ekstrem-table"><thead><tr>
+              <?php
                 $col_index = 0;
                 foreach ($columns as $key => $label) {
                   $filterable = in_array($key, ['subsektor','kab','kecamatan','komoditas','kualitas'], true);
@@ -603,23 +593,9 @@ $columns = [
                   echo '</th>';
                   $col_index++;
                 }
-                echo '</tr></thead><tbody>';
-              endif;
-
-              $values = [];
-              foreach ($columns as $key => $label) {
-                $value = array_key_exists($key, $row) ? $row[$key] : null;
-                if ($value === null || $value === '') {
-                  $values[] = '-';
-                } else {
-                  if (is_numeric($value)) {
-                    $values[] = number_format((float)$value, 2, ',', '.');
-                  } else {
-                    $values[] = htmlspecialchars((string)$value);
-                  }
-                }
-              }
-            ?>
+              ?>
+            </tr></thead><tbody>
+          <?php foreach ($rows as $row): ?>
             <tr data-id="<?php echo (int)$row['id']; ?>" data-row="<?php echo $row_index; ?>">
               <?php foreach ($columns as $key => $label): ?>
                 <?php
@@ -692,9 +668,7 @@ $columns = [
             </tr>
             <?php $row_index++; ?>
           <?php endforeach; ?>
-          <?php if ($current_komoditas !== null): ?>
             </tbody></table></div></div>
-          <?php endif; ?>
         <?php endif; ?>
       </main>
     </div>
@@ -944,10 +918,21 @@ $columns = [
           }
         }
 
+        var saveTimers = new WeakMap();
+        function scheduleSave(el) {
+          if (saveTimers.has(el)) clearTimeout(saveTimers.get(el));
+          var t = setTimeout(function () {
+            saveCell(el);
+            saveTimers.delete(el);
+          }, 700);
+          saveTimers.set(el, t);
+        }
+
         var editable = document.querySelectorAll('.editable-cell');
         editable.forEach(function (el) {
           el.addEventListener('blur', function () { saveCell(el); });
           el.addEventListener('change', function () { saveCell(el); });
+          el.addEventListener('input', function () { scheduleSave(el); });
           if (el.tagName.toLowerCase() === 'textarea') {
             el.addEventListener('input', function () { autoResize(el); });
           }
