@@ -361,6 +361,7 @@ $columns = [
         border-radius: var(--radius);
         padding: 16px;
         box-shadow: 0 14px 28px rgba(56, 65, 80, 0.10);
+        overflow-x: auto;
       }
       .komoditas-head {
         display: flex;
@@ -450,7 +451,7 @@ $columns = [
 
       .komoditas-alt-a > td { background: #ffffff !important; }
       .komoditas-alt-b > td { background: #e3f2fd !important; }
-      .table-responsive { overflow-x: auto; }
+      .table-responsive { width: 100%; overflow-x: auto; }
       .table-responsive table { min-width: 1200px; }
       .tabs { overflow-x: hidden; flex-wrap: wrap; padding-bottom: 4px; }
       .tab-btn { white-space: nowrap; }
