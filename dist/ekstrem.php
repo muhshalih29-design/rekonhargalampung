@@ -37,9 +37,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $value = isset($_POST['value']) ? $_POST['value'] : null;
 
     $allowed = [
-        'perubahan' => 'decimal',
-        'catatan' => 'text',
-        'penjelasan' => 'text',
+        'harga_bulan_ini' => 'decimal',
+        'harga_bulan_lalu' => 'decimal',
+        'perubahan_rata_rata' => 'decimal',
+        'konfirmasi_kab' => 'text',
     ];
 
     if ($id <= 0 || !isset($allowed[$field])) {
@@ -49,10 +50,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 
     $type = $allowed[$field];
+
     if ($type === 'decimal') {
         $raw = is_string($value) ? trim($value) : '';
         if ($raw === '') {
-            $sql = "UPDATE hpb SET {$field} = NULL WHERE id = ?";
+            $sql = "UPDATE ekstrem SET {$field} = NULL WHERE id = ?";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$id]);
         } else {
@@ -64,13 +66,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 echo 'Invalid number';
                 exit;
             }
-            $sql = "UPDATE hpb SET {$field} = ? WHERE id = ?";
+            $sql = "UPDATE ekstrem SET {$field} = ? WHERE id = ?";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$num, $id]);
         }
+    } elseif ($type === 'enum') {
     } else {
         $raw = is_string($value) ? $value : '';
-        $sql = "UPDATE hpb SET {$field} = ? WHERE id = ?";
+        $sql = "UPDATE ekstrem SET {$field} = ? WHERE id = ?";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$raw, $id]);
     }
@@ -94,18 +97,18 @@ if ($tahun !== '' && ctype_digit($tahun)) {
     $params[] = (int)$tahun;
 }
 
-$sql = 'SELECT * FROM hpb';
+$sql = 'SELECT * FROM ekstrem';
 if ($where) {
     $sql .= ' WHERE ' . implode(' AND ', $where);
 }
-$sql .= ' ORDER BY komoditas ASC, CAST(kode_kabupaten AS INTEGER) ASC';
+$sql .= ' ORDER BY komoditas ASC, kab ASC, kecamatan ASC';
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $rows = $stmt->fetchAll();
 
 $avg_map = [];
-$avg_sql = 'SELECT komoditas, AVG(NULLIF(perubahan,0)) AS avg_perubahan FROM hpb';
+$avg_sql = 'SELECT komoditas, AVG(NULLIF(perubahan_rata_rata,0)) AS avg_perubahan FROM ekstrem';
 if ($where) {
     $avg_sql .= ' WHERE ' . implode(' AND ', $where);
 }
@@ -118,7 +121,7 @@ foreach ($stmt_avg as $avg_row) {
 }
 
 $komoditas_tabs = [];
-$tab_sql = 'SELECT DISTINCT komoditas FROM hpb';
+$tab_sql = 'SELECT DISTINCT komoditas FROM ekstrem';
 if ($where) {
     $tab_sql .= ' WHERE ' . implode(' AND ', $where);
 }
@@ -137,10 +140,16 @@ if ($komoditas_selected === '' && !empty($komoditas_tabs)) {
 }
 
 $columns = [
-    'nama_kabupaten' => 'Kabupaten/Kota',
-    'perubahan' => 'Perubahan',
-    'catatan' => 'Catatan',
-    'penjelasan' => 'Penjelasan',
+    'subsektor' => 'Subsektor',
+    'kab' => 'Kabupaten/Kota',
+    'kecamatan' => 'Kecamatan',
+    'komoditas' => 'Komoditas',
+    'kualitas' => 'Kualitas',
+    'satuan' => 'Satuan',
+    'harga_bulan_ini' => 'Harga Bulan Ini',
+    'harga_bulan_lalu' => 'Harga Bulan Lalu',
+    'perubahan_rata_rata' => 'Perubahan Rata-rata (%)',
+    'konfirmasi_kab' => 'Konfirmasi Kab',
 ];
 ?>
 <!DOCTYPE html>
@@ -148,7 +157,7 @@ $columns = [
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>SHK</title>
+    <title>Ekstrem</title>
     <link rel="stylesheet" href="assets/vendors/mdi/css/materialdesignicons.min.css">
     <link rel="stylesheet" href="assets/vendors/ti-icons/css/themify-icons.css">
     <link rel="stylesheet" href="assets/vendors/css/vendor.bundle.base.css">
@@ -232,6 +241,8 @@ $columns = [
       .main {
         background: transparent;
         padding-right: 8px;
+        max-width: 1400px;
+        width: 100%;
       }
 
       .topbar {
@@ -246,6 +257,7 @@ $columns = [
         display: flex;
         flex-wrap: wrap;
         gap: 10px;
+        overflow-x: hidden;
       }
       .tab-btn {
         border: 1px solid #e5e7eb;
@@ -317,9 +329,7 @@ $columns = [
       }
       .filters button {
         border-radius: 10px; padding: 8px 14px; font-size: 12px; font-weight: 600; border: none;
-        background: linear-gradient(135deg, #ff7ab6, #ffb36b);
-        color: #fff;
-        box-shadow: 0 10px 22px rgba(242, 139, 43, 0.25);
+        background: var(--accent); color: #fff;
       }
 
       .table-card {
@@ -381,6 +391,7 @@ $columns = [
 
       .sp2kp-input { max-width: 12ch; text-align: right; }
       .perubahan-input { text-align: right; max-width: 12ch; }
+      .harga-input { text-align: right; max-width: 12ch; }
       .perubahan-cell { text-align: center; }
       .penurunan-select { max-width: 8ch; }
       .wrap-textarea { white-space: normal; word-break: break-word; min-height: 36px; resize: none; overflow: hidden; line-height: 1.4; padding: 8px 10px; font-size: 13px; width: 100%; min-width: 240px; }
@@ -414,8 +425,8 @@ $columns = [
       .komoditas-alt-a > td { background: #ffffff !important; }
       .komoditas-alt-b > td { background: #e3f2fd !important; }
       .table-responsive { overflow-x: auto; }
-      .table-responsive table { min-width: 980px; }
-      .tabs { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
+      .table-responsive table { min-width: 1200px; }
+      .tabs { overflow-x: hidden; flex-wrap: wrap; padding-bottom: 4px; }
       .tab-btn { white-space: nowrap; }
 
       @media (max-width: 1200px) {
@@ -443,16 +454,16 @@ $columns = [
         <a class="nav-dot" href="index.php" title="Dashboard"><i class="mdi mdi-view-dashboard"></i></a>
         <a class="nav-dot" href="perbandingan-harga.php" title="Perbandingan Harga"><i class="mdi mdi-chart-line"></i></a>
         <a class="nav-dot" href="shk.php" title="SHK"><span class="nav-text">HK</span></a>
-        <a class="nav-dot active" href="hpb.php" title="HPB"><span class="nav-text">HPB</span></a>
+        <a class="nav-dot" href="hpb.php" title="HPB"><span class="nav-text">HPB</span></a>
         <a class="nav-dot" href="hd.php" title="HD"><span class="nav-text">HD</span></a>
         <a class="nav-dot" href="hkd.php" title="HKD"><span class="nav-text">HKD</span></a>
-        <a class="nav-dot" href="ekstrem.php" title="Ekstrem"><i class="mdi mdi-alert-circle-outline"></i></a>
+        <a class="nav-dot active" href="ekstrem.php" title="Ekstrem"><i class="mdi mdi-alert-circle-outline"></i></a>
       </aside>
 
       <main class="main">
-        <form class="topbar" method="get" action="hpb.php">
+        <form class="topbar" method="get" action="ekstrem.php">
           <div>
-            <div class="hello">Konfirmasi Perubahan Harga Perdagangan Besar</div>
+            <div class="hello">Ekstrem Harga</div>
             <div class="subhello">Rekon Harga Perdagangan Besar</div>
           </div>
           <div class="pill">
@@ -558,7 +569,7 @@ $columns = [
                     }
                   }
                 ?>
-                <?php if ($key === 'perubahan'): ?>
+                <?php if ($key === 'perubahan_rata_rata'): ?>
                   <?php
                     $num = is_numeric($value) ? (float)$value : null;
                     $class = '';
@@ -568,7 +579,7 @@ $columns = [
                   ?>
                   <td class="perubahan-cell">
                     <div class="d-flex align-items-center justify-content-center">
-                      <input type="text" inputmode="decimal" class="form-control form-control-sm perubahan-input editable-cell <?php echo $class; ?>" data-field="perubahan" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="0,00">
+                      <input type="text" inputmode="decimal" class="form-control form-control-sm perubahan-input editable-cell <?php echo $class; ?>" data-field="perubahan_rata_rata" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="0,00">
                       <?php if ($num !== null): ?>
                         <?php if ($num >= 0): ?>
                           <span class="trend trend-up">▲</span>
@@ -578,14 +589,18 @@ $columns = [
                       <?php endif; ?>
                     </div>
                   </td>
-                <?php elseif ($key === 'catatan'): ?>
+                <?php elseif ($key === 'harga_bulan_ini'): ?>
                   <td>
-                    <textarea class="form-control form-control-sm editable-cell wrap-textarea" data-field="catatan" rows="1" placeholder="Isi catatan"><?php echo htmlspecialchars($value_display); ?></textarea>
+                    <input type="text" inputmode="decimal" class="form-control form-control-sm harga-input editable-cell" data-field="harga_bulan_ini" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="0,00">
                   </td>
-                <?php elseif ($key === 'penjelasan'): ?>
-                <td>
-                  <textarea class="form-control form-control-sm editable-cell wrap-textarea" data-field="penjelasan" rows="1" placeholder="Isi penjelasan"><?php echo htmlspecialchars($value_display); ?></textarea>
-                </td>
+                <?php elseif ($key === 'harga_bulan_lalu'): ?>
+                  <td>
+                    <input type="text" inputmode="decimal" class="form-control form-control-sm harga-input editable-cell" data-field="harga_bulan_lalu" value="<?php echo htmlspecialchars($value_display); ?>" placeholder="0,00">
+                  </td>
+                <?php elseif ($key === 'konfirmasi_kab'): ?>
+                  <td>
+                    <textarea class="form-control form-control-sm editable-cell wrap-textarea" data-field="konfirmasi_kab" rows="1" placeholder="Isi konfirmasi"><?php echo htmlspecialchars($value_display); ?></textarea>
+                  </td>
                 <?php else: ?>
                   <td><?php echo htmlspecialchars($value_display === '' ? '-' : $value_display); ?></td>
                 <?php endif; ?>
@@ -631,7 +646,7 @@ $columns = [
         }
 
         attachFormat('.perubahan-input');
-        attachFormat('.sp2kp-input');
+        attachFormat('.harga-input');
 
         function parseIdNumber(raw) {
           if (!raw) return null;
@@ -787,7 +802,7 @@ $columns = [
           formData.append('field', field);
           formData.append('value', value);
 
-          fetch('hpb.php', { method: 'POST', body: formData })
+          fetch('ekstrem.php', { method: 'POST', body: formData })
             .then(function (res) { return res.text(); })
             .catch(function () { /* silent */ });
         }

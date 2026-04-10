@@ -677,6 +677,7 @@ if ($global_max_abs == 0) {
         <a class="nav-dot" href="hpb.php" title="HPB"><span class="nav-text">HPB</span></a>
         <a class="nav-dot" href="hd.php" title="HD"><span class="nav-text">HD</span></a>
         <a class="nav-dot" href="hkd.php" title="HKD"><span class="nav-text">HKD</span></a>
+        <a class="nav-dot" href="ekstrem.php" title="Ekstrem"><i class="mdi mdi-alert-circle-outline"></i></a>
       </aside>
 
       <main class="main">
