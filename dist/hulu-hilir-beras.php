@@ -263,11 +263,11 @@ $rows = $stmt->fetchAll();
       }
       table { width: 100%; border-collapse: collapse; min-width: 1200px; }
       th, td { border: 1px solid #e5e7eb; }
-      th { background: #6aa84f; color: #fff; font-size: 12px; padding: 6px; text-align: center; }
-      .head-yellow { background: #f1c232; color: #2f2f2f; font-weight: 700; }
-      .head-pink { background: #f4cccc; color: #2f2f2f; font-weight: 700; }
-      .subhead { background: #6aa84f; color: #fff; font-weight: 700; }
-      .subhead-dark { background: #38761d; color: #fff; font-weight: 700; }
+      th { background: #445468; color: #fff; font-size: 12px; padding: 6px; text-align: center; }
+      .head-yellow { background: linear-gradient(135deg, #ff7ab6, #ffb36b); color: #fff; font-weight: 700; }
+      .head-pink { background: #e9edf3; color: #445468; font-weight: 700; }
+      .subhead { background: #58697d; color: #fff; font-weight: 700; }
+      .subhead-dark { background: #3f4f63; color: #fff; font-weight: 700; }
       .col-fixed { background: #fff2cc; font-weight: 600; }
       .rh-col { background: #ffd966; }
       td { padding: 6px; font-size: 12px; background: #ffffff; }
