@@ -684,11 +684,15 @@ $columns = [
                   if ($value === null || $value === '') {
                     $value_display = '';
                   } else {
-                    if (is_numeric($value)) {
-                      $value_display = number_format((float)$value, 2, ',', '.');
-                    } else {
+                  if (is_numeric($value)) {
+                      if ($key === 'kab' || $key === 'kecamatan' || $key === 'tahun') {
+                          $value_display = number_format((float)$value, 0, ',', '.');
+                      } else {
+                          $value_display = number_format((float)$value, 2, ',', '.');
+                      }
+                  } else {
                       $value_display = (string)$value;
-                    }
+                  }
                   }
                 ?>
                 <?php if ($key === 'perubahan_rata_rata'): ?>
