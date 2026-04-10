@@ -76,9 +76,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         background: linear-gradient(135deg, #ff7ab6, #ffb36b);
         color: #fff;
         font-weight: 700;
-        margin-bottom: 12px;
+        flex-shrink: 0;
       }
-      h1 { font-size: 18px; margin: 0 0 12px; }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      h1 { font-size: 18px; margin: 0; }
       .field { margin-bottom: 12px; }
       input {
         width: 100%;
@@ -86,6 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         border-radius: 10px;
         padding: 10px 12px;
         font-size: 13px;
+        box-sizing: border-box;
       }
       button {
         width: 100%;
@@ -105,8 +112,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </head>
   <body>
     <div class="card">
-      <div class="logo">RH</div>
-      <h1>Login Rekon Harga</h1>
+      <div class="brand">
+        <div class="logo">RH</div>
+        <h1>Login Rekon Harga Lampung</h1>
+      </div>
       <?php if ($error !== ''): ?>
         <div class="error"><?php echo htmlspecialchars($error); ?></div>
       <?php endif; ?>
