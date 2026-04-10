@@ -362,12 +362,11 @@ $rows = $stmt->fetchAll();
           <table>
             <thead>
               <tr>
-                <th colspan="2" class="head-yellow">Komoditas</th>
-                <th colspan="3" class="head-yellow">Gabah</th>
+                <th colspan="1" class="head-yellow">Komoditas</th>
+                <th colspan="6" class="head-yellow">Gabah</th>
                 <th colspan="9" class="head-pink">Beras</th>
               </tr>
               <tr>
-                <th rowspan="2" class="subhead">Kd_kako</th>
                 <th rowspan="2" class="subhead">Kabupaten/kota</th>
                 <th colspan="3" class="subhead">SHPED_HD</th>
                 <th colspan="3" class="subhead">SHPED_HKD</th>
@@ -396,7 +395,18 @@ $rows = $stmt->fetchAll();
             <tbody>
               <?php foreach ($rows as $row): ?>
                 <?php
-                  $disabled = is_kabupaten($user) ? 'disabled' : '';
+                  $disabled_all = is_kabupaten($user) ? 'disabled' : '';
+                  $kab = strtolower(trim((string)($row['kabupaten_kota'] ?? '')));
+                  $lock_shped = in_array($kab, ['bandar lampung','metro'], true);
+                  $lock_shp_hpb = in_array($kab, ['lampung barat','lampung utara','way kanan','tulang bawang','pesawaran','mesuji','tulang bawang barat','pesisir barat'], true);
+                  $allow_hk = in_array($kab, ['lampung timur','mesuji','metro','bandar lampung'], true);
+                  $is_locked = function(string $field) use ($disabled_all, $lock_shped, $lock_shp_hpb, $allow_hk) {
+                    if ($disabled_all !== '') return $disabled_all;
+                    if (in_array($field, ['shped_hd_n1','shped_hd_n','shped_hd_rh','shped_hkd_n1','shped_hkd_n','shped_hkd_rh'], true) && $lock_shped) return 'disabled';
+                    if (in_array($field, ['shp_n2','shp_n','shp_rh','hpb_n1','hpb_n','hpb_rh'], true) && $lock_shp_hpb) return 'disabled';
+                    if (in_array($field, ['hk_n1','hk_n','hk_rh'], true) && !$allow_hk) return 'disabled';
+                    return '';
+                  };
                   $val = function($k) use ($row) {
                     $v = $row[$k] ?? '';
                     if ($v === null || $v === '') return '';
@@ -405,23 +415,22 @@ $rows = $stmt->fetchAll();
                   };
                 ?>
                 <tr data-id="<?php echo (int)$row['id']; ?>">
-                  <td class="col-fixed"><input class="cell-text" data-field="kd_kako" value="<?php echo htmlspecialchars($row['kd_kako'] ?? ''); ?>" <?php echo $disabled; ?>></td>
-                  <td class="col-fixed"><input class="cell-text" data-field="kabupaten_kota" value="<?php echo htmlspecialchars($row['kabupaten_kota'] ?? ''); ?>" <?php echo $disabled; ?>></td>
-                  <td><input class="cell-input" data-field="shped_hd_n1" value="<?php echo htmlspecialchars($val('shped_hd_n1')); ?>" <?php echo $disabled; ?>></td>
-                  <td><input class="cell-input" data-field="shped_hd_n" value="<?php echo htmlspecialchars($val('shped_hd_n')); ?>" <?php echo $disabled; ?>></td>
-                  <td class="rh-col"><input class="cell-input" data-field="shped_hd_rh" value="<?php echo htmlspecialchars($val('shped_hd_rh')); ?>" <?php echo $disabled; ?>></td>
-                  <td><input class="cell-input" data-field="shped_hkd_n1" value="<?php echo htmlspecialchars($val('shped_hkd_n1')); ?>" <?php echo $disabled; ?>></td>
-                  <td><input class="cell-input" data-field="shped_hkd_n" value="<?php echo htmlspecialchars($val('shped_hkd_n')); ?>" <?php echo $disabled; ?>></td>
-                  <td class="rh-col"><input class="cell-input" data-field="shped_hkd_rh" value="<?php echo htmlspecialchars($val('shped_hkd_rh')); ?>" <?php echo $disabled; ?>></td>
-                  <td><input class="cell-input" data-field="shp_n2" value="<?php echo htmlspecialchars($val('shp_n2')); ?>" <?php echo $disabled; ?>></td>
-                  <td><input class="cell-input" data-field="shp_n" value="<?php echo htmlspecialchars($val('shp_n')); ?>" <?php echo $disabled; ?>></td>
-                  <td class="rh-col"><input class="cell-input" data-field="shp_rh" value="<?php echo htmlspecialchars($val('shp_rh')); ?>" <?php echo $disabled; ?>></td>
-                  <td><input class="cell-input" data-field="hpb_n1" value="<?php echo htmlspecialchars($val('hpb_n1')); ?>" <?php echo $disabled; ?>></td>
-                  <td><input class="cell-input" data-field="hpb_n" value="<?php echo htmlspecialchars($val('hpb_n')); ?>" <?php echo $disabled; ?>></td>
-                  <td class="rh-col"><input class="cell-input" data-field="hpb_rh" value="<?php echo htmlspecialchars($val('hpb_rh')); ?>" <?php echo $disabled; ?>></td>
-                  <td><input class="cell-input" data-field="hk_n1" value="<?php echo htmlspecialchars($val('hk_n1')); ?>" <?php echo $disabled; ?>></td>
-                  <td><input class="cell-input" data-field="hk_n" value="<?php echo htmlspecialchars($val('hk_n')); ?>" <?php echo $disabled; ?>></td>
-                  <td class="rh-col"><input class="cell-input" data-field="hk_rh" value="<?php echo htmlspecialchars($val('hk_rh')); ?>" <?php echo $disabled; ?>></td>
+                  <td class="col-fixed"><input class="cell-text" data-field="kabupaten_kota" value="<?php echo htmlspecialchars($row['kabupaten_kota'] ?? ''); ?>" <?php echo $disabled_all; ?>></td>
+                  <td><input class="cell-input" data-field="shped_hd_n1" value="<?php echo htmlspecialchars($val('shped_hd_n1')); ?>" <?php echo $is_locked('shped_hd_n1'); ?>></td>
+                  <td><input class="cell-input" data-field="shped_hd_n" value="<?php echo htmlspecialchars($val('shped_hd_n')); ?>" <?php echo $is_locked('shped_hd_n'); ?>></td>
+                  <td class="rh-col"><input class="cell-input" data-field="shped_hd_rh" value="<?php echo htmlspecialchars($val('shped_hd_rh')); ?>" <?php echo $is_locked('shped_hd_rh'); ?>></td>
+                  <td><input class="cell-input" data-field="shped_hkd_n1" value="<?php echo htmlspecialchars($val('shped_hkd_n1')); ?>" <?php echo $is_locked('shped_hkd_n1'); ?>></td>
+                  <td><input class="cell-input" data-field="shped_hkd_n" value="<?php echo htmlspecialchars($val('shped_hkd_n')); ?>" <?php echo $is_locked('shped_hkd_n'); ?>></td>
+                  <td class="rh-col"><input class="cell-input" data-field="shped_hkd_rh" value="<?php echo htmlspecialchars($val('shped_hkd_rh')); ?>" <?php echo $is_locked('shped_hkd_rh'); ?>></td>
+                  <td><input class="cell-input" data-field="shp_n2" value="<?php echo htmlspecialchars($val('shp_n2')); ?>" <?php echo $is_locked('shp_n2'); ?>></td>
+                  <td><input class="cell-input" data-field="shp_n" value="<?php echo htmlspecialchars($val('shp_n')); ?>" <?php echo $is_locked('shp_n'); ?>></td>
+                  <td class="rh-col"><input class="cell-input" data-field="shp_rh" value="<?php echo htmlspecialchars($val('shp_rh')); ?>" <?php echo $is_locked('shp_rh'); ?>></td>
+                  <td><input class="cell-input" data-field="hpb_n1" value="<?php echo htmlspecialchars($val('hpb_n1')); ?>" <?php echo $is_locked('hpb_n1'); ?>></td>
+                  <td><input class="cell-input" data-field="hpb_n" value="<?php echo htmlspecialchars($val('hpb_n')); ?>" <?php echo $is_locked('hpb_n'); ?>></td>
+                  <td class="rh-col"><input class="cell-input" data-field="hpb_rh" value="<?php echo htmlspecialchars($val('hpb_rh')); ?>" <?php echo $is_locked('hpb_rh'); ?>></td>
+                  <td><input class="cell-input" data-field="hk_n1" value="<?php echo htmlspecialchars($val('hk_n1')); ?>" <?php echo $is_locked('hk_n1'); ?>></td>
+                  <td><input class="cell-input" data-field="hk_n" value="<?php echo htmlspecialchars($val('hk_n')); ?>" <?php echo $is_locked('hk_n'); ?>></td>
+                  <td class="rh-col"><input class="cell-input" data-field="hk_rh" value="<?php echo htmlspecialchars($val('hk_rh')); ?>" <?php echo $is_locked('hk_rh'); ?>></td>
                 </tr>
               <?php endforeach; ?>
             </tbody>
