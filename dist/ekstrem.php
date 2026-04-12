@@ -686,7 +686,6 @@ $columns = [
             <button type="submit">Filter</button>
           </div>
           <div class="actions">
-            <div class="paste-status" id="paste-status">Siap</div>
             <a class="icon-btn" href="logout.php" title="Logout"><i class="mdi mdi-logout"></i></a>
           </div>
         </form>

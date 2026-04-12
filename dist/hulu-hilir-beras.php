@@ -287,6 +287,17 @@ foreach ($rows as $r) {
         color: var(--ink);
       }
       .actions { display: flex; align-items: center; gap: 8px; }
+      .filters {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .filters button {
+        border-radius: 10px; padding: 8px 14px; font-size: 12px; font-weight: 600; border: none;
+        background: linear-gradient(135deg, #ff7ab6, #ffb36b);
+        color: #fff;
+        box-shadow: 0 10px 22px rgba(242, 139, 43, 0.25);
+      }
       .icon-btn {
         width: 36px;
         height: 36px;
@@ -421,6 +432,9 @@ foreach ($rows as $r) {
                 }
               ?>
             </select>
+          </div>
+          <div class="filters">
+            <button type="submit">Filter</button>
           </div>
           <div class="actions">
             <div class="user-pill" style="padding:6px 10px;border-radius:999px;background:#fff;border:1px solid #eef0f4;font-size:12px;color:#6b7280;box-shadow:0 6px 14px rgba(56,65,80,0.08);"><?php echo htmlspecialchars($user['email'] ?? ''); ?></div>
