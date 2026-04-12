@@ -260,7 +260,7 @@ foreach ($rows as $r) {
       .main { background: transparent; padding-right: 8px; }
       .topbar {
         display: grid;
-        grid-template-columns: 1fr auto auto auto;
+        grid-template-columns: 1fr auto auto auto auto;
         align-items: center;
         gap: 12px;
         margin-bottom: 16px;
