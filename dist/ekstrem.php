@@ -464,7 +464,9 @@ $columns = [
       }
       .filters button {
         border-radius: 10px; padding: 8px 14px; font-size: 12px; font-weight: 600; border: none;
-        background: var(--accent); color: #fff;
+        background: linear-gradient(135deg, #ff7ab6, #ffb36b);
+        color: #fff;
+        box-shadow: 0 10px 22px rgba(242, 139, 43, 0.25);
       }
 
       .table-card {
