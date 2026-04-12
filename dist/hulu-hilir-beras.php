@@ -35,6 +35,15 @@ if ($bulan === '' || $tahun === '') {
     }
 }
 
+$bulan_list = ['januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember'];
+$bulan_label = ($bulan !== '') ? ucfirst($bulan) : 'N';
+$bulan_prev_label = 'N-1';
+$bulan_index = array_search(strtolower($bulan), $bulan_list, true);
+if ($bulan_index !== false) {
+    $prev_index = ($bulan_index - 1 + 12) % 12;
+    $bulan_prev_label = ucfirst($bulan_list[$prev_index]);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update') {
     if (is_kabupaten($user)) {
         http_response_code(403);
@@ -48,6 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $allowed = [
         'kd_kako' => 'int',
         'kabupaten_kota' => 'text',
+        'penjelasan' => 'text',
         'shped_hd_n1' => 'decimal',
         'shped_hd_n' => 'decimal',
         'shped_hd_rh' => 'decimal',
@@ -317,7 +327,7 @@ foreach ($rows as $r) {
         box-shadow: 0 14px 28px rgba(56, 65, 80, 0.10);
         overflow-x: auto;
       }
-      table { width: 100%; border-collapse: collapse; min-width: 1200px; }
+      table { width: 100%; border-collapse: collapse; min-width: 1320px; }
       th, td { border: 1px solid #e5e7eb; }
       th { background: #445468; color: #fff; font-size: 12px; padding: 6px; text-align: center; }
       .head-yellow { background: linear-gradient(135deg, #ff7ab6, #ffb36b); color: #fff; font-weight: 700; }
@@ -339,6 +349,20 @@ foreach ($rows as $r) {
         background: transparent;
         font-size: 12px;
         text-align: right;
+      }
+      .num-int,
+      .num-dec {
+        width: 6ch;
+        max-width: 6ch;
+      }
+      .cell-textarea {
+        width: 100%;
+        border: 0;
+        outline: none;
+        background: transparent;
+        font-size: 12px;
+        resize: vertical;
+        min-height: 28px;
       }
       .cell-text {
         width: 100%;
@@ -457,12 +481,13 @@ foreach ($rows as $r) {
           <table>
             <thead>
               <tr>
-                <th colspan="1" class="head-yellow">Komoditas</th>
+                <th colspan="2" class="head-yellow">Komoditas</th>
                 <th colspan="3" class="head-yellow">Gabah</th>
                 <th colspan="12" class="head-yellow">Beras</th>
               </tr>
               <tr>
                 <th rowspan="2" class="subhead">Kabupaten/kota</th>
+                <th rowspan="2" class="subhead">Penjelasan</th>
                 <th colspan="3" class="subhead">SHPED_HD</th>
                 <th colspan="3" class="subhead">SHPED_HKD</th>
                 <th colspan="3" class="subhead">SHP</th>
@@ -470,20 +495,20 @@ foreach ($rows as $r) {
                 <th colspan="3" class="subhead">HK</th>
               </tr>
               <tr>
-                <th class="subhead-dark">N-1</th>
-                <th class="subhead-dark">N</th>
+                <th class="subhead-dark"><?php echo htmlspecialchars($bulan_prev_label); ?></th>
+                <th class="subhead-dark"><?php echo htmlspecialchars($bulan_label); ?></th>
                 <th class="subhead-dark">RH (%)</th>
-                <th class="subhead-dark">N-1</th>
-                <th class="subhead-dark">N</th>
+                <th class="subhead-dark"><?php echo htmlspecialchars($bulan_prev_label); ?></th>
+                <th class="subhead-dark"><?php echo htmlspecialchars($bulan_label); ?></th>
                 <th class="subhead-dark">RH (%)</th>
-                <th class="subhead-dark">N-2</th>
-                <th class="subhead-dark">N</th>
+                <th class="subhead-dark"><?php echo htmlspecialchars($bulan_prev_label); ?></th>
+                <th class="subhead-dark"><?php echo htmlspecialchars($bulan_label); ?></th>
                 <th class="subhead-dark">RH (%)</th>
-                <th class="subhead-dark">N-1</th>
-                <th class="subhead-dark">N</th>
+                <th class="subhead-dark"><?php echo htmlspecialchars($bulan_prev_label); ?></th>
+                <th class="subhead-dark"><?php echo htmlspecialchars($bulan_label); ?></th>
                 <th class="subhead-dark">RH (%)</th>
-                <th class="subhead-dark">N-1</th>
-                <th class="subhead-dark">N</th>
+                <th class="subhead-dark"><?php echo htmlspecialchars($bulan_prev_label); ?></th>
+                <th class="subhead-dark"><?php echo htmlspecialchars($bulan_label); ?></th>
                 <th class="subhead-dark">RH (%)</th>
               </tr>
             </thead>
@@ -542,6 +567,7 @@ foreach ($rows as $r) {
                       <?php if ($rh_mismatch): ?><span class="warn-icon">⚠</span><?php endif; ?>
                     </div>
                   </td>
+                  <td><textarea class="cell-text cell-textarea" data-field="penjelasan" <?php echo $disabled_all; ?>><?php echo htmlspecialchars($row['penjelasan'] ?? ''); ?></textarea></td>
                   <td><input class="cell-input num-int" data-field="shped_hd_n1" value="<?php echo htmlspecialchars($val_int('shped_hd_n1')); ?>" <?php echo $is_locked('shped_hd_n1'); ?>></td>
                   <td><input class="cell-input num-int" data-field="shped_hd_n" value="<?php echo htmlspecialchars($val_int('shped_hd_n')); ?>" <?php echo $is_locked('shped_hd_n'); ?>></td>
                   <td class="rh-col"><div class="cell-wrap"><input class="cell-input num-dec rh-input" data-field="shped_hd_rh" value="<?php echo htmlspecialchars($val_dec('shped_hd_rh')); ?>" <?php echo $is_locked('shped_hd_rh'); ?>><span class="trend"></span></div></td>
@@ -561,6 +587,7 @@ foreach ($rows as $r) {
               <?php endforeach; ?>
               <tr class="avg-row">
                 <td class="col-fixed"><input class="cell-text" value="Rata-rata" disabled></td>
+                <td><textarea class="cell-text cell-textarea" disabled></textarea></td>
                 <?php
                   $fmt_int = function($v) {
                     return $v === null ? '' : number_format($v, 0, ',', '.');
@@ -769,7 +796,7 @@ foreach ($rows as $r) {
               count += 1;
             });
             var avg = count > 0 ? (sum / count) : null;
-            var avgCell = avgRow.querySelectorAll('td')[idx + 1];
+            var avgCell = avgRow.querySelectorAll('td')[idx + 2];
             if (!avgCell) return;
             var input = avgCell.querySelector('input');
             if (!input) return;
