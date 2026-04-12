@@ -188,7 +188,7 @@ foreach ($rows as $r) {
     <link rel="stylesheet" href="assets/vendors/ti-icons/css/themify-icons.css">
     <link rel="stylesheet" href="assets/vendors/css/vendor.bundle.base.css">
     <link rel="stylesheet" href="assets/vendors/font-awesome/css/font-awesome.min.css">
-    <link rel="shortcut icon" href="assets/images/favicon.png" />
+    <link rel="shortcut icon" href="assets/images/rh-icon.png" />
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
       :root {
@@ -372,6 +372,7 @@ foreach ($rows as $r) {
         font-weight: 800;
         color: #f97316;
         line-height: 1;
+        margin-left: 6px;
       }
       .text-perubahan-pos { color: #168f4a; font-weight: 700; }
       .text-perubahan-neg { color: #d94b4b; font-weight: 700; }
@@ -536,23 +537,26 @@ foreach ($rows as $r) {
                 ?>
                 <tr data-id="<?php echo (int)$row['id']; ?>">
                   <td class="col-fixed<?php echo $rh_mismatch ? ' kab-warning' : ''; ?>">
-                    <input class="cell-text" data-field="kabupaten_kota" value="<?php echo htmlspecialchars($row['kabupaten_kota'] ?? ''); ?>" <?php echo $disabled_all; ?>>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                      <input class="cell-text" data-field="kabupaten_kota" value="<?php echo htmlspecialchars($row['kabupaten_kota'] ?? ''); ?>" <?php echo $disabled_all; ?>>
+                      <?php if ($rh_mismatch): ?><span class="warn-icon">⚠</span><?php endif; ?>
+                    </div>
                   </td>
                   <td><input class="cell-input num-int" data-field="shped_hd_n1" value="<?php echo htmlspecialchars($val_int('shped_hd_n1')); ?>" <?php echo $is_locked('shped_hd_n1'); ?>></td>
                   <td><input class="cell-input num-int" data-field="shped_hd_n" value="<?php echo htmlspecialchars($val_int('shped_hd_n')); ?>" <?php echo $is_locked('shped_hd_n'); ?>></td>
-                  <td class="rh-col"><div class="cell-wrap"><input class="cell-input num-dec rh-input" data-field="shped_hd_rh" value="<?php echo htmlspecialchars($val_dec('shped_hd_rh')); ?>" <?php echo $is_locked('shped_hd_rh'); ?>><span class="trend"></span><?php if ($rh_warn('shped_hd_rh')): ?><span class="warn-icon">⚠</span><?php endif; ?></div></td>
+                  <td class="rh-col"><div class="cell-wrap"><input class="cell-input num-dec rh-input" data-field="shped_hd_rh" value="<?php echo htmlspecialchars($val_dec('shped_hd_rh')); ?>" <?php echo $is_locked('shped_hd_rh'); ?>><span class="trend"></span></div></td>
                   <td><input class="cell-input num-int" data-field="shped_hkd_n1" value="<?php echo htmlspecialchars($val_int('shped_hkd_n1')); ?>" <?php echo $is_locked('shped_hkd_n1'); ?>></td>
                   <td><input class="cell-input num-int" data-field="shped_hkd_n" value="<?php echo htmlspecialchars($val_int('shped_hkd_n')); ?>" <?php echo $is_locked('shped_hkd_n'); ?>></td>
-                  <td class="rh-col"><div class="cell-wrap"><input class="cell-input num-dec rh-input" data-field="shped_hkd_rh" value="<?php echo htmlspecialchars($val_dec('shped_hkd_rh')); ?>" <?php echo $is_locked('shped_hkd_rh'); ?>><span class="trend"></span><?php if ($rh_warn('shped_hkd_rh')): ?><span class="warn-icon">⚠</span><?php endif; ?></div></td>
+                  <td class="rh-col"><div class="cell-wrap"><input class="cell-input num-dec rh-input" data-field="shped_hkd_rh" value="<?php echo htmlspecialchars($val_dec('shped_hkd_rh')); ?>" <?php echo $is_locked('shped_hkd_rh'); ?>><span class="trend"></span></div></td>
                   <td class="beras-col"><input class="cell-input num-int" data-field="shp_n2" value="<?php echo htmlspecialchars($val_int('shp_n2')); ?>" <?php echo $is_locked('shp_n2'); ?>></td>
                   <td class="beras-col"><input class="cell-input num-int" data-field="shp_n" value="<?php echo htmlspecialchars($val_int('shp_n')); ?>" <?php echo $is_locked('shp_n'); ?>></td>
-                  <td class="rh-col beras-col"><div class="cell-wrap"><input class="cell-input num-dec rh-input" data-field="shp_rh" value="<?php echo htmlspecialchars($val_dec('shp_rh')); ?>" <?php echo $is_locked('shp_rh'); ?>><span class="trend"></span><?php if ($rh_warn('shp_rh')): ?><span class="warn-icon">⚠</span><?php endif; ?></div></td>
+                  <td class="rh-col beras-col"><div class="cell-wrap"><input class="cell-input num-dec rh-input" data-field="shp_rh" value="<?php echo htmlspecialchars($val_dec('shp_rh')); ?>" <?php echo $is_locked('shp_rh'); ?>><span class="trend"></span></div></td>
                   <td class="beras-col"><input class="cell-input num-int" data-field="hpb_n1" value="<?php echo htmlspecialchars($val_int('hpb_n1')); ?>" <?php echo $is_locked('hpb_n1'); ?>></td>
                   <td class="beras-col"><input class="cell-input num-int" data-field="hpb_n" value="<?php echo htmlspecialchars($val_int('hpb_n')); ?>" <?php echo $is_locked('hpb_n'); ?>></td>
-                  <td class="rh-col beras-col"><div class="cell-wrap"><input class="cell-input num-dec rh-input" data-field="hpb_rh" value="<?php echo htmlspecialchars($val_dec('hpb_rh')); ?>" <?php echo $is_locked('hpb_rh'); ?>><span class="trend"></span><?php if ($rh_warn('hpb_rh')): ?><span class="warn-icon">⚠</span><?php endif; ?></div></td>
+                  <td class="rh-col beras-col"><div class="cell-wrap"><input class="cell-input num-dec rh-input" data-field="hpb_rh" value="<?php echo htmlspecialchars($val_dec('hpb_rh')); ?>" <?php echo $is_locked('hpb_rh'); ?>><span class="trend"></span></div></td>
                   <td class="beras-col"><input class="cell-input num-int" data-field="hk_n1" value="<?php echo htmlspecialchars($val_int('hk_n1')); ?>" <?php echo $is_locked('hk_n1'); ?>></td>
                   <td class="beras-col"><input class="cell-input num-int" data-field="hk_n" value="<?php echo htmlspecialchars($val_int('hk_n')); ?>" <?php echo $is_locked('hk_n'); ?>></td>
-                  <td class="rh-col beras-col"><div class="cell-wrap"><input class="cell-input num-dec rh-input" data-field="hk_rh" value="<?php echo htmlspecialchars($val_dec('hk_rh')); ?>" <?php echo $is_locked('hk_rh'); ?>><span class="trend"></span><?php if ($rh_warn('hk_rh')): ?><span class="warn-icon">⚠</span><?php endif; ?></div></td>
+                  <td class="rh-col beras-col"><div class="cell-wrap"><input class="cell-input num-dec rh-input" data-field="hk_rh" value="<?php echo htmlspecialchars($val_dec('hk_rh')); ?>" <?php echo $is_locked('hk_rh'); ?>><span class="trend"></span></div></td>
                 </tr>
               <?php endforeach; ?>
               <tr class="avg-row">
