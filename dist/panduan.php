@@ -162,6 +162,12 @@ $user = require_auth();
         </div>
 
         <div class="card" style="margin-top:14px;">
+          <h3>Dashboard</h3>
+          <p>Halaman Dashboard menampilkan <strong>progres pengisian penjelasan</strong> per kabupaten/kota. Bar menunjukkan persentase baris yang sudah terisi penjelasan untuk nilai perubahan yang bukan 0.</p>
+          <p>Jika suatu level harga (HK/HPB/HD/HKD) tidak tersedia pada kabupaten tertentu, bar level tersebut tidak ditampilkan.</p>
+        </div>
+
+        <div class="card" style="margin-top:14px;">
           <h3>Langkah Pengisian</h3>
           <div class="step">
             <strong>1) Pilih bulan dan tahun</strong>
