@@ -387,7 +387,7 @@ foreach ($rows as $r) {
         <a class="nav-dot" href="hd.php" title="HD"><span class="nav-text">HD</span></a>
         <a class="nav-dot" href="hkd.php" title="HKD"><span class="nav-text">HKD</span></a>
         <a class="nav-dot active" href="hulu-hilir-beras.php" title="Hulu Hilir Beras"><img src="assets/images/paddy-2.png" alt="Hulu Hilir Beras" style="width:18px;height:18px;display:block;" /></a>
-        <a class="nav-dot" href="ekstrem.php" title="Ekstrem"><i class="mdi mdi-alert-circle-outline"></i></a>
+        <a class="nav-dot" href="ekstrem.php" title="Ekstrem"><img src="assets/images/warning.png" alt="Ekstrem" style="width:18px;height:18px;display:block;" /></a>
       </aside>
 
       <main class="main">
