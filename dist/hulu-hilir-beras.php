@@ -571,9 +571,7 @@ foreach ($rows as $r) {
           if (el.classList.contains('num-int')) {
             value = value.replace(/\./g, '').replace(/,/g, '');
           }
-          if (el.classList.contains('num-dec')) {
-            value = value.replace(/\./g, '').replace(/,/g, '.');
-          }
+          // num-dec values are normalized in PHP to avoid double conversion
           var formData = new FormData();
           formData.append('action', 'update');
           formData.append('id', id);
