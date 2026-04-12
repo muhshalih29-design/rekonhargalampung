@@ -442,6 +442,7 @@ $progress_rows = array_values($base);
             <button type="submit" class="icon-btn" title="Filter"><i class="mdi mdi-filter"></i></button>
           </div>
           <div class="actions">
+            <div class="user-pill" style="padding:6px 10px;border-radius:999px;background:#fff;border:1px solid #eef0f4;font-size:12px;color:#6b7280;box-shadow:0 6px 14px rgba(56,65,80,0.08);"><?php echo htmlspecialchars($user['email'] ?? ''); ?></div>
             <a class="icon-btn" href="logout.php" title="Logout"><i class="mdi mdi-logout"></i></a>
           </div>
         </form>
