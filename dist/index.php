@@ -368,10 +368,10 @@ $progress_rows = array_values($base);
         border-radius: 999px;
         position: relative;
       }
-      .progress-fill.hk,
-      .progress-fill.hpb,
-      .progress-fill.hd,
-      .progress-fill.hkd {
+      .progress-fill.fill-hk,
+      .progress-fill.fill-hpb,
+      .progress-fill.fill-hd,
+      .progress-fill.fill-hkd {
         background: var(--rh-gradient);
       }
       .progress-text {
@@ -392,7 +392,7 @@ $progress_rows = array_values($base);
       .fill-hpb,
       .fill-hd,
       .fill-hkd {
-        background: linear-gradient(135deg, #ff7ab6, #ffb36b);
+        background: var(--rh-gradient);
       }
       .progress-fill::after { display: none; }
       .progress-table { min-width: 760px; }
