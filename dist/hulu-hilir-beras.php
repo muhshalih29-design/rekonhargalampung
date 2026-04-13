@@ -390,7 +390,7 @@ foreach ($rows as $r) {
       .cell-wrap {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 2px;
         width: 100%;
       }
       .cell-wrap .trend {
