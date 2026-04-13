@@ -329,7 +329,7 @@ foreach ($rows as $r) {
       }
       table { width: 100%; border-collapse: collapse; min-width: 1320px; }
       th, td { border: 1px solid #e5e7eb; }
-      th { background: #445468; color: #fff; font-size: 11px; padding: 4px 6px; text-align: center; }
+      th { background: #445468; color: #fff; font-size: 10px; padding: 3px 6px; text-align: center; }
       .head-yellow { background: linear-gradient(135deg, #ff7ab6, #ffb36b); color: #fff; font-weight: 700; }
       .head-pink { background: #e9edf3; color: #445468; font-weight: 700; }
       .subhead { background: #58697d; color: #fff; font-weight: 700; }
@@ -341,13 +341,13 @@ foreach ($rows as $r) {
         background: #cbd5e1 !important;
         color: #475569 !important;
       }
-      td { padding: 4px 6px; font-size: 11px; background: #ffffff; }
+      td { padding: 3px 6px; font-size: 10px; background: #ffffff; }
       .cell-input {
         width: 100%;
         border: 0;
         outline: none;
         background: transparent;
-        font-size: 11px;
+        font-size: 10px;
         text-align: right;
       }
       .num-int,
@@ -360,16 +360,16 @@ foreach ($rows as $r) {
         border: 0;
         outline: none;
         background: transparent;
-        font-size: 11px;
+        font-size: 10px;
         resize: vertical;
-        min-height: 22px;
+        min-height: 18px;
       }
       .cell-text {
         width: 100%;
         border: 0;
         outline: none;
         background: transparent;
-        font-size: 11px;
+        font-size: 10px;
       }
       .col-fixed {
         width: 18ch;
@@ -394,7 +394,7 @@ foreach ($rows as $r) {
         width: 100%;
       }
       .cell-wrap .trend {
-        font-size: 12px;
+        font-size: 10px;
         font-weight: 800;
         line-height: 1;
       }
