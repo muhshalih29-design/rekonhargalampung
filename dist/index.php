@@ -118,18 +118,18 @@ $progress_rows = array_values($base);
       @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 
       :root {
-        --bg: #e8f1f4;
-        --bg-2: #dfeaf0;
+        --bg: #f7f5fb;
+        --bg-2: #f0ecf6;
         --card: #ffffff;
-        --ink: #1f2a37;
-        --muted: #5f6b7a;
-        --accent: #f07c2b;
-        --accent-2: #47a9b5;
-        --shadow: 0 20px 50px rgba(31, 42, 55, 0.12);
+        --ink: #2f3441;
+        --muted: #8b90a3;
+        --accent: #f28b2b;
+        --accent-2: #f6b7c8;
+        --shadow: 0 20px 50px rgba(56, 65, 80, 0.12);
         --pill: 16px;
         --radius: 18px;
         --sidebar: #ffffff;
-        --sidebar-border: #e6eef2;
+        --sidebar-border: #eef0f4;
       }
 
       * { box-sizing: border-box; }
@@ -166,7 +166,7 @@ $progress_rows = array_values($base);
         border-radius: 14px;
         display: grid;
         place-items: center;
-        background: linear-gradient(135deg, #1f6f8b, #47a9b5);
+        background: linear-gradient(135deg, #f6b7c8, #f5a25d);
         color: #fff;
         font-weight: 700;
         font-size: 14px;
@@ -252,7 +252,7 @@ $progress_rows = array_values($base);
       }
       .filters button {
         border-radius: 10px; padding: 8px 14px; font-size: 12px; font-weight: 600; border: none;
-        background: linear-gradient(135deg, #ff7ab6, #ffb36b);
+        background: linear-gradient(135deg, #f6b7c8, #f5a25d);
         color: #fff;
         box-shadow: 0 10px 22px rgba(242, 139, 43, 0.25);
       }
@@ -418,7 +418,7 @@ $progress_rows = array_values($base);
     
       /* A: Unified brand actions & table headers */
       :root {
-        --rh-gradient: linear-gradient(135deg, #1f6f8b, #47a9b5);
+        --rh-gradient: linear-gradient(135deg, #f6b7c8, #f5a25d);
         --rh-accent: #1f6f8b;
       }
       .filters button,

@@ -21,11 +21,11 @@ $user = require_auth();
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
       :root {
-        --bg: #f7f5f6;
-        --bg-2: #f1eaee;
+        --bg: #f7f5fb;
+        --bg-2: #f0ecf6;
         --card: #ffffff;
-        --ink: #374151;
-        --muted: #8a93a0;
+        --ink: #2f3441;
+        --muted: #8b90a3;
         --accent: #f28b2b;
         --shadow: 0 20px 50px rgba(56, 65, 80, 0.12);
         --pill: 16px;
@@ -64,7 +64,7 @@ $user = require_auth();
         border-radius: 14px;
         display: grid;
         place-items: center;
-        background: linear-gradient(135deg, #ff7ab6, #ffb36b);
+        background: linear-gradient(135deg, #f6b7c8, #f5a25d);
         color: #fff;
         font-weight: 700;
         font-size: 14px;
@@ -133,7 +133,7 @@ $user = require_auth();
     
       /* A: Unified brand actions & table headers */
       :root {
-        --rh-gradient: linear-gradient(135deg, #ff7ab6, #ffb36b);
+        --rh-gradient: linear-gradient(135deg, #f6b7c8, #f5a25d);
         --rh-accent: #f28b2b;
       }
       .filters button,

@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         border-radius: 14px;
         display: grid;
         place-items: center;
-        background: linear-gradient(135deg, #ff7ab6, #ffb36b);
+        background: linear-gradient(135deg, #f6b7c8, #f5a25d);
         color: #fff;
         font-weight: 700;
         flex-shrink: 0;
@@ -111,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
       /* A: Unified brand actions & table headers */
       :root {
-        --rh-gradient: linear-gradient(135deg, #ff7ab6, #ffb36b);
+        --rh-gradient: linear-gradient(135deg, #f6b7c8, #f5a25d);
         --rh-accent: #f28b2b;
       }
       .filters button,
