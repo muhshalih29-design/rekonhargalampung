@@ -576,7 +576,7 @@ foreach ($rows as $r) {
                   <td class="col-fixed<?php echo $rh_mismatch ? ' kab-warning' : ''; ?>">
                     <div style="display:flex;align-items:center;gap:6px;">
                       <input class="cell-text" data-field="kabupaten_kota" value="<?php echo htmlspecialchars($row['kabupaten_kota'] ?? ''); ?>" <?php echo $disabled_all; ?>>
-                      <?php if ($rh_mismatch): ?><span class="warn-icon">⚠</span><?php endif; ?>
+                      <span class="warn-icon" style="<?php echo $rh_mismatch ? '' : 'display:none;'; ?>">⚠</span>
                     </div>
                   </td>
                   <td><input class="cell-input num-int" data-field="shped_hd_n1" value="<?php echo htmlspecialchars($val_int('shped_hd_n1')); ?>" <?php echo $is_locked('shped_hd_n1'); ?>></td>
@@ -677,6 +677,27 @@ foreach ($rows as $r) {
             el.classList.add('text-perubahan-neg');
           }
         }
+        function updateRowWarning(row) {
+          if (!row || row.classList.contains('avg-row')) return;
+          var rhInputs = row.querySelectorAll('.rh-input');
+          var hasPos = false;
+          var hasNeg = false;
+          rhInputs.forEach(function (inp) {
+            var raw = (inp.value || '').replace(/\./g, '').replace(/,/g, '.');
+            var num = parseFloat(raw);
+            if (isNaN(num) || num === 0) return;
+            if (num > 0) hasPos = true;
+            if (num < 0) hasNeg = true;
+          });
+          var mismatch = hasPos && hasNeg;
+          var kabCell = row.querySelector('td.col-fixed');
+          if (kabCell) {
+            if (mismatch) kabCell.classList.add('kab-warning');
+            else kabCell.classList.remove('kab-warning');
+            var warn = kabCell.querySelector('.warn-icon');
+            if (warn) warn.style.display = mismatch ? '' : 'none';
+          }
+        }
         var timers = new WeakMap();
         function scheduleSave(el) {
           if (timers.has(el)) clearTimeout(timers.get(el));
@@ -704,11 +725,13 @@ foreach ($rows as $r) {
             return;
           }
           if (el.classList.contains('rh-input')) updateTrend(el);
+          updateRowWarning(el.closest('tr'));
           if (el.classList.contains('num-int')) formatInt(el);
           if (el.classList.contains('num-dec')) updateTrend(el);
           el.addEventListener('input', function () {
             if (el.classList.contains('num-int')) formatInt(el);
             if (el.classList.contains('num-dec')) updateTrend(el);
+            if (el.classList.contains('rh-input')) updateRowWarning(el.closest('tr'));
             scheduleSave(el);
           });
           el.addEventListener('blur', function () {
