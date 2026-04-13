@@ -483,6 +483,36 @@ $columns = [
       .tabs::-webkit-scrollbar { height: 6px; }
       .tabs::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 999px; }
       .tab-btn { white-space: nowrap; flex: 0 0 auto; }
+    
+      /* A: Unified brand actions & table headers */
+      :root {
+        --rh-gradient: linear-gradient(135deg, #ff7ab6, #ffb36b);
+        --rh-accent: #f28b2b;
+      }
+      .filters button,
+      .icon-btn.filter-btn,
+      .tab-btn.active,
+      .nav-dot.active,
+      .nav-dot:hover {
+        background: var(--rh-gradient) !important;
+        color: #ffffff !important;
+        border: none !important;
+        box-shadow: 0 10px 22px rgba(242, 139, 43, 0.25) !important;
+      }
+      .avg-pill,
+      .badge-important {
+        background: var(--rh-gradient) !important;
+        color: #ffffff !important;
+      }
+      table th:not(.head-yellow):not(.head-pink):not(.subhead):not(.subhead-dark) {
+        background: #445468 !important;
+        color: #ffffff !important;
+        border: 1px solid #e5e7eb !important;
+      }
+      table td {
+        border: 1px solid #e5e7eb !important;
+      }
+      .nav-dot img { width: 18px; height: 18px; display: block; }
     </style>
   </head>
   <body>
