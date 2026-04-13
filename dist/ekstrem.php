@@ -633,6 +633,10 @@ $columns = [
         .tabs { margin: 32px 0 16px; }
         .table-card { padding: 12px; }
       }
+    
+      /* A: Consistent table sizing */
+      table th { font-size: 10px !important; padding: 4px 6px !important; }
+      table td { font-size: 10px !important; padding: 4px 6px !important; }
     </style>
   </head>
   <body>

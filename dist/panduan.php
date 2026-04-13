@@ -130,6 +130,10 @@ $user = require_auth();
         .nav-dot { width: 40px; height: 40px; }
         .topbar { grid-template-columns: 1fr; }
       }
+    
+      /* A: Consistent table sizing */
+      table th { font-size: 10px !important; padding: 4px 6px !important; }
+      table td { font-size: 10px !important; padding: 4px 6px !important; }
     </style>
   </head>
   <body>

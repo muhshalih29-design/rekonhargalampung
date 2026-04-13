@@ -672,6 +672,10 @@ if ($global_max_abs == 0) {
         .mini-bars { overflow-x: auto; padding-bottom: 6px; }
         .mini-row, .mini-header { min-width: 720px; }
       }
+    
+      /* A: Consistent table sizing */
+      table th { font-size: 10px !important; padding: 4px 6px !important; }
+      table td { font-size: 10px !important; padding: 4px 6px !important; }
     </style>
   </head>
   <body>
