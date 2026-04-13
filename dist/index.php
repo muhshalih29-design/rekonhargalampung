@@ -368,6 +368,12 @@ $progress_rows = array_values($base);
         border-radius: 999px;
         position: relative;
       }
+      .progress-fill.hk,
+      .progress-fill.hpb,
+      .progress-fill.hd,
+      .progress-fill.hkd {
+        background: var(--rh-gradient);
+      }
       .progress-text {
         position: absolute;
         right: 6px;
