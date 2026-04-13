@@ -476,6 +476,11 @@ $columns = [
         .tabs { margin: 32px 0 16px; }
         .table-card { padding: 12px; }
       }
+    
+      /* D: Consistent row/input sizing */
+      table td { vertical-align: middle; }
+      table input, table select { height: 28px; }
+      table textarea { min-height: 28px; }
     </style>
   </head>
   <body>

@@ -811,7 +811,7 @@ if ($global_max_abs == 0) {
                 $maxAbs = (float)$global_max_abs;
             ?>
               <div class="mini-row">
-                <div class="mini-label"><?php echo htmlspecialchars($label_text); ?></div>
+                <div class="mini-label" title="<?php echo htmlspecialchars($label_text); ?>"><?php echo htmlspecialchars($label_text); ?></div>
                 <?php foreach ($rows as $label => $v): 
                   $val = ($v === null) ? 0 : (float)$v;
                   $width = min(50, (abs($val) / $maxAbs) * 50);

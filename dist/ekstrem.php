@@ -476,6 +476,7 @@ $columns = [
         box-shadow: 0 14px 28px rgba(56, 65, 80, 0.10);
         overflow-x: auto;
         max-width: 100%;
+        -webkit-overflow-scrolling: touch;
       }
       .paste-status {
         display: inline-flex;

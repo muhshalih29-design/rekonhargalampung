@@ -6,6 +6,7 @@ error_reporting(E_ALL);
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/auth.php';
 $user = require_auth();
+$last_updated = date('d M Y H:i');
 $pdo = db();
 $online_users = [];
 try {
@@ -356,7 +357,7 @@ $progress_rows = array_values($base);
         min-width: 140px;
       }
       .progress-bar {
-        height: 16px;
+        height: 20px;
         background: #eef2f7;
         border-radius: 999px;
         overflow: hidden;
@@ -469,6 +470,7 @@ $progress_rows = array_values($base);
 
         <div class="panel" style="margin-top:16px;">
           <div class="panel-title">Progress Pengisian Penjelasan Perubahan Harga per Kabupaten/Kota</div>
+          <div style="color:#8a93a0;font-size:11px;margin-top:-6px;margin-bottom:8px;">Update terakhir: <?php echo htmlspecialchars($last_updated); ?></div>
           <div class="progress-table-wrap">
             <table class="progress-table">
               <thead>

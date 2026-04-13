@@ -326,10 +326,12 @@ foreach ($rows as $r) {
         padding: 16px;
         box-shadow: 0 14px 28px rgba(56, 65, 80, 0.10);
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
       }
       table { width: 100%; border-collapse: collapse; min-width: 1320px; }
       th, td { border: 1px solid #e5e7eb; }
       th { background: #445468; color: #fff; font-size: 10px; padding: 3px 6px; text-align: center; }
+      thead th { position: sticky; top: 0; z-index: 2; }
       .head-yellow { background: linear-gradient(135deg, #ff7ab6, #ffb36b); color: #fff; font-weight: 700; }
       .head-pink { background: #e9edf3; color: #445468; font-weight: 700; }
       .subhead { background: #58697d; color: #fff; font-weight: 700; }
