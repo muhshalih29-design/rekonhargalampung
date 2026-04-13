@@ -372,12 +372,12 @@ foreach ($rows as $r) {
         font-size: 10px;
       }
       .col-fixed {
-        width: 18ch;
-        max-width: 18ch;
+        width: 6ch;
+        max-width: 6ch;
       }
       .col-fixed .cell-text {
-        width: 18ch;
-        max-width: 18ch;
+        width: 6ch;
+        max-width: 6ch;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -498,7 +498,7 @@ foreach ($rows as $r) {
                 <th colspan="1" class="head-yellow">Penjelasan</th>
               </tr>
               <tr>
-                <th rowspan="2" class="subhead">Kabupaten/kota</th>
+                <th rowspan="2" class="subhead">Kab/Kot</th>
                 <th colspan="3" class="subhead">SHPED_HD</th>
                 <th colspan="3" class="subhead">SHPED_HKD</th>
                 <th colspan="3" class="subhead">SHP</th>
@@ -575,7 +575,7 @@ foreach ($rows as $r) {
                 <tr data-id="<?php echo (int)$row['id']; ?>">
                   <td class="col-fixed<?php echo $rh_mismatch ? ' kab-warning' : ''; ?>">
                     <div style="display:flex;align-items:center;gap:6px;">
-                      <input class="cell-text" data-field="kabupaten_kota" value="<?php echo htmlspecialchars($row['kabupaten_kota'] ?? ''); ?>" <?php echo $disabled_all; ?>>
+                      <input class="cell-text" data-field="kd_kako" value="<?php echo htmlspecialchars($row['kd_kako'] ?? ''); ?>" <?php echo $disabled_all; ?>>
                       <span class="warn-icon" style="<?php echo $rh_mismatch ? '' : 'display:none;'; ?>">⚠</span>
                     </div>
                   </td>
