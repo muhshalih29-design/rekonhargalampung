@@ -372,7 +372,7 @@ $progress_rows = array_values($base);
       .progress-fill.fill-hpb,
       .progress-fill.fill-hd,
       .progress-fill.fill-hkd {
-        background: var(--rh-gradient);
+        background: #47a9b5;
       }
       .progress-text {
         position: absolute;
@@ -392,7 +392,7 @@ $progress_rows = array_values($base);
       .fill-hpb,
       .fill-hd,
       .fill-hkd {
-        background: var(--rh-gradient);
+        background: #47a9b5;
       }
       .progress-fill::after { display: none; }
       .progress-table { min-width: 760px; }
