@@ -137,7 +137,7 @@ $progress_rows = array_values($base);
         margin: 0;
         font-family: "Poppins", sans-serif;
         color: var(--ink);
-        background: radial-gradient(1200px 600px at 30% 0%, #f3efe5 0%, var(--bg) 50%, var(--bg-2) 100%);
+        background: radial-gradient(1200px 600px at 30% 0%, #f7eff3 0%, var(--bg) 50%, var(--bg-2) 100%);
       }
 
       .app {
@@ -176,17 +176,16 @@ $progress_rows = array_values($base);
         width: 44px;
         height: 44px;
         border-radius: 14px;
-        background: #f4f6f9;
+        background: #f4f1f8;
         display: grid;
         place-items: center;
-        color: #7b8794;
+        color: var(--muted);
         text-decoration: none;
         transition: all .2s ease;
       }
       .nav-text { font-size: 12px; font-weight: 700; color: inherit; letter-spacing: 0.5px; }
       .nav-dot.active, .nav-dot:hover {
-        background: #fff;
-        color: var(--accent);
+        color: #ffffff;
         box-shadow: 0 12px 24px rgba(242, 139, 43, 0.2);
       }
 
@@ -213,8 +212,8 @@ $progress_rows = array_values($base);
         background: var(--card);
         border-radius: var(--pill);
         padding: 8px 12px;
-        border: 1px solid #eef0f4;
-        box-shadow: 0 12px 24px rgba(56, 65, 80, 0.08);
+        border: 1px solid #efe7f1;
+        box-shadow: 0 12px 24px rgba(82, 58, 89, 0.08);
         display: flex;
         align-items: center;
         gap: 8px;
@@ -240,10 +239,10 @@ $progress_rows = array_values($base);
         height: 36px;
         border-radius: 12px;
         background: var(--card);
-        border: 1px solid #eef0f4;
+        border: 1px solid #efe7f1;
         display: grid;
         place-items: center;
-        box-shadow: 0 10px 22px rgba(56, 65, 80, 0.08);
+        box-shadow: 0 10px 22px rgba(82, 58, 89, 0.08);
       }
       .filters {
         display: flex;
@@ -252,7 +251,7 @@ $progress_rows = array_values($base);
       }
       .filters button {
         border-radius: 10px; padding: 8px 14px; font-size: 12px; font-weight: 600; border: none;
-        background: linear-gradient(135deg, #f6b7c8, #f5a25d);
+        background: var(--rh-gradient);
         color: #fff;
         box-shadow: 0 10px 22px rgba(242, 139, 43, 0.25);
       }
@@ -265,14 +264,14 @@ $progress_rows = array_values($base);
       }
       .subinfo {
         margin: 12px 0 18px;
-        color: #3a4a5a;
+        color: var(--ink);
         font-size: 13px;
         font-weight: 700;
         background: #ffffff;
-        border: 1px solid #eef0f4;
+        border: 1px solid #efe7f1;
         border-radius: 14px;
         padding: 8px 14px;
-        box-shadow: 0 10px 22px rgba(56, 65, 80, 0.08);
+        box-shadow: 0 10px 22px rgba(82, 58, 89, 0.08);
         display: inline-flex;
         gap: 8px;
       }
@@ -280,7 +279,7 @@ $progress_rows = array_values($base);
         background: #ffffff;
         border-radius: 9999px;
         padding: 16px 24px;
-        box-shadow: 0 12px 28px rgba(56, 65, 80, 0.10);
+        box-shadow: 0 12px 28px rgba(82, 58, 89, 0.10);
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -316,7 +315,7 @@ $progress_rows = array_values($base);
         background: var(--card);
         border-radius: var(--radius);
         padding: 16px;
-        box-shadow: 0 14px 28px rgba(56, 65, 80, 0.10);
+        box-shadow: 0 14px 28px rgba(82, 58, 89, 0.10);
       }
 
       .panel-title {
@@ -343,7 +342,7 @@ $progress_rows = array_values($base);
       .progress-row {
         background: #fff;
         border-radius: 12px;
-        box-shadow: 0 10px 20px rgba(56, 65, 80, 0.06);
+        box-shadow: 0 10px 20px rgba(82, 58, 89, 0.06);
       }
       .progress-row td:first-child {
         border-radius: 12px 0 0 12px;
@@ -358,7 +357,7 @@ $progress_rows = array_values($base);
       }
       .progress-bar {
         height: 20px;
-        background: #eef2f7;
+        background: #f4edf6;
         border-radius: 999px;
         overflow: hidden;
         position: relative;
@@ -372,7 +371,7 @@ $progress_rows = array_values($base);
       .progress-fill.fill-hpb,
       .progress-fill.fill-hd,
       .progress-fill.fill-hkd {
-        background: #1f6f8b;
+        background: var(--rh-gradient);
       }
       .progress-text {
         position: absolute;
@@ -392,7 +391,7 @@ $progress_rows = array_values($base);
       .fill-hpb,
       .fill-hd,
       .fill-hkd {
-        background: #1f6f8b;
+        background: var(--rh-gradient);
       }
       .progress-fill::after { display: none; }
       .progress-table { min-width: 760px; }
