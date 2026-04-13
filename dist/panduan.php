@@ -168,6 +168,46 @@ $user = require_auth();
         </div>
 
         <div class="card" style="margin-top:14px;">
+          <h3>Ikon & Fungsi Halaman</h3>
+          <div class="step">
+            <strong>Dashboard</strong>
+            <p>Ringkasan progres pengisian penjelasan per kabupaten/kota.</p>
+          </div>
+          <div class="step">
+            <strong>Perbandingan Harga</strong>
+            <p>Perbandingan rata-rata perubahan HK/HPB/HD/HKD per kabupaten/kota.</p>
+          </div>
+          <div class="step">
+            <strong>HK</strong>
+            <p>Konfirmasi perubahan harga konsumen.</p>
+          </div>
+          <div class="step">
+            <strong>HPB</strong>
+            <p>Konfirmasi perubahan harga perdagangan besar.</p>
+          </div>
+          <div class="step">
+            <strong>HD</strong>
+            <p>Konfirmasi perubahan harga produsen pedesaan.</p>
+          </div>
+          <div class="step">
+            <strong>HKD</strong>
+            <p>Konfirmasi perubahan harga konsumen pedesaan.</p>
+          </div>
+          <div class="step">
+            <strong>Hulu Hilir Beras</strong>
+            <p>Tabel gabah & beras (SHPED_HD, SHPED_HKD, SHP, HPB, HK) per kabupaten/kota.</p>
+          </div>
+          <div class="step">
+            <strong>Ekstrem</strong>
+            <p>Input data harga ekstrem per subsektor/komoditas dan konfirmasi kabupaten.</p>
+          </div>
+          <div class="step">
+            <strong>Panduan</strong>
+            <p>Petunjuk penggunaan untuk admin kabupaten/kota.</p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:14px;">
           <h3>Langkah Pengisian</h3>
           <div class="step">
             <strong>1) Pilih bulan dan tahun</strong>
