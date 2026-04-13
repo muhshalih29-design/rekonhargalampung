@@ -481,18 +481,19 @@ foreach ($rows as $r) {
           <table>
             <thead>
               <tr>
-                <th colspan="2" class="head-yellow">Komoditas</th>
+                <th colspan="1" class="head-yellow">Komoditas</th>
                 <th colspan="3" class="head-yellow">Gabah</th>
                 <th colspan="12" class="head-yellow">Beras</th>
+                <th colspan="1" class="head-yellow">Penjelasan</th>
               </tr>
               <tr>
                 <th rowspan="2" class="subhead">Kabupaten/kota</th>
-                <th rowspan="2" class="subhead">Penjelasan</th>
                 <th colspan="3" class="subhead">SHPED_HD</th>
                 <th colspan="3" class="subhead">SHPED_HKD</th>
                 <th colspan="3" class="subhead">SHP</th>
                 <th colspan="3" class="subhead">HPB</th>
                 <th colspan="3" class="subhead">HK</th>
+                <th rowspan="2" class="subhead">Penjelasan</th>
               </tr>
               <tr>
                 <th class="subhead-dark"><?php echo htmlspecialchars($bulan_prev_label); ?></th>
@@ -567,7 +568,6 @@ foreach ($rows as $r) {
                       <?php if ($rh_mismatch): ?><span class="warn-icon">⚠</span><?php endif; ?>
                     </div>
                   </td>
-                  <td><textarea class="cell-text cell-textarea" data-field="penjelasan" <?php echo $disabled_all; ?>><?php echo htmlspecialchars($row['penjelasan'] ?? ''); ?></textarea></td>
                   <td><input class="cell-input num-int" data-field="shped_hd_n1" value="<?php echo htmlspecialchars($val_int('shped_hd_n1')); ?>" <?php echo $is_locked('shped_hd_n1'); ?>></td>
                   <td><input class="cell-input num-int" data-field="shped_hd_n" value="<?php echo htmlspecialchars($val_int('shped_hd_n')); ?>" <?php echo $is_locked('shped_hd_n'); ?>></td>
                   <td class="rh-col"><div class="cell-wrap"><input class="cell-input num-dec rh-input" data-field="shped_hd_rh" value="<?php echo htmlspecialchars($val_dec('shped_hd_rh')); ?>" <?php echo $is_locked('shped_hd_rh'); ?>><span class="trend"></span></div></td>
@@ -583,11 +583,11 @@ foreach ($rows as $r) {
                   <td class="beras-col"><input class="cell-input num-int" data-field="hk_n1" value="<?php echo htmlspecialchars($val_int('hk_n1')); ?>" <?php echo $is_locked('hk_n1'); ?>></td>
                   <td class="beras-col"><input class="cell-input num-int" data-field="hk_n" value="<?php echo htmlspecialchars($val_int('hk_n')); ?>" <?php echo $is_locked('hk_n'); ?>></td>
                   <td class="rh-col beras-col"><div class="cell-wrap"><input class="cell-input num-dec rh-input" data-field="hk_rh" value="<?php echo htmlspecialchars($val_dec('hk_rh')); ?>" <?php echo $is_locked('hk_rh'); ?>><span class="trend"></span></div></td>
+                  <td><textarea class="cell-text cell-textarea" data-field="penjelasan" <?php echo $disabled_all; ?>><?php echo htmlspecialchars($row['penjelasan'] ?? ''); ?></textarea></td>
                 </tr>
               <?php endforeach; ?>
               <tr class="avg-row">
                 <td class="col-fixed"><input class="cell-text" value="Rata-rata" disabled></td>
-                <td><textarea class="cell-text cell-textarea" disabled></textarea></td>
                 <?php
                   $fmt_int = function($v) {
                     return $v === null ? '' : number_format($v, 0, ',', '.');
@@ -614,6 +614,7 @@ foreach ($rows as $r) {
                 <td class="beras-col"><input class="cell-input num-int" value="<?php echo htmlspecialchars($fmt_int($avg_val('hk_n1'))); ?>" disabled></td>
                 <td class="beras-col"><input class="cell-input num-int" value="<?php echo htmlspecialchars($fmt_int($avg_val('hk_n'))); ?>" disabled></td>
                 <td class="rh-col beras-col"><div class="cell-wrap"><input class="cell-input num-dec rh-input" value="<?php echo htmlspecialchars($fmt_dec($avg_val('hk_rh'))); ?>" disabled><span class="trend"></span></div></td>
+                <td><textarea class="cell-text cell-textarea" disabled></textarea></td>
               </tr>
             </tbody>
           </table>
@@ -796,7 +797,7 @@ foreach ($rows as $r) {
               count += 1;
             });
             var avg = count > 0 ? (sum / count) : null;
-            var avgCell = avgRow.querySelectorAll('td')[idx + 2];
+            var avgCell = avgRow.querySelectorAll('td')[idx + 1];
             if (!avgCell) return;
             var input = avgCell.querySelector('input');
             if (!input) return;
