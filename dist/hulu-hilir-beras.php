@@ -674,11 +674,11 @@ foreach ($rows as $r) {
           }
           if (num > 0) {
             trend.textContent = '▲';
-            trend.style.color = '#16a34a';
+            trend.style.color = '#168f4a';
             el.classList.add('text-perubahan-pos');
           } else {
             trend.textContent = '▼';
-            trend.style.color = '#dc2626';
+            trend.style.color = '#d94b4b';
             el.classList.add('text-perubahan-neg');
           }
         }

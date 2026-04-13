@@ -634,6 +634,11 @@ $columns = [
         .tabs { margin: 32px 0 16px; }
         .table-card { padding: 12px; }
       }
+    
+      /* B: Status colors */
+      .text-perubahan-pos, .avg-pill .avg-trend.pos, .trend-up, .badge-pos, .mini-out.pos { color: #168f4a !important; }
+      .text-perubahan-neg, .avg-pill .avg-trend.neg, .trend-down, .badge-neg, .mini-out.neg { color: #d94b4b !important; }
+      .avg-pill .avg-trend.zero, .badge-zero { color: #6b7280 !important; }
     </style>
   </head>
   <body>
