@@ -394,7 +394,7 @@ foreach ($rows as $r) {
         width: 100%;
       }
       .cell-wrap .trend {
-        margin-right: -2px;
+        margin-right: -4px;
       }
       .cell-wrap .trend {
         font-size: 10px;
