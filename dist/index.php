@@ -166,7 +166,7 @@ $progress_rows = array_values($base);
         border-radius: 14px;
         display: grid;
         place-items: center;
-        background: linear-gradient(135deg, #1f6f8b, #f07c2b);
+        background: linear-gradient(135deg, #1f6f8b, #47a9b5);
         color: #fff;
         font-weight: 700;
         font-size: 14px;
@@ -412,8 +412,8 @@ $progress_rows = array_values($base);
     
       /* A: Unified brand actions & table headers */
       :root {
-        --rh-gradient: linear-gradient(135deg, #1f6f8b, #f07c2b);
-        --rh-accent: #f07c2b;
+        --rh-gradient: linear-gradient(135deg, #1f6f8b, #47a9b5);
+        --rh-accent: #1f6f8b;
       }
       .filters button,
       .icon-btn.filter-btn,
