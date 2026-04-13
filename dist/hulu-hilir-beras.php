@@ -434,10 +434,6 @@ foreach ($rows as $r) {
         .pill { width: 100%; justify-content: space-between; }
         .pill select { width: 100%; }
       }
-    
-      /* A: Consistent table sizing */
-      table th { font-size: 10px !important; padding: 4px 6px !important; }
-      table td { font-size: 10px !important; padding: 4px 6px !important; }
     </style>
   </head>
   <body>
