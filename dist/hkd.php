@@ -515,10 +515,10 @@ $columns = [
       table th:not(.head-yellow):not(.head-pink):not(.subhead):not(.subhead-dark) {
         background: #445468 !important;
         color: #ffffff !important;
-        border: 1px solid #e5e7eb !important;
+        border: none !important;
       }
       table td {
-        border: 1px solid #e5e7eb !important;
+        border: none !important;
       }
       .nav-dot img { width: 18px; height: 18px; display: block; }
     </style>
