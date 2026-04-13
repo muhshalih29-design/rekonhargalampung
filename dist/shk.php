@@ -510,18 +510,18 @@ $columns = [
       .nav-dot.active,
       .nav-dot:hover {
         background: var(--rh-gradient) !important;
-        color: #ffffff !important;
+        color: #f7f5fb !important;
         border: none !important;
         box-shadow: 0 10px 22px rgba(242, 139, 43, 0.25) !important;
       }
       .avg-pill,
       .badge-important {
         background: var(--rh-gradient) !important;
-        color: #ffffff !important;
+        color: #f7f5fb !important;
       }
       table th:not(.head-yellow):not(.head-pink):not(.subhead):not(.subhead-dark) {
-        background: #445468 !important;
-        color: #ffffff !important;
+        background: #2f3441 !important;
+        color: #f7f5fb !important;
         border: none !important;
       }
       table td {
