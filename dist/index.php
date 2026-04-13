@@ -7,6 +7,14 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/auth.php';
 $user = require_auth();
 $pdo = db();
+$online_users = [];
+try {
+    $stmt_online = $pdo->query("SELECT email, last_seen FROM users WHERE last_seen IS NOT NULL AND last_seen > (NOW() - INTERVAL '10 minutes') ORDER BY last_seen DESC");
+    $online_users = $stmt_online->fetchAll();
+} catch (Throwable $e) {
+    $online_users = [];
+}
+$pdo = db();
 
 $bulan = isset($_GET['bulan']) ? trim($_GET['bulan']) : '';
 $tahun = isset($_GET['tahun']) ? trim($_GET['tahun']) : '';
@@ -499,9 +507,39 @@ $progress_rows = array_values($base);
             </table>
           </div>
         </div>
+
+        <div class="panel" style="margin-top:16px;">
+          <div class="panel-title">Pengguna Online (10 menit terakhir)</div>
+          <?php if (empty($online_users)): ?>
+            <div style="color:#8a93a0;font-size:12px;padding:6px 0;">Belum ada pengguna online.</div>
+          <?php else: ?>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">
+              <?php foreach ($online_users as $ou): ?>
+                <div style="padding:6px 10px;border-radius:999px;background:#fff;border:1px solid #eef0f4;font-size:12px;color:#6b7280;box-shadow:0 6px 14px rgba(56,65,80,0.08);">
+                  <?php echo htmlspecialchars($ou['email']); ?>
+                </div>
+              <?php endforeach; ?>
+            </div>
+          <?php endif; ?>
+        </div>
       </main>
     </div>
 
     <script></script>
+  
+    <script>
+      (function () {
+        function ping() {
+          fetch('presence.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'ping=1'
+          }).catch(function () {});
+        }
+        ping();
+        setInterval(ping, 60000);
+      })();
+    </script>
+
   </body>
 </html>

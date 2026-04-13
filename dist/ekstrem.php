@@ -1196,5 +1196,20 @@ $columns = [
         });
       })();
     </script>
+  
+    <script>
+      (function () {
+        function ping() {
+          fetch('presence.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'ping=1'
+          }).catch(function () {});
+        }
+        ping();
+        setInterval(ping, 60000);
+      })();
+    </script>
+
   </body>
 </html>
