@@ -486,6 +486,18 @@ $columns = [
       .text-perubahan-pos, .avg-pill .avg-trend.pos, .trend-up, .badge-pos, .mini-out.pos { color: #168f4a !important; }
       .text-perubahan-neg, .avg-pill .avg-trend.neg, .trend-down, .badge-neg, .mini-out.neg { color: #d94b4b !important; }
       .avg-pill .avg-trend.zero, .badge-zero { color: #6b7280 !important; }
+    
+      /* C: Tabs scroll and clarity */
+      .tabs {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 6px;
+        scrollbar-width: thin;
+      }
+      .tabs::-webkit-scrollbar { height: 6px; }
+      .tabs::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 999px; }
+      .tab-btn { white-space: nowrap; flex: 0 0 auto; }
     </style>
   </head>
   <body>
