@@ -238,7 +238,7 @@ $progress_rows = array_values($base);
         grid-template-columns: 1fr auto auto auto auto auto;
         align-items: center;
         gap: 12px;
-        margin-bottom: 16px;
+        margin-bottom: 28px;
       }
 
       .hello {
@@ -299,7 +299,13 @@ $progress_rows = array_values($base);
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 14px;
-        margin-bottom: 16px;
+        margin-bottom: 24px;
+      }
+      .section-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #5a6270;
+        margin: 0 0 12px;
       }
       .subinfo {
         margin: 12px 0 18px;
@@ -567,6 +573,7 @@ $progress_rows = array_values($base);
           </div>
         </form>
 
+        <div class="section-title">Overview</div>
         <div class="cards">
           <?php
             $cards = [
