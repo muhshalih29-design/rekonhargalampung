@@ -335,7 +335,7 @@ $progress_rows = array_values($base);
         width: 56px;
         height: 56px;
         border-radius: 50%;
-        background: conic-gradient(var(--rh-gradient) var(--p), #f1f1f5 0);
+        background: conic-gradient(#f5a25d var(--p), #f1f1f5 0);
         position: relative;
         flex-shrink: 0;
       }
