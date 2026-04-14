@@ -332,29 +332,61 @@ $progress_rows = array_values($base);
         letter-spacing: 0.5px;
       }
       .donut {
-        width: 56px;
-        height: 56px;
+        width: 86px;
+        height: 86px;
         border-radius: 50%;
-        background: conic-gradient(#f5a25d var(--p), #f1f1f5 0);
+        background: conic-gradient(#f5a25d var(--p), #f0f1f6 0);
         position: relative;
         flex-shrink: 0;
       }
       .donut::after {
         content: "";
         position: absolute;
-        inset: 6px;
+        inset: 10px;
         background: #ffffff;
         border-radius: 50%;
+        box-shadow: inset 0 0 0 1px rgba(0,0,0,0.03);
       }
-      .donut-label {
+      .donut-center {
         position: absolute;
         inset: 0;
         display: grid;
         place-items: center;
-        font-size: 10px;
+        z-index: 1;
+        text-align: center;
+      }
+      .donut-icon {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: #ffffff;
+        display: grid;
+        place-items: center;
+        box-shadow: 0 6px 14px rgba(56, 65, 80, 0.12);
+        margin-bottom: 4px;
+        color: #f28b2b;
+      }
+      .donut-label {
+        font-size: 14px;
         font-weight: 800;
         color: #4a5a6a;
-        z-index: 1;
+      }
+      .donut-ends {
+        position: absolute;
+        inset: 0;
+        font-size: 9px;
+        font-weight: 700;
+        color: #9aa3ad;
+      }
+      .donut-ends .start {
+        position: absolute;
+        left: 0;
+        bottom: -2px;
+      }
+      .donut-ends .end {
+        position: absolute;
+        right: 0;
+        bottom: -2px;
       }
       .metric {
         font-size: 14px;
@@ -588,7 +620,14 @@ $progress_rows = array_values($base);
                 <div class="metric-sub">Penjelasan terisi</div>
               </div>
               <div class="donut" style="--p: <?php echo $deg; ?>deg;">
-                <div class="donut-label"><?php echo $percent; ?>%</div>
+                <div class="donut-center">
+                  <div class="donut-icon"><i class="mdi mdi-thumb-up-outline"></i></div>
+                  <div class="donut-label"><?php echo $percent; ?>%</div>
+                </div>
+                <div class="donut-ends">
+                  <span class="start">0%</span>
+                  <span class="end">100%</span>
+                </div>
               </div>
             </div>
           <?php endforeach; ?>
