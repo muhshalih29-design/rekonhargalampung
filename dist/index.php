@@ -45,11 +45,11 @@ if ($bulan === '' || $tahun === '') {
 }
 
 $progress_rows = [];
-$avg_map = [
-    'HK' => null,
-    'HPB' => null,
-    'HD' => null,
-    'HKD' => null,
+$summary_map = [
+    'HK' => ['filled' => 0, 'total' => 0],
+    'HPB' => ['filled' => 0, 'total' => 0],
+    'HD' => ['filled' => 0, 'total' => 0],
+    'HKD' => ['filled' => 0, 'total' => 0],
 ];
 $table_labels = [
     'shk' => 'HK',
@@ -104,12 +104,15 @@ foreach ($table_labels as $tbl => $label) {
     }
 }
 
-// Average perubahan per level harga for dashboard cards
+// Summary filled vs total for dashboard cards
 foreach ($table_labels as $tbl => $label) {
     if (!table_exists($pdo, $tbl)) {
         continue;
     }
-    $sql_avg = "SELECT AVG(NULLIF(perubahan,0)) AS avg_perubahan FROM {$tbl}";
+    $sql_sum = "SELECT " .
+        "SUM(CASE WHEN perubahan IS NOT NULL AND perubahan <> 0 THEN 1 ELSE 0 END) AS total_nonzero, " .
+        "SUM(CASE WHEN perubahan IS NOT NULL AND perubahan <> 0 AND penjelasan IS NOT NULL AND TRIM(penjelasan) <> '' THEN 1 ELSE 0 END) AS filled " .
+        "FROM {$tbl}";
     $where = [];
     $params = [];
     if ($bulan !== '') {
@@ -121,13 +124,16 @@ foreach ($table_labels as $tbl => $label) {
         $params[] = (int)$tahun;
     }
     if ($where) {
-        $sql_avg .= ' WHERE ' . implode(' AND ', $where);
+        $sql_sum .= ' WHERE ' . implode(' AND ', $where);
     }
-    $stmt_avg = $pdo->prepare($sql_avg);
-    $stmt_avg->execute($params);
-    $row_avg = $stmt_avg->fetch();
-    if ($row_avg && $row_avg['avg_perubahan'] !== null) {
-        $avg_map[$label] = (float)$row_avg['avg_perubahan'];
+    $stmt_sum = $pdo->prepare($sql_sum);
+    $stmt_sum->execute($params);
+    $row_sum = $stmt_sum->fetch();
+    if ($row_sum) {
+        $summary_map[$label] = [
+            'filled' => (int)($row_sum['filled'] ?? 0),
+            'total' => (int)($row_sum['total_nonzero'] ?? 0),
+        ];
     }
 }
 
@@ -325,14 +331,38 @@ $progress_rows = array_values($base);
         font-weight: 700;
         letter-spacing: 0.5px;
       }
-      .metric {
-        font-size: 36px;
+      .donut {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: conic-gradient(var(--rh-gradient) var(--p), #f1f1f5 0);
+        position: relative;
+        flex-shrink: 0;
+      }
+      .donut::after {
+        content: "";
+        position: absolute;
+        inset: 6px;
+        background: #ffffff;
+        border-radius: 50%;
+      }
+      .donut-label {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        font-size: 10px;
         font-weight: 800;
-        letter-spacing: 0.5px;
+        color: #4a5a6a;
+        z-index: 1;
+      }
+      .metric {
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: 0.2px;
         color: #4a5a6a;
       }
-      .metric-pos { color: #168f4a !important; }
-      .metric-neg { color: #d94b4b !important; }
+      .metric-sub { font-size: 11px; color: #8b90a3; }
       .metric-wrap { display: flex; align-items: center; gap: 12px; }
       .trend {
         font-size: 28px;
@@ -546,28 +576,20 @@ $progress_rows = array_values($base);
               'HKD' => 'hkd',
             ];
             foreach ($cards as $label => $class):
-              $avg = $avg_map[$label];
-              $has = ($avg !== null);
-              if ($has) {
-                $display = number_format((float)$avg, 2, ',', '.') . '%';
-              } else {
-                $display = '-';
-              }
-              $trend = '';
-              if ($has) {
-                if ($avg > 0) $trend = 'up';
-                elseif ($avg < 0) $trend = 'down';
-                else $trend = 'zero';
-              }
+              $filled = $summary_map[$label]['filled'] ?? 0;
+              $total = $summary_map[$label]['total'] ?? 0;
+              $percent = $total > 0 ? (int)round(($filled / $total) * 100) : 0;
+              $deg = $percent * 3.6;
           ?>
             <div class="card label-offset">
-              <h4><?php echo $label; ?></h4>
-              <div class="metric-wrap">
-                <div class="metric <?php echo $class; ?><?php echo $has ? ($avg >= 0 ? ' metric-pos' : ' metric-neg') : ''; ?>"><?php echo $display; ?></div>
+              <div>
+                <h4><?php echo $label; ?></h4>
+                <div class="metric"><?php echo $filled; ?> / <?php echo $total; ?></div>
+                <div class="metric-sub">Penjelasan terisi</div>
               </div>
-              <?php if ($has && $trend !== 'zero'): ?>
-                <div class="trend trend-<?php echo $trend; ?>"><?php echo $trend === 'up' ? '▲' : '▼'; ?></div>
-              <?php endif; ?>
+              <div class="donut" style="--p: <?php echo $deg; ?>deg;">
+                <div class="donut-label"><?php echo $percent; ?>%</div>
+              </div>
             </div>
           <?php endforeach; ?>
         </div>
