@@ -348,7 +348,7 @@ $progress_rows = array_values($base);
       .donut::after {
         content: "";
         position: absolute;
-        inset: 6px;
+        inset: 4px;
         background: #ffffff;
         border-radius: 50%;
       }
@@ -402,9 +402,11 @@ $progress_rows = array_values($base);
       .progress-table th {
         text-align: left;
         font-size: 11px;
-        color: var(--muted);
+        color: #ffffff;
         font-weight: 700;
         padding: 4px 6px;
+        background: var(--rh-gradient);
+        border-radius: 8px;
       }
       .progress-table td {
         padding: 6px;
