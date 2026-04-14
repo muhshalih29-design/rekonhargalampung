@@ -517,6 +517,81 @@ $progress_rows = array_values($base);
         border: none !important;
       }
       .nav-dot img { width: 18px; height: 18px; display: block; }
+
+      /* Dashboard theme (Health Records style) */
+      body {
+        background: radial-gradient(1200px 600px at 15% 0%, #f7f7f9 0%, #eef1f5 55%, #e7ebf1 100%);
+      }
+      .app {
+        gap: 16px;
+        padding: 20px;
+      }
+      .sidebar {
+        background: #f7f7f9;
+        border: none;
+        padding: 14px 8px;
+      }
+      .logo {
+        background: #ffffff;
+        color: #111827;
+        border: 1px solid #eef0f4;
+      }
+      .nav-dot {
+        border-radius: 999px;
+        background: #f0f2f6;
+        color: #7b8496;
+      }
+      .nav-dot.active, .nav-dot:hover {
+        background: #d4f06f;
+        color: #1f2430;
+        box-shadow: 0 10px 22px rgba(183, 234, 42, 0.35);
+      }
+      .main {
+        background: #f7f7f9;
+        border-radius: 28px;
+        padding: 24px;
+        box-shadow: 0 22px 48px rgba(26, 30, 40, 0.10);
+      }
+      .hello {
+        font-size: 28px;
+        line-height: 1.1;
+      }
+      .subhello {
+        font-size: 12px;
+        color: #8b93a5;
+      }
+      .pill {
+        border-radius: 999px;
+        background: #ffffff;
+        border: 1px solid #eef0f4;
+        box-shadow: 0 10px 20px rgba(26, 30, 40, 0.08);
+      }
+      .filters button {
+        border-radius: 999px;
+        background: #1f2430;
+        color: #ffffff;
+        box-shadow: 0 10px 22px rgba(26, 30, 40, 0.18);
+      }
+      .cards {
+        gap: 12px;
+      }
+      .card {
+        border-radius: 22px;
+        background: #ffffff;
+        box-shadow: 0 14px 26px rgba(26, 30, 40, 0.08);
+      }
+      .panel {
+        background: #ffffff;
+        border-radius: 22px;
+        box-shadow: 0 14px 26px rgba(26, 30, 40, 0.08);
+      }
+      .progress-row {
+        box-shadow: none;
+        background: #ffffff;
+      }
+      .progress-bar {
+        background: #f0f2f6;
+      }
     </style>
   </head>
   <body>
