@@ -568,7 +568,8 @@ $progress_rows = array_values($base);
       }
       .filters button {
         border-radius: 999px;
-        background: #1f2430;
+        background: #c8f46d;
+        color: #1f2430;
         color: #ffffff;
         box-shadow: 0 10px 22px rgba(26, 30, 40, 0.18);
       }
@@ -591,6 +592,16 @@ $progress_rows = array_values($base);
       }
       .progress-bar {
         background: #f0f2f6;
+      }
+      .progress-fill.fill-hk,
+      .progress-fill.fill-hpb,
+      .progress-fill.fill-hd,
+      .progress-fill.fill-hkd {
+        background: #c8f46d;
+      }
+      .progress-table th {
+        background: #1f2430;
+        color: #f7f7f9;
       }
     </style>
   </head>
