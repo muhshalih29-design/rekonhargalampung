@@ -45,6 +45,12 @@ if ($bulan === '' || $tahun === '') {
 }
 
 $progress_rows = [];
+$avg_map = [
+    'HK' => null,
+    'HPB' => null,
+    'HD' => null,
+    'HKD' => null,
+];
 $table_labels = [
     'shk' => 'HK',
     'hpb' => 'HPB',
@@ -95,6 +101,33 @@ foreach ($table_labels as $tbl => $label) {
             'total' => $total,
             'percent' => $percent,
         ];
+    }
+}
+
+// Average perubahan per level harga for dashboard cards
+foreach ($table_labels as $tbl => $label) {
+    if (!table_exists($pdo, $tbl)) {
+        continue;
+    }
+    $sql_avg = "SELECT AVG(NULLIF(perubahan,0)) AS avg_perubahan FROM {$tbl}";
+    $where = [];
+    $params = [];
+    if ($bulan !== '') {
+        $where[] = 'TRIM(LOWER(bulan)) = ?';
+        $params[] = strtolower(trim($bulan));
+    }
+    if ($tahun !== '' && ctype_digit($tahun)) {
+        $where[] = 'tahun = ?';
+        $params[] = (int)$tahun;
+    }
+    if ($where) {
+        $sql_avg .= ' WHERE ' . implode(' AND ', $where);
+    }
+    $stmt_avg = $pdo->prepare($sql_avg);
+    $stmt_avg->execute($params);
+    $row_avg = $stmt_avg->fetch();
+    if ($row_avg && $row_avg['avg_perubahan'] !== null) {
+        $avg_map[$label] = (float)$row_avg['avg_perubahan'];
     }
 }
 
@@ -298,6 +331,8 @@ $progress_rows = array_values($base);
         letter-spacing: 0.5px;
         color: #4a5a6a;
       }
+      .metric-pos { color: #168f4a !important; }
+      .metric-neg { color: #d94b4b !important; }
       .metric-wrap { display: flex; align-items: center; gap: 12px; }
       .trend {
         font-size: 28px;
@@ -502,6 +537,40 @@ $progress_rows = array_values($base);
           </div>
         </form>
 
+        <div class="cards">
+          <?php
+            $cards = [
+              'HK' => 'hk',
+              'HPB' => 'hpb',
+              'HD' => 'hd',
+              'HKD' => 'hkd',
+            ];
+            foreach ($cards as $label => $class):
+              $avg = $avg_map[$label];
+              $has = ($avg !== null);
+              if ($has) {
+                $display = number_format((float)$avg, 2, ',', '.') . '%';
+              } else {
+                $display = '-';
+              }
+              $trend = '';
+              if ($has) {
+                if ($avg > 0) $trend = 'up';
+                elseif ($avg < 0) $trend = 'down';
+                else $trend = 'zero';
+              }
+          ?>
+            <div class="card label-offset">
+              <h4><?php echo $label; ?></h4>
+              <div class="metric-wrap">
+                <div class="metric <?php echo $class; ?><?php echo $has ? ($avg >= 0 ? ' metric-pos' : ' metric-neg') : ''; ?>"><?php echo $display; ?></div>
+              </div>
+              <?php if ($has && $trend !== 'zero'): ?>
+                <div class="trend trend-<?php echo $trend; ?>"><?php echo $trend === 'up' ? '▲' : '▼'; ?></div>
+              <?php endif; ?>
+            </div>
+          <?php endforeach; ?>
+        </div>
 
         <div class="panel" style="margin-top:16px;">
           <div class="panel-title">Progress Pengisian Penjelasan Perubahan Harga per Kabupaten/Kota</div>
