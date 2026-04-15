@@ -744,9 +744,10 @@ $columns = [
         background: linear-gradient(135deg, rgba(246, 183, 200, 0.14), rgba(255, 255, 255, 0.98));
         border: 1px solid rgba(245, 162, 93, 0.16);
         border-radius: 20px;
-        padding: 14px 16px;
+        padding: 14px 72px 14px 16px;
         box-shadow: 0 12px 24px rgba(56, 65, 80, 0.06);
         margin-bottom: 16px;
+        position: relative;
       }
       .pending-card.is-complete {
         background: linear-gradient(135deg, rgba(22, 163, 74, 0.10), rgba(255, 255, 255, 0.98));
@@ -793,10 +794,14 @@ $columns = [
       }
       .pending-complete-mark {
         display: none;
-        margin-top: 14px;
+        position: absolute;
+        top: 14px;
+        right: 16px;
+        width: 42px;
+        height: 42px;
         justify-content: center;
         align-items: center;
-        font-size: 54px;
+        font-size: 34px;
         line-height: 1;
         color: #16a34a;
       }
