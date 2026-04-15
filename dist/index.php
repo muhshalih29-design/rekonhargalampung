@@ -51,6 +51,7 @@ $summary_map = [
     'HD' => ['filled' => 0, 'total' => 0],
     'HKD' => ['filled' => 0, 'total' => 0],
 ];
+$summary_percent_map = [];
 $table_labels = [
     'shk' => 'HK',
     'hpb' => 'HPB',
@@ -141,6 +142,73 @@ uksort($base, function ($a, $b) {
     return (int)$a <=> (int)$b;
 });
 $progress_rows = array_values($base);
+
+$overall_filled = 0;
+$overall_total = 0;
+foreach ($summary_map as $label => $values) {
+    $filled = (int)($values['filled'] ?? 0);
+    $total = (int)($values['total'] ?? 0);
+    $overall_filled += $filled;
+    $overall_total += $total;
+    $summary_percent_map[$label] = $total > 0 ? (int)round(($filled / $total) * 100) : 0;
+}
+
+$level_lowest = null;
+$level_highest = null;
+foreach ($summary_percent_map as $label => $percent) {
+    if ($level_lowest === null || $percent < $summary_percent_map[$level_lowest]) {
+        $level_lowest = $label;
+    }
+    if ($level_highest === null || $percent > $summary_percent_map[$level_highest]) {
+        $level_highest = $label;
+    }
+}
+
+$completed_kabupaten = 0;
+$needs_attention = [];
+foreach ($progress_rows as &$row) {
+    $percents = [];
+    $activeLevels = 0;
+    $missingLevels = 0;
+    foreach (['HK', 'HPB', 'HD', 'HKD'] as $level) {
+        $p = $row['progress'][$level] ?? ['filled' => 0, 'total' => 0, 'percent' => 0];
+        if (!empty($p['total'])) {
+            $activeLevels++;
+            $percents[] = (int)$p['percent'];
+            if ((int)$p['percent'] < 100) {
+                $missingLevels++;
+            }
+        }
+    }
+    $avg_percent = $percents ? (int)round(array_sum($percents) / count($percents)) : 0;
+    $row['avg_percent'] = $avg_percent;
+    $row['active_levels'] = $activeLevels;
+    $row['missing_levels'] = $missingLevels;
+    if ($activeLevels > 0 && $missingLevels === 0) {
+        $completed_kabupaten++;
+    }
+    if ($activeLevels > 0 && $missingLevels > 0) {
+        $needs_attention[] = $row;
+    }
+}
+unset($row);
+
+usort($progress_rows, function ($a, $b) {
+    if (($a['avg_percent'] ?? 0) === ($b['avg_percent'] ?? 0)) {
+        return strcmp((string)$a['nama'], (string)$b['nama']);
+    }
+    return ($a['avg_percent'] ?? 0) <=> ($b['avg_percent'] ?? 0);
+});
+
+usort($needs_attention, function ($a, $b) {
+    if (($a['avg_percent'] ?? 0) === ($b['avg_percent'] ?? 0)) {
+        return ($b['missing_levels'] ?? 0) <=> ($a['missing_levels'] ?? 0);
+    }
+    return ($a['avg_percent'] ?? 0) <=> ($b['avg_percent'] ?? 0);
+});
+$needs_attention = array_slice($needs_attention, 0, 5);
+
+$overall_percent = $overall_total > 0 ? (int)round(($overall_filled / $overall_total) * 100) : 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -322,24 +390,40 @@ $progress_rows = array_values($base);
       }
       .card {
         background: #ffffff;
-        border-radius: 9999px;
-        padding: 16px 24px;
+        border-radius: 26px;
+        padding: 18px 20px;
         box-shadow: 0 12px 28px rgba(82, 58, 89, 0.10);
-        display: flex;
+        display: grid;
+        grid-template-columns: 1fr auto;
         align-items: center;
-        justify-content: space-between;
         gap: 16px;
       }
       .card h4 {
         margin: 0;
-        font-size: 18px;
+        font-size: 16px;
         color: #9aa3ad;
         font-weight: 700;
         letter-spacing: 0.5px;
       }
+      .card-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+      }
+      .card-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 8px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 800;
+        background: #eef2f7;
+        color: #64748b;
+      }
       .donut {
-        width: 56px;
-        height: 56px;
+        width: 64px;
+        height: 64px;
         border-radius: 50%;
         background: conic-gradient(#f5a25d var(--p), #f1f1f5 0);
         position: relative;
@@ -363,13 +447,29 @@ $progress_rows = array_values($base);
         z-index: 1;
       }
       .metric {
-        font-size: 14px;
+        font-size: 22px;
         font-weight: 800;
         letter-spacing: 0.2px;
         color: #4a5a6a;
+        line-height: 1.1;
       }
       .metric-sub { font-size: 11px; color: #8b90a3; }
       .metric-wrap { display: flex; align-items: center; gap: 12px; }
+      .card-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+        flex-wrap: wrap;
+      }
+      .card-mini {
+        font-size: 10px;
+        font-weight: 700;
+        color: #6b7280;
+        background: #f5f7fb;
+        border-radius: 999px;
+        padding: 4px 8px;
+      }
       .trend {
         font-size: 28px;
         font-weight: 900;
@@ -390,26 +490,113 @@ $progress_rows = array_values($base);
       }
 
       .panel-title {
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 700;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
+      }
+      .panel-subtitle {
+        color: #8a93a0;
+        font-size: 11px;
+        margin-bottom: 14px;
+      }
+      .overview-strip {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+      .summary-panel,
+      .attention-panel {
+        background: #ffffff;
+        border-radius: 20px;
+        padding: 16px;
+        box-shadow: 0 12px 24px rgba(82, 58, 89, 0.08);
+      }
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .summary-tile {
+        background: #f8fafc;
+        border-radius: 16px;
+        padding: 12px;
+      }
+      .summary-tile strong {
+        display: block;
+        font-size: 22px;
+        color: #1f2430;
+        margin-bottom: 4px;
+      }
+      .summary-tile span {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        color: #6b7280;
+      }
+      .summary-tile.emphasis {
+        background: linear-gradient(135deg, rgba(246, 183, 200, 0.18), rgba(245, 162, 93, 0.22));
+      }
+      .attention-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .attention-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 12px;
+        background: #fff8f1;
+        border-radius: 14px;
+      }
+      .attention-item strong {
+        display: block;
+        font-size: 12px;
+        color: #1f2430;
+      }
+      .attention-item span {
+        display: block;
+        font-size: 10px;
+        color: #9a3412;
+      }
+      .attention-score {
+        min-width: 48px;
+        text-align: center;
+        padding: 6px 8px;
+        border-radius: 999px;
+        background: rgba(245, 162, 93, 0.2);
+        color: #b45309;
+        font-size: 11px;
+        font-weight: 800;
+      }
+      .attention-empty {
+        margin-top: 12px;
+        padding: 14px 12px;
+        background: #f8fafc;
+        border-radius: 14px;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 600;
       }
       .progress-table {
         width: 100%;
         border-collapse: separate;
-        border-spacing: 0 6px;
+        border-spacing: 0 8px;
       }
       .progress-table th {
         text-align: left;
         font-size: 11px;
         color: #ffffff;
         font-weight: 700;
-        padding: 4px 6px;
+        padding: 10px 12px;
         background: var(--rh-gradient);
         border-radius: 8px;
       }
       .progress-table td {
-        padding: 6px;
+        padding: 10px 8px;
         background: #fff;
       }
       .progress-row {
@@ -417,10 +604,16 @@ $progress_rows = array_values($base);
         border-radius: 12px;
         box-shadow: 0 10px 20px rgba(82, 58, 89, 0.06);
       }
+      .progress-row:hover td {
+        background: #fbfcfe;
+      }
       .progress-row td:first-child {
         border-radius: 12px 0 0 12px;
         font-weight: 600;
         font-size: 11px;
+        position: sticky;
+        left: 0;
+        z-index: 1;
       }
       .progress-row td:last-child {
         border-radius: 0 12px 12px 0;
@@ -428,8 +621,22 @@ $progress_rows = array_values($base);
       .progress-cell {
         min-width: 140px;
       }
+      .kab-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .kab-name {
+        font-size: 12px;
+        font-weight: 700;
+        color: #1f2430;
+      }
+      .kab-sub {
+        font-size: 10px;
+        color: #8a93a0;
+      }
       .progress-bar {
-        height: 20px;
+        height: 24px;
         background: #f4edf6;
         border-radius: 999px;
         overflow: hidden;
@@ -469,6 +676,47 @@ $progress_rows = array_values($base);
       .progress-fill::after { display: none; }
       .progress-table { min-width: 760px; }
       .progress-table-wrap { overflow-x: auto; }
+      .online-summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .online-count {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: #f8fafc;
+        color: #475569;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .online-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 10px;
+      }
+      .online-item {
+        padding: 12px 14px;
+        border-radius: 16px;
+        background: #ffffff;
+        border: 1px solid #eef0f4;
+        box-shadow: 0 10px 22px rgba(56,65,80,0.06);
+      }
+      .online-item strong {
+        display: block;
+        font-size: 12px;
+        color: #1f2430;
+        margin-bottom: 4px;
+      }
+      .online-item span {
+        display: block;
+        font-size: 10px;
+        color: #8a93a0;
+      }
 
       @media (max-width: 1200px) {
         .cards { grid-template-columns: repeat(2, 1fr); }
@@ -476,6 +724,8 @@ $progress_rows = array_values($base);
         .app { grid-template-columns: 1fr; }
         .sidebar { flex-direction: row; justify-content: flex-start; overflow-x: auto; }
         .main { padding-right: 0; }
+        .overview-strip { grid-template-columns: 1fr; }
+        .summary-grid { grid-template-columns: repeat(2, 1fr); }
       }
       @media (max-width: 768px) {
         .app { grid-template-columns: 1fr; padding: 14px; }
@@ -486,6 +736,8 @@ $progress_rows = array_values($base);
         .pill { width: 100%; justify-content: space-between; }
         .pill select { width: 100%; }
         .cards { grid-template-columns: 1fr; }
+        .summary-grid { grid-template-columns: 1fr; }
+        .online-list { grid-template-columns: 1fr; }
       }
     
       /* A: Unified brand actions & table headers */
@@ -675,12 +927,25 @@ $progress_rows = array_values($base);
               $total = $summary_map[$label]['total'] ?? 0;
               $percent = $total > 0 ? (int)round(($filled / $total) * 100) : 0;
               $deg = $percent * 3.6;
+              $status_label = 'Perlu perhatian';
+              if ($label === $level_highest) {
+                  $status_label = 'Paling lengkap';
+              } elseif ($label === $level_lowest) {
+                  $status_label = 'Paling tertinggal';
+              }
           ?>
             <div class="card label-offset">
               <div>
-                <h4><?php echo $label; ?></h4>
-                <div class="metric"><?php echo $filled; ?> / <?php echo $total; ?></div>
-                <div class="metric-sub">Penjelasan terisi</div>
+                <div class="card-label">
+                  <h4><?php echo $label; ?></h4>
+                  <span class="card-pill"><?php echo htmlspecialchars($status_label); ?></span>
+                </div>
+                <div class="metric"><?php echo $percent; ?>%</div>
+                <div class="metric-sub"><?php echo $filled; ?> dari <?php echo $total; ?> penjelasan terisi</div>
+                <div class="card-meta">
+                  <span class="card-mini">Filled <?php echo $filled; ?></span>
+                  <span class="card-mini">Sisa <?php echo max(0, $total - $filled); ?></span>
+                </div>
               </div>
               <div class="donut" style="--p: <?php echo $deg; ?>deg;">
                 <div class="donut-label"><?php echo $percent; ?>%</div>
@@ -689,14 +954,59 @@ $progress_rows = array_values($base);
           <?php endforeach; ?>
         </div>
 
+        <div class="overview-strip">
+          <div class="summary-panel">
+            <div class="panel-title">Ringkasan Monitoring</div>
+            <div class="panel-subtitle">Snapshot cepat untuk melihat progres total dan level yang perlu difokuskan lebih dulu.</div>
+            <div class="summary-grid">
+              <div class="summary-tile emphasis">
+                <strong><?php echo $overall_percent; ?>%</strong>
+                <span>Progress keseluruhan</span>
+              </div>
+              <div class="summary-tile">
+                <strong><?php echo $completed_kabupaten; ?></strong>
+                <span>Kabupaten lengkap</span>
+              </div>
+              <div class="summary-tile">
+                <strong><?php echo htmlspecialchars((string)$level_lowest); ?></strong>
+                <span>Level paling tertinggal</span>
+              </div>
+              <div class="summary-tile">
+                <strong><?php echo count($needs_attention); ?></strong>
+                <span>Kabupaten prioritas</span>
+              </div>
+            </div>
+          </div>
+          <div class="attention-panel">
+            <div class="panel-title">Kabupaten Prioritas</div>
+            <div class="panel-subtitle">Daftar tercepat untuk melihat wilayah dengan progres terendah pada filter yang aktif.</div>
+            <?php if ($needs_attention): ?>
+              <div class="attention-list">
+                <?php foreach ($needs_attention as $item): ?>
+                  <div class="attention-item">
+                    <div>
+                      <strong><?php echo htmlspecialchars($item['nama']); ?></strong>
+                      <span><?php echo (int)$item['missing_levels']; ?> level belum lengkap dari <?php echo (int)$item['active_levels']; ?> level aktif</span>
+                    </div>
+                    <div class="attention-score"><?php echo (int)$item['avg_percent']; ?>%</div>
+                  </div>
+                <?php endforeach; ?>
+              </div>
+            <?php else: ?>
+              <div class="attention-empty">Semua kabupaten yang memiliki data pada filter ini sudah lengkap.</div>
+            <?php endif; ?>
+          </div>
+        </div>
+
         <div class="panel" style="margin-top:16px;">
           <div class="panel-title">Progress Pengisian Penjelasan Perubahan Harga per Kabupaten/Kota</div>
-          <div style="color:#8a93a0;font-size:11px;margin-top:-6px;margin-bottom:8px;">Update terakhir: <?php echo htmlspecialchars($last_updated); ?></div>
+          <div class="panel-subtitle">Urutan tabel dimulai dari progres rata-rata terendah agar kabupaten yang perlu perhatian muncul lebih dulu. Update terakhir: <?php echo htmlspecialchars($last_updated); ?></div>
           <div class="progress-table-wrap">
             <table class="progress-table">
               <thead>
                 <tr>
                   <th>Kabupaten/Kota</th>
+                  <th>Rata-rata</th>
                   <th>HK</th>
                   <th>HPB</th>
                   <th>HD</th>
@@ -706,7 +1016,18 @@ $progress_rows = array_values($base);
               <tbody>
                 <?php foreach ($progress_rows as $row): ?>
                   <tr class="progress-row">
-                    <td><?php echo htmlspecialchars($row['nama']); ?></td>
+                    <td>
+                      <div class="kab-meta">
+                        <span class="kab-name"><?php echo htmlspecialchars($row['nama']); ?></span>
+                        <span class="kab-sub"><?php echo (int)($row['missing_levels'] ?? 0); ?> level belum lengkap</span>
+                      </div>
+                    </td>
+                    <td class="progress-cell">
+                      <div class="progress-bar">
+                        <div class="progress-fill fill-hk" style="width: <?php echo (int)($row['avg_percent'] ?? 0); ?>%;"></div>
+                        <div class="progress-text"><?php echo (int)($row['avg_percent'] ?? 0); ?>%</div>
+                      </div>
+                    </td>
                     <?php
                       $labels = ['HK' => 'fill-hk', 'HPB' => 'fill-hpb', 'HD' => 'fill-hd', 'HKD' => 'fill-hkd'];
                     foreach ($labels as $key => $class):
@@ -733,13 +1054,18 @@ $progress_rows = array_values($base);
 
         <div class="panel" style="margin-top:16px;">
           <div class="panel-title">Pengguna Online (10 menit terakhir)</div>
+          <div class="online-summary">
+            <div class="panel-subtitle" style="margin:0;">Akun yang masih aktif dalam 10 menit terakhir. Cocok untuk memantau siapa yang sedang bekerja di sistem.</div>
+            <div class="online-count"><i class="mdi mdi-account-circle-outline"></i> <?php echo count($online_users); ?> akun online</div>
+          </div>
           <?php if (empty($online_users)): ?>
             <div style="color:#8a93a0;font-size:12px;padding:6px 0;">Belum ada pengguna online.</div>
           <?php else: ?>
-            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">
+            <div class="online-list">
               <?php foreach ($online_users as $ou): ?>
-                <div style="padding:6px 10px;border-radius:999px;background:#fff;border:1px solid #eef0f4;font-size:12px;color:#6b7280;box-shadow:0 6px 14px rgba(56,65,80,0.08);">
-                  <?php echo htmlspecialchars($ou['email']); ?>
+                <div class="online-item">
+                  <strong><?php echo htmlspecialchars($ou['email']); ?></strong>
+                  <span>Aktif terakhir: <?php echo htmlspecialchars(date('d M Y H:i', strtotime((string)$ou['last_seen']))); ?></span>
                 </div>
               <?php endforeach; ?>
             </div>
