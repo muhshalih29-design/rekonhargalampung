@@ -315,6 +315,32 @@ foreach ($stmt_tabs as $row) {
         $komoditas_tabs[] = $k;
     }
 }
+$komoditas_done_map = [];
+$tab_status_where = $where;
+$tab_status_params = $params;
+if (is_kabupaten($user) && !empty($user['kab_kode'])) {
+    $tab_status_where[] = 'kode_kabupaten = ?';
+    $tab_status_params[] = (string)$user['kab_kode'];
+}
+$tab_status_sql = "SELECT komoditas,
+    SUM(CASE WHEN perubahan IS NOT NULL AND perubahan <> 0 THEN 1 ELSE 0 END) AS total_nonzero,
+    SUM(CASE WHEN perubahan IS NOT NULL AND perubahan <> 0 AND penjelasan IS NOT NULL AND TRIM(penjelasan) <> '' THEN 1 ELSE 0 END) AS filled_nonzero
+    FROM shk";
+if ($tab_status_where) {
+    $tab_status_sql .= ' WHERE ' . implode(' AND ', $tab_status_where);
+}
+$tab_status_sql .= ' GROUP BY komoditas';
+$stmt_tab_status = $pdo->prepare($tab_status_sql);
+$stmt_tab_status->execute($tab_status_params);
+foreach ($stmt_tab_status as $status_row) {
+    $k = isset($status_row['komoditas']) ? trim((string)$status_row['komoditas']) : '';
+    if ($k === '') {
+        continue;
+    }
+    $total_nonzero = (int)($status_row['total_nonzero'] ?? 0);
+    $filled_nonzero = (int)($status_row['filled_nonzero'] ?? 0);
+    $komoditas_done_map[$k] = $total_nonzero > 0 && $filled_nonzero >= $total_nonzero;
+}
 $komoditas_selected = isset($_GET['komoditas']) ? trim($_GET['komoditas']) : '';
 if ($komoditas_selected === '' && !empty($komoditas_tabs)) {
     $komoditas_selected = $komoditas_tabs[0];
@@ -452,11 +478,23 @@ $columns = [
         transition: all .2s ease;
         box-shadow: 0 6px 16px rgba(56,65,80,0.06);
       }
+      .tab-btn .tab-check {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 6px;
+        font-size: 12px;
+        color: #16a34a;
+        line-height: 1;
+      }
       .tab-btn.active {
         background: linear-gradient(135deg, #f6b7c8, #f5a25d);
         color: #fff;
         border-color: transparent;
         box-shadow: 0 12px 24px rgba(255, 122, 182, 0.25);
+      }
+      .tab-btn.active .tab-check {
+        color: #ffffff;
       }
       .table-card.hidden { display: none; }
 
@@ -1079,6 +1117,9 @@ $columns = [
               <?php $is_active = ($k === $komoditas_selected) ? 'active' : ''; ?>
               <button type="button" class="tab-btn <?php echo $is_active; ?>" data-komoditas="<?php echo htmlspecialchars($k); ?>">
                 <?php echo htmlspecialchars($k); ?>
+                <?php if (!empty($komoditas_done_map[$k])): ?>
+                  <span class="tab-check" title="Penjelasan untuk role ini sudah lengkap"><i class="mdi mdi-check-circle"></i></span>
+                <?php endif; ?>
               </button>
             <?php endforeach; ?>
           </div>
