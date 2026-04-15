@@ -245,18 +245,6 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $rows = $stmt->fetchAll();
 
-$avg_all = null;
-$avg_sql = 'SELECT AVG(NULLIF(perubahan_rata_rata,0)) AS avg_perubahan FROM ekstrem';
-if ($where) {
-    $avg_sql .= ' WHERE ' . implode(' AND ', $where);
-}
-$stmt_avg = $pdo->prepare($avg_sql);
-$stmt_avg->execute($params);
-$avg_row = $stmt_avg->fetch();
-if ($avg_row) {
-    $avg_all = $avg_row['avg_perubahan'];
-}
-
 $columns = [
     'subsektor' => 'Subsektor',
     'kab' => 'Kab/Kot',
@@ -502,28 +490,6 @@ $columns = [
         gap: 12px;
         margin-bottom: 10px;
       }
-      .avg-pill {
-        background: linear-gradient(135deg, #f6b7c8, #f5a25d);
-        color: #ffffff;
-        padding: 8px 14px;
-        border-radius: 999px;
-        font-size: 13px;
-        font-weight: 700;
-        white-space: nowrap;
-        box-shadow: 0 10px 24px rgba(255, 122, 182, 0.35);
-      }
-      .avg-pill .avg-trend {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        font-weight: 800;
-        margin-right: 6px;
-      }
-      .avg-pill .avg-trend.pos { color: #16a34a; }
-      .avg-pill .avg-trend.neg { color: #ef4444; }
-      .avg-pill .avg-trend.zero { color: #6b7280; }
-
       table { width: 100%; border-collapse: separate; border-spacing: 0; }
       .ekstrem-table th:nth-child(1),
       .ekstrem-table td:nth-child(1) { width: 90px; }
@@ -636,9 +602,9 @@ $columns = [
       }
     
       /* B: Status colors */
-      .text-perubahan-pos, .avg-pill .avg-trend.pos, .trend-up, .badge-pos, .mini-out.pos { color: #168f4a !important; }
-      .text-perubahan-neg, .avg-pill .avg-trend.neg, .trend-down, .badge-neg, .mini-out.neg { color: #d94b4b !important; }
-      .avg-pill .avg-trend.zero, .badge-zero { color: #6b7280 !important; }
+      .text-perubahan-pos, .trend-up, .badge-pos, .mini-out.pos { color: #168f4a !important; }
+      .text-perubahan-neg, .trend-down, .badge-neg, .mini-out.neg { color: #d94b4b !important; }
+      .badge-zero { color: #6b7280 !important; }
     
       /* A: Unified brand actions & table headers */
       :root {
@@ -655,7 +621,6 @@ $columns = [
         border: none !important;
         box-shadow: 0 10px 22px rgba(242, 139, 43, 0.25) !important;
       }
-      .avg-pill,
       .badge-important {
         background: var(--rh-gradient) !important;
         color: #f7f5fb !important;
@@ -730,14 +695,10 @@ $columns = [
             <div class="text-center">Belum ada data.</div>
           </div>
         <?php else: ?>
-          <?php
-            $row_index = 0;
-            $avg_display = ($avg_all === null) ? '-' : number_format((float)$avg_all, 2, ',', '.');
-          ?>
+          <?php $row_index = 0; ?>
           <div class="table-card" style="margin-bottom:16px;">
             <div class="komoditas-head">
               <div style="font-weight:700;">Tabel Ekstrem</div>
-              <div class="avg-pill"><span class="avg-trend zero">=</span>Rata-rata perubahan: <span class="avg-value"><?php echo htmlspecialchars($avg_display); ?></span></div>
             </div>
             <div class="table-responsive"><table class="ekstrem-table"><thead><tr>
               <?php
@@ -917,66 +878,19 @@ $columns = [
             row.classList.add('row-neg');
           }
         }
-        function updateAvgForCard(card) {
-          if (!card) return;
-          var avgEl = card.querySelector('.avg-value');
-          if (!avgEl) return;
-          var trendEl = card.querySelector('.avg-trend');
-          var inputs = card.querySelectorAll('.perubahan-input');
-          var sum = 0;
-          var count = 0;
-          inputs.forEach(function (inp) {
-            var val = parseIdNumber(inp.value);
-            if (val !== null && val !== 0) {
-              sum += val;
-              count += 1;
-            }
-          });
-          if (count === 0) {
-            avgEl.textContent = '-';
-            if (trendEl) {
-              trendEl.textContent = '=';
-              trendEl.className = 'avg-trend zero';
-            }
-            return;
-          }
-          var avg = sum / count;
-          avgEl.textContent = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(avg);
-          if (trendEl) {
-            if (avg > 0) {
-              trendEl.textContent = '▲';
-              trendEl.className = 'avg-trend pos';
-            } else if (avg < 0) {
-              trendEl.textContent = '▼';
-              trendEl.className = 'avg-trend neg';
-            } else {
-              trendEl.textContent = '=';
-              trendEl.className = 'avg-trend zero';
-            }
-          }
-        }
-        function updateAllAverages() {
-          var cards = document.querySelectorAll('.table-card');
-          cards.forEach(function (card) { updateAvgForCard(card); });
-        }
-
         var perubahanInputs = document.querySelectorAll('.perubahan-input');
         perubahanInputs.forEach(function (inp) {
           inp.addEventListener('input', function () {
             updateTrend(inp);
             updateRowHighlight(inp);
-            updateAvgForCard(inp.closest('.table-card'));
           });
           inp.addEventListener('blur', function () {
             updateTrend(inp);
             updateRowHighlight(inp);
-            updateAvgForCard(inp.closest('.table-card'));
           });
           updateTrend(inp);
           updateRowHighlight(inp);
-          updateAvgForCard(inp.closest('.table-card'));
         });
-        updateAllAverages();
 
         function getCellValue(cell) {
           if (!cell) return '';
