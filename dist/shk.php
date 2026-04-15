@@ -887,14 +887,15 @@ $columns = [
       .tabs::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 999px; }
       .tab-btn {
         white-space: normal;
-        flex: 0 0 172px;
-        min-height: 44px;
+        flex: 0 0 148px;
+        min-height: 38px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         text-align: center;
-        line-height: 1.3;
-        padding: 10px 14px;
+        line-height: 1.25;
+        padding: 8px 12px;
+        font-size: 11px;
       }
 
       @media (max-width: 768px) {
