@@ -455,21 +455,6 @@ $overall_percent = $overall_total > 0 ? (int)round(($overall_filled / $overall_t
       }
       .metric-sub { font-size: 11px; color: #8b90a3; }
       .metric-wrap { display: flex; align-items: center; gap: 12px; }
-      .card-meta {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-top: 8px;
-        flex-wrap: wrap;
-      }
-      .card-mini {
-        font-size: 10px;
-        font-weight: 700;
-        color: #6b7280;
-        background: #f5f7fb;
-        border-radius: 999px;
-        padding: 4px 8px;
-      }
       .trend {
         font-size: 28px;
         font-weight: 900;
@@ -942,10 +927,6 @@ $overall_percent = $overall_total > 0 ? (int)round(($overall_filled / $overall_t
                 </div>
                 <div class="metric"><?php echo $percent; ?>%</div>
                 <div class="metric-sub"><?php echo $filled; ?> dari <?php echo $total; ?> penjelasan terisi</div>
-                <div class="card-meta">
-                  <span class="card-mini">Filled <?php echo $filled; ?></span>
-                  <span class="card-mini">Sisa <?php echo max(0, $total - $filled); ?></span>
-                </div>
               </div>
               <div class="donut" style="--p: <?php echo $deg; ?>deg;">
                 <div class="donut-label"><?php echo $percent; ?>%</div>
