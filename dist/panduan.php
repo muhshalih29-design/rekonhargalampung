@@ -118,10 +118,160 @@ $user = require_auth();
       .card p { margin: 6px 0; color: #5b6471; font-size: 13px; }
       .card .step { margin: 10px 0; padding: 10px 12px; border-radius: 12px; background: #f8fafc; border: 1px solid #eef2f7; }
       .card .step strong { display: block; margin-bottom: 4px; }
+      .guide-grid {
+        display: grid;
+        grid-template-columns: 1.15fr 1fr;
+        gap: 14px;
+        margin-top: 14px;
+      }
+      .quick-grid,
+      .legend-grid,
+      .role-grid,
+      .page-grid,
+      .faq-grid {
+        display: grid;
+        gap: 10px;
+      }
+      .quick-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+      .quick-card,
+      .legend-item,
+      .role-card,
+      .page-item,
+      .faq-item {
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: #f8fafc;
+        border: 1px solid #eef2f7;
+      }
+      .quick-card strong,
+      .legend-item strong,
+      .role-card strong,
+      .page-item strong,
+      .faq-item strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+      .quick-card span,
+      .legend-item span,
+      .role-card span,
+      .page-item span,
+      .faq-item span {
+        display: block;
+        color: #5b6471;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .quick-card {
+        background: linear-gradient(180deg, #fffaf7 0%, #ffffff 100%);
+      }
+      .quick-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #f6b7c8, #f5a25d);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 800;
+        margin-bottom: 8px;
+      }
+      .role-grid,
+      .page-grid,
+      .faq-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .role-card.emphasis {
+        background: linear-gradient(180deg, #fff8f4 0%, #ffffff 100%);
+      }
+      .legend-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .legend-badge {
+        min-width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 800;
+      }
+      .legend-badge.pos {
+        background: rgba(22, 143, 74, 0.10);
+        color: #168f4a;
+      }
+      .legend-badge.neg {
+        background: rgba(217, 75, 75, 0.10);
+        color: #d94b4b;
+      }
+      .legend-badge.locked {
+        background: #cbd5e1;
+        color: #475569;
+      }
+      .legend-badge.warn {
+        background: rgba(249, 115, 22, 0.12);
+        color: #f97316;
+      }
+      .page-grid {
+        margin-top: 10px;
+      }
+      .page-item {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .page-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #ffffff;
+        border: 1px solid #eef2f7;
+        box-shadow: 0 6px 14px rgba(56, 65, 80, 0.06);
+        flex: 0 0 auto;
+      }
+      .page-icon img {
+        width: 18px;
+        height: 18px;
+        display: block;
+      }
+      .hint-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .hint-pill {
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: #ffffff;
+        border: 1px solid #eef2f7;
+        color: #5b6471;
+        font-size: 12px;
+        font-weight: 600;
+        box-shadow: 0 6px 14px rgba(56, 65, 80, 0.06);
+      }
       @media (max-width: 1200px) {
         .app { grid-template-columns: 1fr; }
         .sidebar { flex-direction: row; justify-content: flex-start; overflow-x: auto; }
         .main { padding-right: 0; }
+        .guide-grid,
+        .role-grid,
+        .page-grid,
+        .faq-grid {
+          grid-template-columns: 1fr;
+        }
+        .quick-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
       }
       @media (max-width: 768px) {
         .app { padding: 14px; }
@@ -129,6 +279,9 @@ $user = require_auth();
         .logo { width: 38px; height: 38px; }
         .nav-dot { width: 40px; height: 40px; }
         .topbar { grid-template-columns: 1fr; }
+        .quick-grid {
+          grid-template-columns: 1fr;
+        }
       }
     
       /* A: Unified brand actions & table headers */
@@ -181,79 +334,226 @@ $user = require_auth();
         <div class="topbar">
           <div>
             <div class="hello">Panduan Admin Kabupaten/Kota</div>
-            <div class="subhello">Cara pengisian data oleh admin kabupaten/kota.</div>
+            <div class="subhello">Panduan penggunaan sistem untuk admin kabupaten/kota dan admin provinsi.</div>
           </div>
           <a class="icon-btn" href="logout.php" title="Logout"><i class="mdi mdi-logout"></i></a>
         </div>
 
         <div class="card">
-          <h3>Ringkas</h3>
-          <p>Admin Kabupaten/Kota hanya dapat mengedit kolom <strong>Penjelasan</strong> pada kabupaten/kota miliknya. Kolom lain tampil abu‑abu dan tidak bisa diubah.</p>
-        </div>
-
-        <div class="card" style="margin-top:14px;">
-          <h3>Dashboard</h3>
-          <p>Halaman Dashboard menampilkan <strong>progres pengisian penjelasan</strong> per kabupaten/kota. Bar menunjukkan persentase baris yang sudah terisi penjelasan untuk nilai perubahan yang bukan 0.</p>
-          <p>Jika suatu level harga (HK/HPB/HD/HKD) tidak tersedia pada kabupaten tertentu, bar level tersebut tidak ditampilkan.</p>
-        </div>
-
-        <div class="card" style="margin-top:14px;">
-          <h3>Ikon & Fungsi Halaman</h3>
-          <div class="step">
-            <strong>Dashboard</strong>
-            <p>Ringkasan progres pengisian penjelasan per kabupaten/kota.</p>
+          <h3>Mulai dari Mana</h3>
+          <p>Halaman ini dirancang supaya pengguna baru bisa langsung memahami alur kerja utama sebelum mulai mengisi data.</p>
+          <div class="quick-grid">
+            <div class="quick-card">
+              <div class="quick-number">1</div>
+              <strong>Pilih halaman</strong>
+              <span>Masuk ke HK, HPB, HD, HKD, Hulu Hilir Beras, atau Ekstrem sesuai jenis data yang akan diisi.</span>
+            </div>
+            <div class="quick-card">
+              <div class="quick-number">2</div>
+              <strong>Pilih periode</strong>
+              <span>Gunakan filter bulan dan tahun agar data yang tampil sesuai periode kerja yang sedang diproses.</span>
+            </div>
+            <div class="quick-card">
+              <div class="quick-number">3</div>
+              <strong>Isi data</strong>
+              <span>Ketik pada sel yang aktif. Gunakan <strong>Enter</strong> untuk ke bawah dan <strong>Tab</strong> untuk ke kanan.</span>
+            </div>
+            <div class="quick-card">
+              <div class="quick-number">4</div>
+              <strong>Pastikan tersimpan</strong>
+              <span>Sistem akan menyimpan otomatis saat pindah sel atau saat pengguna berhenti mengisi beberapa saat.</span>
+            </div>
           </div>
-          <div class="step">
-            <strong>Perbandingan Harga</strong>
-            <p>Perbandingan rata-rata perubahan HK/HPB/HD/HKD per kabupaten/kota.</p>
-          </div>
-          <div class="step">
-            <strong>HK</strong>
-            <p>Konfirmasi perubahan harga konsumen.</p>
-          </div>
-          <div class="step">
-            <strong>HPB</strong>
-            <p>Konfirmasi perubahan harga perdagangan besar.</p>
-          </div>
-          <div class="step">
-            <strong>HD</strong>
-            <p>Konfirmasi perubahan harga produsen pedesaan.</p>
-          </div>
-          <div class="step">
-            <strong>HKD</strong>
-            <p>Konfirmasi perubahan harga konsumen pedesaan.</p>
-          </div>
-          <div class="step">
-            <strong>Hulu Hilir Beras</strong>
-            <p>Tabel gabah & beras (SHPED_HD, SHPED_HKD, SHP, HPB, HK) per kabupaten/kota.</p>
-          </div>
-          <div class="step">
-            <strong>Ekstrem</strong>
-            <p>Input data harga ekstrem per subsektor/komoditas dan konfirmasi kabupaten.</p>
-          </div>
-          <div class="step">
-            <strong>Panduan</strong>
-            <p>Petunjuk penggunaan untuk admin kabupaten/kota.</p>
+          <div class="hint-strip">
+            <div class="hint-pill">Autosave aktif</div>
+            <div class="hint-pill">Enter = pindah ke bawah</div>
+            <div class="hint-pill">Tab = pindah ke kanan</div>
+            <div class="hint-pill">Kolom abu-abu = tidak bisa diedit</div>
           </div>
         </div>
 
         <div class="card" style="margin-top:14px;">
-          <h3>Langkah Pengisian</h3>
-          <div class="step">
-            <strong>1) Pilih bulan dan tahun</strong>
-            <p>Gunakan filter di bagian atas halaman untuk memilih periode data.</p>
+          <h3>Role & Hak Akses</h3>
+          <div class="role-grid">
+            <div class="role-card emphasis">
+              <strong>Admin Kabupaten/Kota</strong>
+              <span>Dapat melihat semua halaman, tetapi hanya dapat mengedit bagian yang diizinkan untuk kabupaten/kotanya sendiri. Pada halaman konfirmasi perubahan harga, fokus utamanya ada pada kolom <strong>Penjelasan</strong>.</span>
+            </div>
+            <div class="role-card">
+              <strong>Admin Provinsi</strong>
+              <span>Dapat mengakses seluruh data dan fitur administratif, termasuk <strong>tambah komoditas</strong> serta <strong>hapus komoditas</strong> pada halaman level harga yang mendukung.</span>
+            </div>
+            <div class="role-card">
+              <strong>Bisa Diedit</strong>
+              <span>Sel aktif dengan latar putih normal, kolom penjelasan, data ekstrem yang relevan, dan area input yang memang dibuka untuk role Anda.</span>
+            </div>
+            <div class="role-card">
+              <strong>Tidak Bisa Diedit</strong>
+              <span>Sel abu-abu, kolom yang dikunci sistem, serta baris atau kabupaten yang tidak sesuai dengan hak akses akun yang sedang login.</span>
+            </div>
           </div>
-          <div class="step">
-            <strong>2) Cari baris kabupaten/kota</strong>
-            <p>Pastikan baris kabupaten/kota yang tampil sesuai kode kabupaten Anda.</p>
+        </div>
+
+        <div class="card" style="margin-top:14px;">
+          <h3>Status Warna & Simbol</h3>
+          <div class="legend-grid">
+            <div class="legend-item">
+              <div class="legend-badge pos">▲</div>
+              <div>
+                <strong>Hijau / Positif</strong>
+                <span>Menunjukkan perubahan bernilai positif atau arah naik.</span>
+              </div>
+            </div>
+            <div class="legend-item">
+              <div class="legend-badge neg">▼</div>
+              <div>
+                <strong>Merah / Negatif</strong>
+                <span>Menunjukkan perubahan bernilai negatif atau arah turun.</span>
+              </div>
+            </div>
+            <div class="legend-item">
+              <div class="legend-badge locked">-</div>
+              <div>
+                <strong>Sel Abu-abu</strong>
+                <span>Kolom terkunci, tidak relevan untuk wilayah tertentu, atau tidak bisa diedit oleh role yang sedang login.</span>
+              </div>
+            </div>
+            <div class="legend-item">
+              <div class="legend-badge warn">⚠</div>
+              <div>
+                <strong>Tanda Warning</strong>
+                <span>Menunjukkan arah perubahan yang tidak sejalan antar level harga atau ada kondisi yang perlu dicek lebih lanjut.</span>
+              </div>
+            </div>
           </div>
-          <div class="step">
-            <strong>3) Isi kolom Penjelasan</strong>
-            <p>Ketik penjelasan pada kolom <strong>Penjelasan</strong>. Sistem akan menyimpan otomatis.</p>
+        </div>
+
+        <div class="card" style="margin-top:14px;">
+          <h3>Ikon Sidebar & Fungsi Halaman</h3>
+          <div class="page-grid">
+            <div class="page-item">
+              <div class="page-icon"><i class="mdi mdi-view-dashboard"></i></div>
+              <div>
+                <strong>Dashboard</strong>
+                <span>Ringkasan progres pengisian penjelasan per kabupaten/kota, kabupaten prioritas, dan pengguna yang sedang online.</span>
+              </div>
+            </div>
+            <div class="page-item">
+              <div class="page-icon"><i class="mdi mdi-chart-line"></i></div>
+              <div>
+                <strong>Perbandingan Harga</strong>
+                <span>Melihat perbandingan rata-rata perubahan HK, HPB, HD, dan HKD serta arah perubahan per kabupaten/kota.</span>
+              </div>
+            </div>
+            <div class="page-item">
+              <div class="page-icon"><span class="nav-text">HK</span></div>
+              <div>
+                <strong>HK</strong>
+                <span>Konfirmasi perubahan harga konsumen, input SP2KP, catatan, penurunan konsumsi, dan penjelasan.</span>
+              </div>
+            </div>
+            <div class="page-item">
+              <div class="page-icon"><span class="nav-text">HPB</span></div>
+              <div>
+                <strong>HPB</strong>
+                <span>Konfirmasi perubahan harga perdagangan besar dengan struktur tabel per komoditas.</span>
+              </div>
+            </div>
+            <div class="page-item">
+              <div class="page-icon"><span class="nav-text">HD</span></div>
+              <div>
+                <strong>HD</strong>
+                <span>Konfirmasi perubahan harga produsen pedesaan dan pengisian penjelasan per komoditas.</span>
+              </div>
+            </div>
+            <div class="page-item">
+              <div class="page-icon"><span class="nav-text">HKD</span></div>
+              <div>
+                <strong>HKD</strong>
+                <span>Konfirmasi perubahan harga konsumen pedesaan untuk komoditas yang tersedia pada tabel HKD.</span>
+              </div>
+            </div>
+            <div class="page-item">
+              <div class="page-icon"><img src="assets/images/rice-2.png" alt="Hulu Hilir Beras"></div>
+              <div>
+                <strong>Hulu Hilir Beras</strong>
+                <span>Pengisian tabel gabah dan beras yang menghubungkan SHPED_HD, SHPED_HKD, SHP, HPB, dan HK.</span>
+              </div>
+            </div>
+            <div class="page-item">
+              <div class="page-icon"><img src="assets/images/warning.png" alt="Ekstrem"></div>
+              <div>
+                <strong>Ekstrem</strong>
+                <span>Input data harga ekstrem per subsektor, komoditas, kualitas, satuan, dan konfirmasi kabupaten.</span>
+              </div>
+            </div>
+            <div class="page-item">
+              <div class="page-icon"><i class="mdi mdi-book-open-variant"></i></div>
+              <div>
+                <strong>Panduan</strong>
+                <span>Ringkasan alur kerja, hak akses, legenda warna, ikon sidebar, dan pertanyaan yang sering muncul.</span>
+              </div>
+            </div>
           </div>
-          <div class="step">
-            <strong>4) Pindah baris dengan Enter/Tab</strong>
-            <p>Enter untuk pindah ke baris bawah, Tab untuk pindah ke sel kanan (jika tersedia).</p>
+        </div>
+
+        <div class="card" style="margin-top:14px;">
+          <h3>Langkah Pengisian Data</h3>
+          <div class="guide-grid">
+            <div>
+              <div class="step">
+                <strong>1) Pilih bulan dan tahun</strong>
+                <p>Gunakan filter di bagian atas halaman agar data yang tampil sesuai periode kerja.</p>
+              </div>
+              <div class="step">
+                <strong>2) Cari komoditas dan baris wilayah</strong>
+                <p>Gunakan tab komoditas atau filter yang tersedia, lalu pastikan baris kabupaten/kota sesuai dengan wilayah yang sedang dikerjakan.</p>
+              </div>
+              <div class="step">
+                <strong>3) Isi sel yang aktif</strong>
+                <p>Ketik langsung pada field yang terbuka. Jika kolom berwarna abu-abu, berarti field tersebut tidak dapat diedit oleh akun Anda.</p>
+              </div>
+              <div class="step">
+                <strong>4) Gunakan keyboard navigation</strong>
+                <p><strong>Enter</strong> untuk ke bawah dan <strong>Tab</strong> untuk ke kanan. Ini mempercepat pengisian saat data cukup banyak.</p>
+              </div>
+            </div>
+            <div>
+              <div class="step">
+                <strong>5) Pastikan autosave berjalan</strong>
+                <p>Sistem akan menyimpan otomatis saat pengguna pindah sel, blur dari field, atau berhenti mengetik beberapa saat.</p>
+              </div>
+              <div class="step">
+                <strong>6) Periksa simbol dan warning</strong>
+                <p>Jika ada tanda warning, cek kembali apakah arah perubahan antar level harga sudah konsisten atau perlu konfirmasi tambahan.</p>
+              </div>
+              <div class="step">
+                <strong>7) Pantau progres di Dashboard</strong>
+                <p>Dashboard dapat dipakai untuk melihat progres pengisian, level harga yang tertinggal, dan kabupaten yang masih perlu perhatian.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:14px;">
+          <h3>Pertanyaan yang Sering Muncul</h3>
+          <div class="faq-grid">
+            <div class="faq-item">
+              <strong>Kenapa kolom saya abu-abu?</strong>
+              <span>Kolom tersebut dikunci oleh sistem, tidak relevan untuk wilayah tertentu, atau tidak bisa diedit oleh role akun yang sedang login.</span>
+            </div>
+            <div class="faq-item">
+              <strong>Bagaimana tahu data sudah tersimpan?</strong>
+              <span>Data akan tersimpan otomatis saat Anda pindah sel atau berhenti mengisi. Setelah halaman di-refresh, nilai yang tersimpan akan tetap tampil.</span>
+            </div>
+            <div class="faq-item">
+              <strong>Kenapa data tidak muncul saat filter?</strong>
+              <span>Biasanya karena bulan, tahun, atau komoditas yang dipilih belum memiliki data. Periksa kembali filter dan kembalikan ke periode yang benar.</span>
+            </div>
+            <div class="faq-item">
+              <strong>Apa arti tanda warning?</strong>
+              <span>Warning menunjukkan ada kondisi yang perlu perhatian, misalnya arah perubahan tidak sejalan atau isian tertentu perlu dicek ulang.</span>
+            </div>
           </div>
         </div>
       </main>
