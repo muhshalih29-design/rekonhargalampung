@@ -877,13 +877,34 @@ $columns = [
       .tabs {
         display: flex;
         gap: 8px;
-        overflow-x: auto;
-        padding-bottom: 6px;
+        flex-wrap: wrap;
+        overflow: visible;
+        padding-bottom: 0;
+        align-items: stretch;
         scrollbar-width: thin;
       }
       .tabs::-webkit-scrollbar { height: 6px; }
       .tabs::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 999px; }
-      .tab-btn { white-space: nowrap; flex: 0 0 auto; }
+      .tab-btn {
+        white-space: normal;
+        flex: 0 0 172px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        line-height: 1.3;
+        padding: 10px 14px;
+      }
+
+      @media (max-width: 768px) {
+        .tabs {
+          gap: 8px;
+        }
+        .tab-btn {
+          flex-basis: calc(50% - 4px);
+        }
+      }
     
       /* A: Unified brand actions & table headers */
       :root {
