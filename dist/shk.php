@@ -429,22 +429,28 @@ $columns = [
         margin-bottom: 16px;
       }
       .tabs {
-        margin: 54px 0 18px;
+        margin: 26px 0 18px;
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
+        gap: 8px;
+        padding: 8px;
+        background: rgba(255, 255, 255, 0.68);
+        border: 1px solid #eef0f4;
+        border-radius: 20px;
+        box-shadow: 0 10px 24px rgba(56, 65, 80, 0.06);
+        align-content: flex-start;
       }
       .tab-btn {
         border: 1px solid #e5e7eb;
         background: #ffffff;
         color: #475569;
-        padding: 8px 14px;
+        padding: 7px 12px;
         border-radius: 999px;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 600;
         cursor: pointer;
         transition: all .2s ease;
-        box-shadow: 0 8px 20px rgba(56,65,80,0.08);
+        box-shadow: 0 6px 16px rgba(56,65,80,0.06);
       }
       .tab-btn.active {
         background: linear-gradient(135deg, #f6b7c8, #f5a25d);
@@ -878,32 +884,39 @@ $columns = [
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
-        overflow: visible;
-        padding-bottom: 0;
-        align-items: stretch;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-bottom: 2px;
+        align-items: flex-start;
         scrollbar-width: thin;
+        max-height: 92px;
       }
       .tabs::-webkit-scrollbar { height: 6px; }
       .tabs::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 999px; }
       .tab-btn {
-        white-space: normal;
-        flex: 0 0 148px;
-        min-height: 38px;
+        white-space: nowrap;
+        flex: 0 0 auto;
+        min-height: 32px;
+        max-width: 180px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         text-align: center;
-        line-height: 1.25;
-        padding: 8px 12px;
+        line-height: 1.1;
+        padding: 7px 12px;
         font-size: 11px;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       @media (max-width: 768px) {
         .tabs {
-          gap: 8px;
+          max-height: none;
+          overflow: visible;
         }
         .tab-btn {
-          flex-basis: calc(50% - 4px);
+          max-width: 100%;
+          flex-basis: auto;
         }
       }
     
