@@ -323,34 +323,112 @@ foreach ($rows as $r) {
       .table-card {
         background: var(--card);
         border-radius: var(--radius);
-        padding: 16px;
+        padding: 18px;
         box-shadow: 0 14px 28px rgba(56, 65, 80, 0.10);
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
       }
-      table { width: 100%; border-collapse: collapse; min-width: 1320px; }
-      th, td { border: 1px solid #e5e7eb; }
-      th { background: #445468; color: #fff; font-size: 10px; padding: 3px 6px; text-align: center; }
-      thead th { position: sticky; top: 0; z-index: 2; }
-      .head-yellow { background: linear-gradient(135deg, #f6b7c8, #f5a25d); color: #fff; font-weight: 700; }
-      .head-pink { background: #e9edf3; color: #445468; font-weight: 700; }
-      .subhead { background: #58697d; color: #fff; font-weight: 700; }
-      .subhead-dark { background: #3f4f63; color: #fff; font-weight: 700; }
-      .col-fixed { background: #ffffff; font-weight: 600; }
-      .rh-col { background: #fff3c4; }
-      .beras-col { background: #ffffff; }
+      table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 1460px; }
+      th, td { border: none; }
+      th {
+        background: #445468;
+        color: #fff;
+        font-size: 11px;
+        padding: 8px 8px;
+        text-align: center;
+      }
+      thead th { position: sticky; z-index: 2; }
+      thead tr:first-child th { top: 0; }
+      thead tr:nth-child(2) th { top: 40px; }
+      .group-head {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        padding-top: 10px;
+        padding-bottom: 10px;
+      }
+      .head-kab {
+        background: linear-gradient(135deg, #f6b7c8, #f5a25d);
+        color: #fff;
+        min-width: 178px;
+      }
+      .head-gabah {
+        background: linear-gradient(135deg, #f7ecd1, #f0d39f);
+        color: #5b4625;
+      }
+      .head-beras {
+        background: linear-gradient(135deg, #fff1d7, #f8e0a7);
+        color: #5a4623;
+      }
+      .head-notes {
+        background: linear-gradient(135deg, #f6b7c8, #f5a25d);
+        color: #fff;
+        min-width: 220px;
+      }
+      .detail-head {
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 1.2;
+        color: #334155;
+        padding-top: 9px;
+        padding-bottom: 9px;
+        box-shadow: inset 0 -1px 0 rgba(148, 163, 184, 0.20);
+      }
+      .detail-head.gabah { background: #fbf2dc; }
+      .detail-head.beras { background: #fff7e6; }
+      .detail-head .head-mini {
+        display: block;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #64748b;
+        margin-bottom: 3px;
+      }
+      .detail-head .head-month {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        color: #1f2937;
+      }
+      .sticky-col {
+        position: sticky;
+        left: 0;
+        z-index: 4;
+      }
+      th.sticky-col {
+        z-index: 6;
+      }
+      .col-fixed {
+        background: #ffffff;
+        font-weight: 600;
+        width: 178px;
+        min-width: 178px;
+        box-shadow: inset -1px 0 0 rgba(226, 232, 240, 0.9);
+      }
+      .rh-col { background: #fffaf0; }
+      .beras-col { background: #fffdf9; }
       .cell-disabled {
         background: #cbd5e1 !important;
         color: #475569 !important;
       }
-      td { padding: 3px 6px; font-size: 10px; background: #ffffff; }
+      td.cell-disabled {
+        box-shadow: inset 0 -1px 0 rgba(148, 163, 184, 0.35);
+      }
+      td {
+        padding: 6px 8px;
+        font-size: 11px;
+        background: #ffffff;
+        box-shadow: inset 0 -1px 0 rgba(226, 232, 240, 0.75);
+      }
       .cell-input {
         width: 100%;
         border: 0;
         outline: none;
         background: transparent;
-        font-size: 10px;
+        font-size: 11px;
         text-align: right;
+        line-height: 1.25;
       }
       .num-int,
       .num-dec {
@@ -362,27 +440,17 @@ foreach ($rows as $r) {
         border: 0;
         outline: none;
         background: transparent;
-        font-size: 10px;
+        font-size: 11px;
         resize: vertical;
-        min-height: 18px;
+        min-height: 26px;
+        line-height: 1.35;
       }
       .cell-text {
         width: 100%;
         border: 0;
         outline: none;
         background: transparent;
-        font-size: 10px;
-      }
-      .col-fixed {
-        width: 6ch;
-        max-width: 6ch;
-      }
-      .col-fixed .cell-text {
-        width: 6ch;
-        max-width: 6ch;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        font-size: 11px;
       }
       .cell-input:disabled,
       .cell-text:disabled {
@@ -404,23 +472,58 @@ foreach ($rows as $r) {
         line-height: 1;
       }
       .kab-warning {
-        background: #fde2e2 !important;
-        color: #7f1d1d;
+        background: linear-gradient(90deg, rgba(249, 115, 22, 0.10), rgba(255, 255, 255, 1) 82%) !important;
+        box-shadow: inset 4px 0 0 #f97316, inset -1px 0 0 rgba(226, 232, 240, 0.9);
+      }
+      .kab-cell {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .kab-meta {
+        min-width: 0;
+      }
+      .kab-code {
+        display: block;
+        font-size: 10px;
+        font-weight: 700;
+        color: #94a3b8;
+        letter-spacing: 0.04em;
+        margin-bottom: 2px;
+      }
+      .kab-name {
+        display: block;
+        font-size: 12px;
+        font-weight: 700;
+        color: #1f2937;
+        line-height: 1.2;
       }
       .warn-icon {
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 800;
         color: #f97316;
         line-height: 1;
-        margin-left: 6px;
+        margin-left: 2px;
+        flex: 0 0 auto;
       }
       .text-perubahan-pos { color: #168f4a; font-weight: 700; }
       .text-perubahan-neg { color: #d94b4b; font-weight: 700; }
       .num-dec { text-align: right; }
       .num-int { text-align: right; }
       .avg-row td {
-        background: #e9edf3;
+        background: #f3f5f9;
         font-weight: 700;
+        box-shadow: inset 0 1px 0 rgba(203, 213, 225, 0.9);
+      }
+      .avg-row .col-fixed {
+        background: #eef2f7;
+      }
+      .avg-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 800;
+        color: #334155;
       }
       @media (max-width: 1200px) {
         .app { grid-template-columns: 1fr; }
@@ -457,7 +560,7 @@ foreach ($rows as $r) {
         background: var(--rh-gradient) !important;
         color: #f7f5fb !important;
       }
-      table th:not(.head-yellow):not(.head-pink):not(.subhead):not(.subhead-dark) {
+      table th:not(.head-kab):not(.head-gabah):not(.head-beras):not(.head-notes):not(.detail-head) {
         background: #2f3441 !important;
         color: #f7f5fb !important;
         border: none !important;
@@ -527,36 +630,27 @@ foreach ($rows as $r) {
           <table>
             <thead>
               <tr>
-                <th colspan="1" class="head-yellow">Komoditas</th>
-                <th colspan="3" class="head-yellow">Gabah</th>
-                <th colspan="12" class="head-yellow">Beras</th>
-                <th colspan="1" class="head-yellow">Penjelasan</th>
+                <th rowspan="2" class="group-head head-kab sticky-col">Kab/Kot</th>
+                <th colspan="3" class="group-head head-gabah">Gabah</th>
+                <th colspan="12" class="group-head head-beras">Beras</th>
+                <th rowspan="2" class="group-head head-notes">Penjelasan</th>
               </tr>
               <tr>
-                <th rowspan="2" class="subhead">Kab/Kot</th>
-                <th colspan="3" class="subhead">SHPED_HD</th>
-                <th colspan="3" class="subhead">SHPED_HKD</th>
-                <th colspan="3" class="subhead">SHP</th>
-                <th colspan="3" class="subhead">HPB</th>
-                <th colspan="3" class="subhead">HK</th>
-                <th rowspan="2" class="subhead">Penjelasan</th>
-              </tr>
-              <tr>
-                <th class="subhead-dark"><?php echo htmlspecialchars($bulan_prev_label); ?></th>
-                <th class="subhead-dark"><?php echo htmlspecialchars($bulan_label); ?></th>
-                <th class="subhead-dark">RH (%)</th>
-                <th class="subhead-dark"><?php echo htmlspecialchars($bulan_prev_label); ?></th>
-                <th class="subhead-dark"><?php echo htmlspecialchars($bulan_label); ?></th>
-                <th class="subhead-dark">RH (%)</th>
-                <th class="subhead-dark"><?php echo htmlspecialchars($bulan_prev_label); ?></th>
-                <th class="subhead-dark"><?php echo htmlspecialchars($bulan_label); ?></th>
-                <th class="subhead-dark">RH (%)</th>
-                <th class="subhead-dark"><?php echo htmlspecialchars($bulan_prev_label); ?></th>
-                <th class="subhead-dark"><?php echo htmlspecialchars($bulan_label); ?></th>
-                <th class="subhead-dark">RH (%)</th>
-                <th class="subhead-dark"><?php echo htmlspecialchars($bulan_prev_label); ?></th>
-                <th class="subhead-dark"><?php echo htmlspecialchars($bulan_label); ?></th>
-                <th class="subhead-dark">RH (%)</th>
+                <th class="detail-head gabah"><span class="head-mini">SHPED_HD</span><span class="head-month"><?php echo htmlspecialchars($bulan_prev_label); ?></span></th>
+                <th class="detail-head gabah"><span class="head-mini">SHPED_HD</span><span class="head-month"><?php echo htmlspecialchars($bulan_label); ?></span></th>
+                <th class="detail-head gabah"><span class="head-mini">SHPED_HD</span><span class="head-month">RH (%)</span></th>
+                <th class="detail-head beras"><span class="head-mini">SHPED_HKD</span><span class="head-month"><?php echo htmlspecialchars($bulan_prev_label); ?></span></th>
+                <th class="detail-head beras"><span class="head-mini">SHPED_HKD</span><span class="head-month"><?php echo htmlspecialchars($bulan_label); ?></span></th>
+                <th class="detail-head beras"><span class="head-mini">SHPED_HKD</span><span class="head-month">RH (%)</span></th>
+                <th class="detail-head beras"><span class="head-mini">SHP</span><span class="head-month"><?php echo htmlspecialchars($bulan_prev_label); ?></span></th>
+                <th class="detail-head beras"><span class="head-mini">SHP</span><span class="head-month"><?php echo htmlspecialchars($bulan_label); ?></span></th>
+                <th class="detail-head beras"><span class="head-mini">SHP</span><span class="head-month">RH (%)</span></th>
+                <th class="detail-head beras"><span class="head-mini">HPB</span><span class="head-month"><?php echo htmlspecialchars($bulan_prev_label); ?></span></th>
+                <th class="detail-head beras"><span class="head-mini">HPB</span><span class="head-month"><?php echo htmlspecialchars($bulan_label); ?></span></th>
+                <th class="detail-head beras"><span class="head-mini">HPB</span><span class="head-month">RH (%)</span></th>
+                <th class="detail-head beras"><span class="head-mini">HK</span><span class="head-month"><?php echo htmlspecialchars($bulan_prev_label); ?></span></th>
+                <th class="detail-head beras"><span class="head-mini">HK</span><span class="head-month"><?php echo htmlspecialchars($bulan_label); ?></span></th>
+                <th class="detail-head beras"><span class="head-mini">HK</span><span class="head-month">RH (%)</span></th>
               </tr>
             </thead>
             <tbody>
@@ -608,9 +702,12 @@ foreach ($rows as $r) {
                   };
                 ?>
                 <tr data-id="<?php echo (int)$row['id']; ?>">
-                  <td class="col-fixed<?php echo $rh_mismatch ? ' kab-warning' : ''; ?>">
-                    <div style="display:flex;align-items:center;gap:6px;">
-                      <input class="cell-text" data-field="kd_kako" value="<?php echo htmlspecialchars($row['kd_kako'] ?? ''); ?>" <?php echo $disabled_all; ?>>
+                  <td class="col-fixed sticky-col<?php echo $rh_mismatch ? ' kab-warning' : ''; ?>">
+                    <div class="kab-cell">
+                      <div class="kab-meta">
+                        <span class="kab-code"><?php echo htmlspecialchars($row['kd_kako'] ?? ''); ?></span>
+                        <span class="kab-name"><?php echo htmlspecialchars($row['kabupaten_kota'] ?? ''); ?></span>
+                      </div>
                       <span class="warn-icon" style="<?php echo $rh_mismatch ? '' : 'display:none;'; ?>">⚠</span>
                     </div>
                   </td>
@@ -633,7 +730,7 @@ foreach ($rows as $r) {
                 </tr>
               <?php endforeach; ?>
               <tr class="avg-row">
-                <td class="col-fixed"><input class="cell-text" value="Rata-rata" disabled></td>
+                <td class="col-fixed sticky-col"><span class="avg-label">Rata-rata</span></td>
                 <?php
                   $fmt_int = function($v) {
                     return $v === null ? '' : number_format($v, 0, ',', '.');
