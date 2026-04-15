@@ -22,15 +22,38 @@ function db(): PDO
         $pass = getenv('PGPASSWORD') ?: '';
     }
 
-    $hostaddr = gethostbyname($host);
-    if ($hostaddr && $hostaddr !== $host) {
-        $dsn = sprintf('pgsql:host=%s;hostaddr=%s;port=%s;dbname=%s;sslmode=require', $host, $hostaddr, $port, $db);
+    $host_lower = strtolower((string)$host);
+    $is_supabase_pooler = str_contains($host_lower, '.pooler.supabase.com');
+    $is_supabase_direct = str_contains($host_lower, '.supabase.co');
+    $can_use_hostaddr = !$is_supabase_pooler && !$is_supabase_direct;
+
+    if ($can_use_hostaddr) {
+        $hostaddr = gethostbyname($host);
     } else {
-        $dsn = sprintf('pgsql:host=%s;port=%s;dbname=%s;sslmode=require', $host, $port, $db);
+        $hostaddr = false;
     }
+
+    if ($hostaddr && $hostaddr !== $host) {
+        $dsn = sprintf(
+            'pgsql:host=%s;hostaddr=%s;port=%s;dbname=%s;sslmode=require;connect_timeout=12',
+            $host,
+            $hostaddr,
+            $port,
+            $db
+        );
+    } else {
+        $dsn = sprintf(
+            'pgsql:host=%s;port=%s;dbname=%s;sslmode=require;connect_timeout=12',
+            $host,
+            $port,
+            $db
+        );
+    }
+
     $pdo = new PDO($dsn, $user, $pass, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_TIMEOUT => 12,
     ]);
     return $pdo;
 }
