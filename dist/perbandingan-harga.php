@@ -921,17 +921,18 @@ $top_attention = array_slice($top_attention, 0, 5);
       }
       .compare-note {
         width: 100%;
-        min-height: 34px;
+        min-height: 26px;
         border-radius: 12px;
         border: 1px solid #e6ebf2;
         background: #ffffff;
-        padding: 8px 10px;
+        padding: 5px 10px;
         resize: vertical;
         font-size: 11px;
-        line-height: 1.4;
+        line-height: 1.25;
         color: #334155;
         font-family: inherit;
         transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        overflow: hidden;
       }
       .compare-note:focus {
         outline: none;
@@ -1237,6 +1238,7 @@ $top_attention = array_slice($top_attention, 0, 5);
                 <div class="compare-notes">
                   <textarea
                     class="compare-note"
+                    rows="1"
                     data-kode="<?php echo htmlspecialchars((string)$row_data['kode']); ?>"
                     data-nama="<?php echo htmlspecialchars((string)$row_data['nama']); ?>"
                     data-komoditas="<?php echo htmlspecialchars((string)$display_komoditas); ?>"
@@ -1277,7 +1279,7 @@ $top_attention = array_slice($top_attention, 0, 5);
         function resize(el) {
           if (!el) return;
           el.style.height = 'auto';
-          el.style.height = Math.max(34, el.scrollHeight) + 'px';
+          el.style.height = Math.max(26, el.scrollHeight) + 'px';
         }
 
         function setStatus(el, text, cls) {
