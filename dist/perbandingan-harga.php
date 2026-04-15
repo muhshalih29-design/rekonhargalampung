@@ -278,6 +278,85 @@ if ($global_max_abs == 0) {
         'max' => $global_max_abs,
     ]);
 }
+
+$level_stats = [
+    'HK' => ['pos' => 0, 'neg' => 0, 'empty' => 0],
+    'HPB' => ['pos' => 0, 'neg' => 0, 'empty' => 0],
+    'HD' => ['pos' => 0, 'neg' => 0, 'empty' => 0],
+    'HKD' => ['pos' => 0, 'neg' => 0, 'empty' => 0],
+];
+$kabupaten_status_rows = [];
+$status_summary = [
+    'aligned' => 0,
+    'mixed' => 0,
+    'partial' => 0,
+    'empty' => 0,
+];
+
+foreach ($chart_labels as $idx => $kode) {
+    $row_values = [];
+    $row_non_zero = [];
+    foreach (array_keys($level_stats) as $label) {
+        $value = $chart_data[$label][$idx] ?? null;
+        $row_values[$label] = $value;
+        if ($value === null || (float)$value == 0.0) {
+            $level_stats[$label]['empty']++;
+            continue;
+        }
+        if ((float)$value > 0) {
+            $level_stats[$label]['pos']++;
+        } else {
+            $level_stats[$label]['neg']++;
+        }
+        $row_non_zero[$label] = (float)$value;
+    }
+
+    $has_pos = false;
+    $has_neg = false;
+    foreach ($row_non_zero as $value) {
+        if ($value > 0) $has_pos = true;
+        if ($value < 0) $has_neg = true;
+    }
+
+    $status_key = 'empty';
+    $status_label = 'Tidak ada data';
+    if ($has_pos && $has_neg) {
+        $status_key = 'mixed';
+        $status_label = 'Tidak searah';
+    } elseif (count($row_non_zero) >= 2) {
+        $status_key = 'aligned';
+        $status_label = 'Searah';
+    } elseif (count($row_non_zero) === 1) {
+        $status_key = 'partial';
+        $status_label = 'Data parsial';
+    }
+    $status_summary[$status_key]++;
+
+    $intensity = 0.0;
+    foreach ($row_non_zero as $value) {
+        $intensity = max($intensity, abs($value));
+    }
+    $kabupaten_status_rows[] = [
+        'kode' => $kode,
+        'nama' => $chart_names[$kode] ?? $kode,
+        'status_key' => $status_key,
+        'status_label' => $status_label,
+        'values' => $row_values,
+        'active_count' => count($row_non_zero),
+        'intensity' => $intensity,
+    ];
+}
+
+$top_attention = array_values(array_filter($kabupaten_status_rows, function ($row) {
+    return $row['status_key'] === 'mixed';
+}));
+usort($top_attention, function ($a, $b) {
+    if ($a['active_count'] === $b['active_count']) {
+        return $b['intensity'] <=> $a['intensity'];
+    }
+    return $b['active_count'] <=> $a['active_count'];
+});
+$top_attention = array_slice($top_attention, 0, 5);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -437,7 +516,7 @@ if ($global_max_abs == 0) {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 14px;
-        margin-bottom: 16px;
+        margin-bottom: 24px;
       }
       .subinfo {
         margin: 12px 0 18px;
@@ -454,13 +533,13 @@ if ($global_max_abs == 0) {
       }
       .card {
         background: #ffffff;
-        border-radius: 9999px;
-        padding: 16px 24px;
+        border-radius: 30px;
+        padding: 18px 22px;
         box-shadow: 0 12px 28px rgba(56, 65, 80, 0.10);
-        display: flex;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
         align-items: center;
-        justify-content: space-between;
-        gap: 16px;
+        gap: 14px;
       }
       .card h4 {
         margin: 0;
@@ -468,6 +547,35 @@ if ($global_max_abs == 0) {
         color: #9aa3ad;
         font-weight: 700;
         letter-spacing: 0.5px;
+      }
+      .card-meta {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+        flex-wrap: wrap;
+      }
+      .card-mini {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 5px 8px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 700;
+        color: #64748b;
+        background: #f8fafc;
+      }
+      .card-mini.pos {
+        color: #168f4a;
+        background: rgba(22, 143, 74, 0.08);
+      }
+      .card-mini.neg {
+        color: #d94b4b;
+        background: rgba(217, 75, 75, 0.10);
+      }
+      .card-mini.zero {
+        color: #64748b;
+        background: #eef2f7;
       }
       .metric {
         font-size: 36px;
@@ -493,21 +601,30 @@ if ($global_max_abs == 0) {
       .panel {
         background: var(--card);
         border-radius: var(--radius);
-        padding: 16px;
+        padding: 20px 22px 22px;
         box-shadow: 0 14px 28px rgba(56, 65, 80, 0.10);
       }
 
       .panel-title {
-        font-size: 13px;
+        font-size: 15px;
         font-weight: 700;
-        margin-bottom: 10px;
+        margin-bottom: 0;
       }
       .panel-head {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 10px;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+      .panel-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .panel-caption {
+        color: #8b90a3;
+        font-size: 12px;
       }
       .panel-subpill {
         background: linear-gradient(135deg, #f6b7c8, #f5a25d);
@@ -518,6 +635,101 @@ if ($global_max_abs == 0) {
         font-weight: 700;
         white-space: nowrap;
         box-shadow: 0 10px 22px rgba(255, 122, 182, 0.25);
+      }
+      .insight-strip {
+        display: grid;
+        grid-template-columns: 1.3fr 1fr;
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+      .status-board,
+      .attention-board {
+        border-radius: 18px;
+        background: linear-gradient(180deg, #fffdfa 0%, #ffffff 100%);
+        border: 1px solid #f1f5f9;
+        padding: 14px 16px;
+      }
+      .strip-title {
+        font-size: 12px;
+        font-weight: 700;
+        color: #475569;
+        margin-bottom: 12px;
+      }
+      .status-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+      }
+      .status-tile {
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: #f8fafc;
+      }
+      .status-tile strong {
+        display: block;
+        font-size: 20px;
+        font-weight: 800;
+        color: #334155;
+        margin-bottom: 4px;
+      }
+      .status-tile span {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        color: #64748b;
+      }
+      .status-tile.aligned {
+        background: rgba(22, 143, 74, 0.08);
+      }
+      .status-tile.mixed {
+        background: rgba(245, 162, 93, 0.16);
+      }
+      .status-tile.partial {
+        background: rgba(148, 163, 184, 0.12);
+      }
+      .status-tile.empty {
+        background: #f8fafc;
+      }
+      .attention-list {
+        display: grid;
+        gap: 8px;
+      }
+      .attention-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: #fff7ed;
+      }
+      .attention-item strong {
+        display: block;
+        font-size: 12px;
+        color: #334155;
+      }
+      .attention-item span {
+        display: block;
+        font-size: 10px;
+        color: #9a3412;
+        margin-top: 2px;
+      }
+      .attention-badge {
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(245, 158, 11, 0.16);
+        color: #b45309;
+        font-size: 10px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+      .attention-empty {
+        border-radius: 14px;
+        padding: 14px 12px;
+        background: #f8fafc;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 600;
       }
       .divider {
         height: 1px;
@@ -555,33 +767,45 @@ if ($global_max_abs == 0) {
       .badge-zero { background: rgba(148,163,184,0.15); color: #6b7280; }
       .mini-bars {
         display: grid;
-        gap: 4px;
+        gap: 10px;
       }
       .mini-row {
         display: grid;
-        grid-template-columns: 160px 1fr 1fr 1fr 1fr;
+        grid-template-columns: 188px 1fr 1fr 1fr 1fr 116px;
         align-items: center;
-        column-gap: 28px;
+        column-gap: 18px;
         row-gap: 0;
         font-size: 11px;
-        margin-bottom: 6px;
+        padding: 10px 0;
+        border-top: 1px solid #f1f5f9;
       }
       .mini-header {
         display: grid;
-        grid-template-columns: 160px 1fr 1fr 1fr 1fr;
+        grid-template-columns: 188px 1fr 1fr 1fr 1fr 116px;
         gap: 10px;
         align-items: center;
-        height: 18px;
-        margin-bottom: 4px;
+        min-height: 24px;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #eef2f7;
         color: #6b7280;
         font-size: 10px;
         font-weight: 700;
         letter-spacing: 0.3px;
         text-transform: uppercase;
+        position: sticky;
+        top: 0;
+        background: #ffffff;
+        z-index: 2;
       }
       .mini-header div { text-align: center; line-height: 18px; }
-      .mini-label { color: #6b7280; font-weight: 600; }
-      .mini-label { white-space: nowrap; }
+      .mini-label {
+        color: #334155;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
       .mini-cell {
         display: grid;
         grid-template-columns: 1fr 50px;
@@ -647,6 +871,34 @@ if ($global_max_abs == 0) {
       .mini-pos { background: #41B38A; }
       .mini-neg { background: linear-gradient(135deg, #f6b7c8, #f5a25d); }
       .mini-zero { background: #cbd5f5; }
+      .row-status {
+        justify-self: end;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 108px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+      .row-status.aligned {
+        background: rgba(22, 143, 74, 0.10);
+        color: #168f4a;
+      }
+      .row-status.mixed {
+        background: rgba(245, 162, 93, 0.18);
+        color: #b45309;
+      }
+      .row-status.partial {
+        background: rgba(148, 163, 184, 0.16);
+        color: #475569;
+      }
+      .row-status.empty {
+        background: #eef2f7;
+        color: #64748b;
+      }
 
       @media (max-width: 1200px) {
         .cards { grid-template-columns: repeat(2, 1fr); }
@@ -654,6 +906,8 @@ if ($global_max_abs == 0) {
         .app { grid-template-columns: 1fr; }
         .sidebar { flex-direction: row; justify-content: flex-start; overflow-x: auto; }
         .main { padding-right: 0; }
+        .insight-strip { grid-template-columns: 1fr; }
+        .status-grid { grid-template-columns: repeat(2, 1fr); }
       }
       @media (max-width: 768px) {
         .app { grid-template-columns: 1fr; padding: 14px; }
@@ -670,7 +924,8 @@ if ($global_max_abs == 0) {
         .trend { font-size: 22px; }
         .metric-wrap { gap: 8px; }
         .mini-bars { overflow-x: auto; padding-bottom: 6px; }
-        .mini-row, .mini-header { min-width: 720px; }
+        .mini-row, .mini-header { min-width: 860px; }
+        .status-grid { grid-template-columns: 1fr; }
       }
     
       /* B: Status colors */
@@ -801,7 +1056,14 @@ if ($global_max_abs == 0) {
               }
           ?>
             <div class="card label-offset">
-              <h4><?php echo $label; ?></h4>
+              <div>
+                <h4><?php echo $label; ?></h4>
+                <div class="card-meta">
+                  <span class="card-mini pos">+ <?php echo (int)$level_stats[$label]['pos']; ?></span>
+                  <span class="card-mini neg">- <?php echo (int)$level_stats[$label]['neg']; ?></span>
+                  <span class="card-mini zero">0 <?php echo (int)$level_stats[$label]['empty']; ?></span>
+                </div>
+              </div>
               <div class="metric-wrap">
                 <div class="metric <?php echo $class; ?><?php echo $has ? ($avg >= 0 ? ' metric-pos' : ' metric-neg') : ''; ?>"><?php echo $display; ?></div>
               </div>
@@ -814,9 +1076,53 @@ if ($global_max_abs == 0) {
 
         <div class="panel">
           <div class="panel-head">
-            <div class="panel-title">Perbandingan HK/HPB/HD/HKD per Kabupaten/Kota</div>
+            <div class="panel-copy">
+              <div class="panel-title">Perbandingan HK/HPB/HD/HKD per Kabupaten/Kota</div>
+              <div class="panel-caption">Fokus utamanya melihat apakah arah perubahan setiap level harga saling sejalan atau justru berlawanan.</div>
+            </div>
             <div class="panel-subpill">
               Komoditas: <?php echo htmlspecialchars($display_komoditas); ?> · Bulan: <?php echo htmlspecialchars(ucfirst($bulan)); ?> · Tahun: <?php echo htmlspecialchars($tahun); ?>
+            </div>
+          </div>
+          <div class="insight-strip">
+            <div class="status-board">
+              <div class="strip-title">Ringkasan arah kabupaten/kota</div>
+              <div class="status-grid">
+                <div class="status-tile aligned">
+                  <strong><?php echo (int)$status_summary['aligned']; ?></strong>
+                  <span>Searah</span>
+                </div>
+                <div class="status-tile mixed">
+                  <strong><?php echo (int)$status_summary['mixed']; ?></strong>
+                  <span>Tidak searah</span>
+                </div>
+                <div class="status-tile partial">
+                  <strong><?php echo (int)$status_summary['partial']; ?></strong>
+                  <span>Data parsial</span>
+                </div>
+                <div class="status-tile empty">
+                  <strong><?php echo (int)$status_summary['empty']; ?></strong>
+                  <span>Tidak ada data</span>
+                </div>
+              </div>
+            </div>
+            <div class="attention-board">
+              <div class="strip-title">Kabupaten yang perlu dicek lebih dulu</div>
+              <?php if ($top_attention): ?>
+                <div class="attention-list">
+                  <?php foreach ($top_attention as $item): ?>
+                    <div class="attention-item">
+                      <div>
+                        <strong><?php echo htmlspecialchars($item['nama']); ?></strong>
+                        <span>Ada arah positif dan negatif pada level harga yang tampil</span>
+                      </div>
+                      <div class="attention-badge"><?php echo (int)$item['active_count']; ?> level aktif</div>
+                    </div>
+                  <?php endforeach; ?>
+                </div>
+              <?php else: ?>
+                <div class="attention-empty">Belum ada kabupaten dengan arah campuran untuk filter yang sedang dipilih.</div>
+              <?php endif; ?>
             </div>
           </div>
           <div class="mini-header">
@@ -825,18 +1131,17 @@ if ($global_max_abs == 0) {
             <div>HPB</div>
             <div>HD</div>
             <div>HKD</div>
+            <div>Status</div>
           </div>
           <div class="mini-bars">
             <?php
-              foreach ($chart_labels as $idx => $kode):
-                $valHK  = $chart_data['HK'][$idx] ?? null;
-                $valHPB = $chart_data['HPB'][$idx] ?? null;
-                $valHD  = $chart_data['HD'][$idx] ?? null;
-                $valHKD = $chart_data['HKD'][$idx] ?? null;
-                $label_text = $kode;
-                if (isset($chart_names[$kode]) && $chart_names[$kode] !== '') {
-                  $label_text = $chart_names[$kode];
-                }
+              foreach ($kabupaten_status_rows as $row_data):
+                $kode = $row_data['kode'];
+                $valHK  = $row_data['values']['HK'] ?? null;
+                $valHPB = $row_data['values']['HPB'] ?? null;
+                $valHD  = $row_data['values']['HD'] ?? null;
+                $valHKD = $row_data['values']['HKD'] ?? null;
+                $label_text = $row_data['nama'];
                 $rows = [
                   'HK' => $valHK,
                   'HPB' => $valHPB,
@@ -867,6 +1172,9 @@ if ($global_max_abs == 0) {
                     <?php endif; ?>
                   </div>
                 <?php endforeach; ?>
+                <div class="row-status <?php echo htmlspecialchars($row_data['status_key']); ?>">
+                  <?php echo htmlspecialchars($row_data['status_label']); ?>
+                </div>
               </div>
             <?php endforeach; ?>
           </div>
