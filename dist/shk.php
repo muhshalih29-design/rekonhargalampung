@@ -482,10 +482,19 @@ $columns = [
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        margin-left: 6px;
-        font-size: 12px;
-        color: #16a34a;
+        margin-left: 8px;
+        width: 18px;
+        height: 18px;
+        border-radius: 999px;
+        background: #16a34a;
+        color: #ffffff;
+        box-shadow: 0 6px 12px rgba(22, 163, 74, 0.28);
+        font-size: 13px;
         line-height: 1;
+        flex: 0 0 auto;
+      }
+      .tab-btn .tab-check.is-hidden {
+        display: none;
       }
       .tab-btn.active {
         background: linear-gradient(135deg, #f6b7c8, #f5a25d);
@@ -494,7 +503,9 @@ $columns = [
         box-shadow: 0 12px 24px rgba(255, 122, 182, 0.25);
       }
       .tab-btn.active .tab-check {
+        background: rgba(255, 255, 255, 0.22);
         color: #ffffff;
+        box-shadow: none;
       }
       .table-card.hidden { display: none; }
 
@@ -1117,9 +1128,7 @@ $columns = [
               <?php $is_active = ($k === $komoditas_selected) ? 'active' : ''; ?>
               <button type="button" class="tab-btn <?php echo $is_active; ?>" data-komoditas="<?php echo htmlspecialchars($k); ?>">
                 <?php echo htmlspecialchars($k); ?>
-                <?php if (!empty($komoditas_done_map[$k])): ?>
-                  <span class="tab-check" title="Penjelasan untuk role ini sudah lengkap"><i class="mdi mdi-check-circle"></i></span>
-                <?php endif; ?>
+                <span class="tab-check <?php echo !empty($komoditas_done_map[$k]) ? '' : 'is-hidden'; ?>" title="Penjelasan untuk role ini sudah lengkap"><i class="mdi mdi-check"></i></span>
               </button>
             <?php endforeach; ?>
           </div>
@@ -1162,7 +1171,7 @@ $columns = [
               $disabled_other = $can_edit_other ? '' : 'disabled';
               $disabled_penjelasan = $can_edit_penjelasan ? '' : 'disabled';
             ?>
-            <tr data-row="<?php echo $row_index; ?>" data-id="<?php echo (int)$row['id']; ?>">
+            <tr data-row="<?php echo $row_index; ?>" data-id="<?php echo (int)$row['id']; ?>" data-track-tab="<?php echo $can_edit_penjelasan ? '1' : '0'; ?>">
               <?php foreach ($columns as $key => $label): ?>
                 <?php
                   $value = array_key_exists($key, $row) ? $row[$key] : null;
@@ -1344,10 +1353,35 @@ $columns = [
           }
         }
 
+        function isPerubahanRequired(row) {
+          if (!row || row.getAttribute('data-track-tab') !== '1') return false;
+          var perubahanInput = row.querySelector('.perubahan-input');
+          var value = perubahanInput ? parseIdNumber(perubahanInput.value) : null;
+          return value !== null && value !== 0;
+        }
+
+        function hasPenjelasanFilled(row) {
+          if (!row) return false;
+          var penjelasanInput = row.querySelector('textarea[data-field="penjelasan"]');
+          return !!penjelasanInput && penjelasanInput.value.trim() !== '';
+        }
+
         var perubahanInputs = document.querySelectorAll('.perubahan-input');
         perubahanInputs.forEach(function (inp) {
-          inp.addEventListener('input', function () { updateTrend(inp); updateRowHighlight(inp); updateAvgForCard(inp.closest('.table-card')); });
-          inp.addEventListener('blur', function () { updateTrend(inp); updateRowHighlight(inp); updateAvgForCard(inp.closest('.table-card')); });
+          inp.addEventListener('input', function () {
+            var card = inp.closest('.table-card');
+            updateTrend(inp);
+            updateRowHighlight(inp);
+            updateAvgForCard(card);
+            updateTabCompletion(card);
+          });
+          inp.addEventListener('blur', function () {
+            var card = inp.closest('.table-card');
+            updateTrend(inp);
+            updateRowHighlight(inp);
+            updateAvgForCard(card);
+            updateTabCompletion(card);
+          });
           updateTrend(inp);
           updateRowHighlight(inp);
           updateAvgForCard(inp.closest('.table-card'));
@@ -1364,6 +1398,30 @@ $columns = [
         var deleteCurrentRadio = deleteCurrentOption ? deleteCurrentOption.querySelector('input[name="delete_scope"]') : null;
         var deleteAllRadio = document.querySelector('#delete-option-all input[name="delete_scope"]');
         var canDeleteCurrent = <?php echo ($bulan !== '' && $tahun !== '' && ctype_digit((string)$tahun)) ? 'true' : 'false'; ?>;
+
+        function updateTabCompletion(card) {
+          if (!card || !tabsWrap) return;
+          var komoditas = card.getAttribute('data-komoditas');
+          if (!komoditas) return;
+          var rows = Array.prototype.slice.call(card.querySelectorAll('tbody tr'));
+          var requiredRows = rows.filter(function (row) {
+            return isPerubahanRequired(row);
+          });
+          var done = requiredRows.length > 0 && requiredRows.every(function (row) {
+            return hasPenjelasanFilled(row);
+          });
+          var tab = tabsWrap.querySelector('.tab-btn[data-komoditas="' + CSS.escape(komoditas) + '"]');
+          if (!tab) return;
+          var check = tab.querySelector('.tab-check');
+          if (!check) return;
+          check.classList.toggle('is-hidden', !done);
+        }
+
+        function updateAllTabCompletion() {
+          document.querySelectorAll('.table-card[data-komoditas]').forEach(function (card) {
+            updateTabCompletion(card);
+          });
+        }
 
         function syncDeleteUi(name) {
           selectedKomoditas = name || '';
@@ -1513,6 +1571,10 @@ $columns = [
             updateTrend(el);
             updateRowHighlight(el);
             updateAvgForCard(el.closest('.table-card'));
+            updateTabCompletion(el.closest('.table-card'));
+          }
+          if (el.getAttribute('data-field') === 'penjelasan') {
+            updateTabCompletion(el.closest('.table-card'));
           }
           saveCell(el);
         }
@@ -1565,7 +1627,17 @@ $columns = [
 
         var editable = document.querySelectorAll('.editable-cell');
         editable.forEach(function (el) {
-          el.addEventListener('blur', function () { saveCell(el); });
+          el.addEventListener('input', function () {
+            if (el.getAttribute('data-field') === 'penjelasan') {
+              updateTabCompletion(el.closest('.table-card'));
+            }
+          });
+          el.addEventListener('blur', function () {
+            if (el.getAttribute('data-field') === 'penjelasan' || el.classList.contains('perubahan-input')) {
+              updateTabCompletion(el.closest('.table-card'));
+            }
+            saveCell(el);
+          });
           if (el.tagName.toLowerCase() === 'select') {
             el.addEventListener('change', function () { saveCell(el); });
           }
@@ -1590,6 +1662,7 @@ $columns = [
             }
           });
         });
+        updateAllTabCompletion();
       })();
     </script>
   
