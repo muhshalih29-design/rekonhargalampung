@@ -10,7 +10,6 @@ $user = require_auth();
 ob_start();
 
 $cache_ttl = 300;
-$page_cache_ttl = 120;
 function cache_path(string $key, string $suffix = 'json'): string {
     return sys_get_temp_dir() . '/rekon_cache_' . md5($key) . '.' . $suffix;
 }
@@ -39,14 +38,71 @@ function cache_set_html(string $key, string $html): void {
     @file_put_contents($path, $html);
 }
 
-$page_cache_key = 'page_perbandingan_' . md5($_SERVER['QUERY_STRING'] ?? '');
-$page_cached = cache_get_html($page_cache_key, $page_cache_ttl);
-if ($page_cached !== null) {
-    echo $page_cached;
-    exit;
+$pdo = db();
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS perbandingan_penjelasan (
+            id BIGSERIAL PRIMARY KEY,
+            kode_kabupaten VARCHAR(10) NOT NULL,
+            nama_kabupaten VARCHAR(120) NULL,
+            komoditas VARCHAR(160) NOT NULL,
+            bulan VARCHAR(20) NOT NULL,
+            tahun INT NOT NULL,
+            penjelasan TEXT NULL,
+            updated_by VARCHAR(120) NULL,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            UNIQUE (kode_kabupaten, komoditas, bulan, tahun)
+        )
+    ");
+} catch (Throwable $e) {
 }
 
-$pdo = db();
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string)($_POST['action'] ?? '') === 'save_penjelasan') {
+    header('Content-Type: application/json; charset=utf-8');
+    $kode = trim((string)($_POST['kode_kabupaten'] ?? ''));
+    $nama = trim((string)($_POST['nama_kabupaten'] ?? ''));
+    $komoditas_post = trim((string)($_POST['komoditas'] ?? ''));
+    $bulan_post = strtolower(trim((string)($_POST['bulan'] ?? '')));
+    $tahun_post = trim((string)($_POST['tahun'] ?? ''));
+    $penjelasan_post = trim((string)($_POST['penjelasan'] ?? ''));
+
+    if ($kode === '' || $komoditas_post === '' || $bulan_post === '' || !ctype_digit($tahun_post)) {
+        http_response_code(422);
+        echo json_encode(['ok' => false, 'message' => 'Parameter tidak lengkap.']);
+        exit;
+    }
+    if (!can_edit_penjelasan($user, $kode)) {
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'message' => 'Anda tidak memiliki akses untuk mengubah penjelasan ini.']);
+        exit;
+    }
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO perbandingan_penjelasan (kode_kabupaten, nama_kabupaten, komoditas, bulan, tahun, penjelasan, updated_by, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+            ON CONFLICT (kode_kabupaten, komoditas, bulan, tahun)
+            DO UPDATE SET
+                nama_kabupaten = EXCLUDED.nama_kabupaten,
+                penjelasan = EXCLUDED.penjelasan,
+                updated_by = EXCLUDED.updated_by,
+                updated_at = NOW()
+        ");
+        $stmt->execute([
+            $kode,
+            $nama,
+            $komoditas_post,
+            $bulan_post,
+            (int)$tahun_post,
+            $penjelasan_post,
+            (string)($user['email'] ?? ''),
+        ]);
+        echo json_encode(['ok' => true]);
+    } catch (Throwable $e) {
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'message' => 'Gagal menyimpan penjelasan.']);
+    }
+    exit;
+}
 
 $komoditas_list = [];
 $komoditas_map = [];
@@ -279,12 +335,29 @@ if ($global_max_abs == 0) {
     ]);
 }
 
-$level_stats = [
-    'HK' => ['pos' => 0, 'neg' => 0, 'empty' => 0],
-    'HPB' => ['pos' => 0, 'neg' => 0, 'empty' => 0],
-    'HD' => ['pos' => 0, 'neg' => 0, 'empty' => 0],
-    'HKD' => ['pos' => 0, 'neg' => 0, 'empty' => 0],
-];
+$perbandingan_penjelasan_map = [];
+if ($komoditas_filter !== '' && $bulan !== '' && $tahun !== '' && ctype_digit((string)$tahun)) {
+    try {
+        $stmt_penjelasan = $pdo->prepare("
+            SELECT kode_kabupaten, penjelasan
+            FROM perbandingan_penjelasan
+            WHERE TRIM(LOWER(komoditas)) = ?
+              AND TRIM(LOWER(bulan)) = ?
+              AND tahun = ?
+        ");
+        $stmt_penjelasan->execute([
+            strtolower(trim($komoditas_filter)),
+            strtolower(trim($bulan)),
+            (int)$tahun,
+        ]);
+        while ($row_penjelasan = $stmt_penjelasan->fetch()) {
+            $perbandingan_penjelasan_map[(string)$row_penjelasan['kode_kabupaten']] = (string)($row_penjelasan['penjelasan'] ?? '');
+        }
+    } catch (Throwable $e) {
+        $perbandingan_penjelasan_map = [];
+    }
+}
+
 $kabupaten_status_rows = [];
 $status_summary = [
     'aligned' => 0,
@@ -296,18 +369,10 @@ $status_summary = [
 foreach ($chart_labels as $idx => $kode) {
     $row_values = [];
     $row_non_zero = [];
-    foreach (array_keys($level_stats) as $label) {
+    foreach (array_keys($table_map) as $label) {
         $value = $chart_data[$label][$idx] ?? null;
         $row_values[$label] = $value;
-        if ($value === null || (float)$value == 0.0) {
-            $level_stats[$label]['empty']++;
-            continue;
-        }
-        if ((float)$value > 0) {
-            $level_stats[$label]['pos']++;
-        } else {
-            $level_stats[$label]['neg']++;
-        }
+        if ($value === null || (float)$value == 0.0) continue;
         $row_non_zero[$label] = (float)$value;
     }
 
@@ -344,6 +409,8 @@ foreach ($chart_labels as $idx => $kode) {
         'values' => $row_values,
         'active_count' => count($row_non_zero),
         'intensity' => $intensity,
+        'penjelasan' => $perbandingan_penjelasan_map[$kode] ?? '',
+        'can_edit_penjelasan' => can_edit_penjelasan($user, (string)$kode),
     ];
 }
 
@@ -548,35 +615,6 @@ $top_attention = array_slice($top_attention, 0, 5);
         font-weight: 700;
         letter-spacing: 0.5px;
       }
-      .card-meta {
-        display: flex;
-        gap: 8px;
-        margin-top: 8px;
-        flex-wrap: wrap;
-      }
-      .card-mini {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 5px 8px;
-        border-radius: 999px;
-        font-size: 10px;
-        font-weight: 700;
-        color: #64748b;
-        background: #f8fafc;
-      }
-      .card-mini.pos {
-        color: #168f4a;
-        background: rgba(22, 143, 74, 0.08);
-      }
-      .card-mini.neg {
-        color: #d94b4b;
-        background: rgba(217, 75, 75, 0.10);
-      }
-      .card-mini.zero {
-        color: #64748b;
-        background: #eef2f7;
-      }
       .metric {
         font-size: 36px;
         font-weight: 800;
@@ -767,21 +805,21 @@ $top_attention = array_slice($top_attention, 0, 5);
       .badge-zero { background: rgba(148,163,184,0.15); color: #6b7280; }
       .mini-bars {
         display: grid;
-        gap: 10px;
+        gap: 8px;
       }
       .mini-row {
         display: grid;
-        grid-template-columns: 188px 1fr 1fr 1fr 1fr 116px;
+        grid-template-columns: 176px minmax(110px, 1fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(110px, 1fr) 116px minmax(180px, 240px);
         align-items: center;
-        column-gap: 18px;
+        column-gap: 12px;
         row-gap: 0;
         font-size: 11px;
-        padding: 10px 0;
+        padding: 8px 0;
         border-top: 1px solid #f1f5f9;
       }
       .mini-header {
         display: grid;
-        grid-template-columns: 188px 1fr 1fr 1fr 1fr 116px;
+        grid-template-columns: 176px minmax(110px, 1fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(110px, 1fr) 116px minmax(180px, 240px);
         gap: 10px;
         align-items: center;
         min-height: 24px;
@@ -810,7 +848,7 @@ $top_attention = array_slice($top_attention, 0, 5);
         display: grid;
         grid-template-columns: 1fr 50px;
         align-items: center;
-        gap: 6px;
+        gap: 4px;
       }
       .mini-out {
         font-size: 10px;
@@ -899,6 +937,52 @@ $top_attention = array_slice($top_attention, 0, 5);
         background: #eef2f7;
         color: #64748b;
       }
+      .compare-panel {
+        margin-top: 16px;
+      }
+      .compare-scroll {
+        overflow-x: auto;
+        padding-bottom: 6px;
+      }
+      .compare-notes {
+        width: 100%;
+      }
+      .compare-note {
+        width: 100%;
+        min-height: 34px;
+        border-radius: 12px;
+        border: 1px solid #e6ebf2;
+        background: #ffffff;
+        padding: 8px 10px;
+        resize: vertical;
+        font-size: 11px;
+        line-height: 1.4;
+        color: #334155;
+        font-family: inherit;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      }
+      .compare-note:focus {
+        outline: none;
+        border-color: #f5a25d;
+        box-shadow: 0 0 0 3px rgba(245, 162, 93, 0.14);
+      }
+      .compare-note[disabled] {
+        background: #eef2f7;
+        color: #94a3b8;
+        cursor: not-allowed;
+      }
+      .note-status {
+        margin-top: 4px;
+        font-size: 10px;
+        color: #94a3b8;
+        min-height: 14px;
+      }
+      .note-status.saved {
+        color: #16a34a;
+      }
+      .note-status.error {
+        color: #d94b4b;
+      }
 
       @media (max-width: 1200px) {
         .cards { grid-template-columns: repeat(2, 1fr); }
@@ -908,6 +992,7 @@ $top_attention = array_slice($top_attention, 0, 5);
         .main { padding-right: 0; }
         .insight-strip { grid-template-columns: 1fr; }
         .status-grid { grid-template-columns: repeat(2, 1fr); }
+        .mini-row, .mini-header { min-width: 1120px; }
       }
       @media (max-width: 768px) {
         .app { grid-template-columns: 1fr; padding: 14px; }
@@ -923,8 +1008,8 @@ $top_attention = array_slice($top_attention, 0, 5);
         .metric { font-size: 28px; }
         .trend { font-size: 22px; }
         .metric-wrap { gap: 8px; }
-        .mini-bars { overflow-x: auto; padding-bottom: 6px; }
-        .mini-row, .mini-header { min-width: 860px; }
+        .mini-bars { padding-bottom: 6px; }
+        .mini-row, .mini-header { min-width: 1120px; }
         .status-grid { grid-template-columns: 1fr; }
       }
     
@@ -1058,11 +1143,6 @@ $top_attention = array_slice($top_attention, 0, 5);
             <div class="card label-offset">
               <div>
                 <h4><?php echo $label; ?></h4>
-                <div class="card-meta">
-                  <span class="card-mini pos">+ <?php echo (int)$level_stats[$label]['pos']; ?></span>
-                  <span class="card-mini neg">- <?php echo (int)$level_stats[$label]['neg']; ?></span>
-                  <span class="card-mini zero">0 <?php echo (int)$level_stats[$label]['empty']; ?></span>
-                </div>
               </div>
               <div class="metric-wrap">
                 <div class="metric <?php echo $class; ?><?php echo $has ? ($avg >= 0 ? ' metric-pos' : ' metric-neg') : ''; ?>"><?php echo $display; ?></div>
@@ -1125,6 +1205,15 @@ $top_attention = array_slice($top_attention, 0, 5);
               <?php endif; ?>
             </div>
           </div>
+        </div>
+
+        <div class="panel compare-panel">
+          <div class="panel-head">
+            <div class="panel-copy">
+              <div class="panel-title">Chart Kabupaten/Kota</div>
+              <div class="panel-caption">Tampilan ringkas untuk membandingkan nilai antar kabupaten/kota dengan lebih cepat.</div>
+            </div>
+          </div>
           <div class="mini-header">
             <div></div>
             <div>HK</div>
@@ -1132,7 +1221,9 @@ $top_attention = array_slice($top_attention, 0, 5);
             <div>HD</div>
             <div>HKD</div>
             <div>Status</div>
+            <div>Penjelasan</div>
           </div>
+          <div class="compare-scroll">
           <div class="mini-bars">
             <?php
               foreach ($kabupaten_status_rows as $row_data):
@@ -1175,8 +1266,22 @@ $top_attention = array_slice($top_attention, 0, 5);
                 <div class="row-status <?php echo htmlspecialchars($row_data['status_key']); ?>">
                   <?php echo htmlspecialchars($row_data['status_label']); ?>
                 </div>
+                <div class="compare-notes">
+                  <textarea
+                    class="compare-note"
+                    data-kode="<?php echo htmlspecialchars((string)$row_data['kode']); ?>"
+                    data-nama="<?php echo htmlspecialchars((string)$row_data['nama']); ?>"
+                    data-komoditas="<?php echo htmlspecialchars((string)$display_komoditas); ?>"
+                    data-bulan="<?php echo htmlspecialchars((string)$bulan); ?>"
+                    data-tahun="<?php echo htmlspecialchars((string)$tahun); ?>"
+                    placeholder="Isi penjelasan"
+                    <?php echo !empty($row_data['can_edit_penjelasan']) ? '' : 'disabled'; ?>
+                  ><?php echo htmlspecialchars((string)$row_data['penjelasan']); ?></textarea>
+                  <div class="note-status"></div>
+                </div>
               </div>
             <?php endforeach; ?>
+          </div>
           </div>
 
         </div>
@@ -1197,16 +1302,71 @@ $top_attention = array_slice($top_attention, 0, 5);
         ping();
         setInterval(ping, 60000);
       })();
+
+      (function () {
+        var textareas = Array.prototype.slice.call(document.querySelectorAll('.compare-note'));
+
+        function resize(el) {
+          if (!el) return;
+          el.style.height = 'auto';
+          el.style.height = Math.max(34, el.scrollHeight) + 'px';
+        }
+
+        function setStatus(el, text, cls) {
+          var box = el.parentElement ? el.parentElement.querySelector('.note-status') : null;
+          if (!box) return;
+          box.className = 'note-status' + (cls ? ' ' + cls : '');
+          box.textContent = text || '';
+        }
+
+        function save(el) {
+          if (!el || el.disabled) return;
+          var current = el.value;
+          if ((el.dataset.lastSaved || '') === current) {
+            setStatus(el, '');
+            return;
+          }
+          setStatus(el, 'Menyimpan...', '');
+          var payload = new URLSearchParams();
+          payload.set('action', 'save_penjelasan');
+          payload.set('kode_kabupaten', el.dataset.kode || '');
+          payload.set('nama_kabupaten', el.dataset.nama || '');
+          payload.set('komoditas', el.dataset.komoditas || '');
+          payload.set('bulan', el.dataset.bulan || '');
+          payload.set('tahun', el.dataset.tahun || '');
+          payload.set('penjelasan', current);
+
+          fetch('perbandingan-harga.php?komoditas=<?php echo rawurlencode((string)$komoditas_selected_key); ?>&bulan=<?php echo rawurlencode((string)$bulan); ?>&tahun=<?php echo rawurlencode((string)$tahun); ?>', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+            body: payload.toString()
+          })
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            if (!data || !data.ok) {
+              throw new Error((data && data.message) || 'Gagal menyimpan');
+            }
+            el.dataset.lastSaved = current;
+            setStatus(el, 'Tersimpan', 'saved');
+          })
+          .catch(function () {
+            setStatus(el, 'Gagal menyimpan', 'error');
+          });
+        }
+
+        textareas.forEach(function (el) {
+          el.dataset.lastSaved = el.value;
+          resize(el);
+          el.addEventListener('input', function () {
+            resize(el);
+            setStatus(el, '');
+          });
+          el.addEventListener('blur', function () {
+            save(el);
+          });
+        });
+      })();
     </script>
 
   </body>
 </html>
-<?php
-if (!headers_sent()) {
-    header('Cache-Control: public, max-age=' . $page_cache_ttl);
-}
-$page_html = ob_get_contents();
-if ($page_html !== false) {
-    cache_set_html($page_cache_key, $page_html);
-}
-?>
