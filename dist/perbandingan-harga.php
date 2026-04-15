@@ -809,17 +809,17 @@ $top_attention = array_slice($top_attention, 0, 5);
       }
       .mini-row {
         display: grid;
-        grid-template-columns: 176px minmax(110px, 1fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(110px, 1fr) 116px minmax(180px, 240px);
+        grid-template-columns: 176px minmax(110px, 1fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(180px, 240px);
         align-items: center;
         column-gap: 12px;
         row-gap: 0;
         font-size: 11px;
-        padding: 8px 0;
+        padding: 6px 0;
         border-top: 1px solid #f1f5f9;
       }
       .mini-header {
         display: grid;
-        grid-template-columns: 176px minmax(110px, 1fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(110px, 1fr) 116px minmax(180px, 240px);
+        grid-template-columns: 176px minmax(110px, 1fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(180px, 240px);
         gap: 10px;
         align-items: center;
         min-height: 24px;
@@ -860,8 +860,8 @@ $top_attention = array_slice($top_attention, 0, 5);
       .mini-out.right {
         text-align: center;
         width: 50px;
-        height: 18px;
-        line-height: 18px;
+        height: 16px;
+        line-height: 16px;
         border-radius: 6px;
         background: #f3f4f6;
         color: #374151;
@@ -886,7 +886,7 @@ $top_attention = array_slice($top_attention, 0, 5);
       }
       .mini-track {
         position: relative;
-        height: 18px;
+        height: 14px;
         background: #f1f5f9;
         border-radius: 999px;
         overflow: hidden;
@@ -909,34 +909,6 @@ $top_attention = array_slice($top_attention, 0, 5);
       .mini-pos { background: #41B38A; }
       .mini-neg { background: linear-gradient(135deg, #f6b7c8, #f5a25d); }
       .mini-zero { background: #cbd5f5; }
-      .row-status {
-        justify-self: end;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 108px;
-        padding: 7px 10px;
-        border-radius: 999px;
-        font-size: 10px;
-        font-weight: 800;
-        white-space: nowrap;
-      }
-      .row-status.aligned {
-        background: rgba(22, 143, 74, 0.10);
-        color: #168f4a;
-      }
-      .row-status.mixed {
-        background: rgba(245, 162, 93, 0.18);
-        color: #b45309;
-      }
-      .row-status.partial {
-        background: rgba(148, 163, 184, 0.16);
-        color: #475569;
-      }
-      .row-status.empty {
-        background: #eef2f7;
-        color: #64748b;
-      }
       .compare-panel {
         margin-top: 16px;
       }
@@ -992,7 +964,7 @@ $top_attention = array_slice($top_attention, 0, 5);
         .main { padding-right: 0; }
         .insight-strip { grid-template-columns: 1fr; }
         .status-grid { grid-template-columns: repeat(2, 1fr); }
-        .mini-row, .mini-header { min-width: 1120px; }
+        .mini-row, .mini-header { min-width: 980px; }
       }
       @media (max-width: 768px) {
         .app { grid-template-columns: 1fr; padding: 14px; }
@@ -1009,7 +981,7 @@ $top_attention = array_slice($top_attention, 0, 5);
         .trend { font-size: 22px; }
         .metric-wrap { gap: 8px; }
         .mini-bars { padding-bottom: 6px; }
-        .mini-row, .mini-header { min-width: 1120px; }
+        .mini-row, .mini-header { min-width: 980px; }
         .status-grid { grid-template-columns: 1fr; }
       }
     
@@ -1220,7 +1192,6 @@ $top_attention = array_slice($top_attention, 0, 5);
             <div>HPB</div>
             <div>HD</div>
             <div>HKD</div>
-            <div>Status</div>
             <div>Penjelasan</div>
           </div>
           <div class="compare-scroll">
@@ -1263,9 +1234,6 @@ $top_attention = array_slice($top_attention, 0, 5);
                     <?php endif; ?>
                   </div>
                 <?php endforeach; ?>
-                <div class="row-status <?php echo htmlspecialchars($row_data['status_key']); ?>">
-                  <?php echo htmlspecialchars($row_data['status_label']); ?>
-                </div>
                 <div class="compare-notes">
                   <textarea
                     class="compare-note"
