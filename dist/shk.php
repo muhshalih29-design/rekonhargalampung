@@ -315,6 +315,34 @@ foreach ($stmt_tabs as $row) {
         $komoditas_tabs[] = $k;
     }
 }
+$komoditas_pending_map = [];
+$pending_sql = "SELECT komoditas,
+    SUM(CASE WHEN perubahan IS NOT NULL AND perubahan <> 0 AND (penjelasan IS NULL OR TRIM(penjelasan) = '') THEN 1 ELSE 0 END) AS pending_count
+    FROM shk";
+$pending_where = $where;
+$pending_params = $params;
+if (is_kabupaten($user) && !empty($user['kab_kode'])) {
+    $pending_where[] = 'kode_kabupaten = ?';
+    $pending_params[] = (string)$user['kab_kode'];
+}
+if ($pending_where) {
+    $pending_sql .= ' WHERE ' . implode(' AND ', $pending_where);
+}
+$pending_sql .= ' GROUP BY komoditas';
+$stmt_pending = $pdo->prepare($pending_sql);
+$stmt_pending->execute($pending_params);
+foreach ($stmt_pending as $pending_row) {
+    $k = isset($pending_row['komoditas']) ? trim((string)$pending_row['komoditas']) : '';
+    if ($k === '') continue;
+    $komoditas_pending_map[$k] = (int)($pending_row['pending_count'] ?? 0);
+}
+$pending_items = [];
+foreach ($komoditas_tabs as $k) {
+    $count = (int)($komoditas_pending_map[$k] ?? 0);
+    if ($count > 0) {
+        $pending_items[] = ['label' => $k, 'count' => $count];
+    }
+}
 $komoditas_done_map = [];
 $tab_status_where = $where;
 $tab_status_params = $params;
@@ -791,6 +819,67 @@ $columns = [
         gap: 8px;
         box-shadow: 0 12px 24px rgba(217, 75, 75, 0.20);
       }
+      .pending-card {
+        background: linear-gradient(135deg, rgba(246, 183, 200, 0.14), rgba(255, 255, 255, 0.98));
+        border: 1px solid rgba(245, 162, 93, 0.16);
+        border-radius: 20px;
+        padding: 14px 16px;
+        box-shadow: 0 12px 24px rgba(56, 65, 80, 0.06);
+        margin-bottom: 16px;
+      }
+      .pending-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--ink);
+        margin-bottom: 4px;
+      }
+      .pending-subtitle {
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+      .pending-list {
+        margin-top: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .pending-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: #ffffff;
+        border: 1px solid #eef0f4;
+        box-shadow: 0 8px 18px rgba(56, 65, 80, 0.06);
+        font-size: 12px;
+        font-weight: 600;
+        color: #475569;
+      }
+      .pending-chip strong {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 22px;
+        height: 22px;
+        padding: 0 7px;
+        border-radius: 999px;
+        background: rgba(242, 139, 43, 0.12);
+        color: #b96a1b;
+        font-size: 11px;
+        font-weight: 800;
+      }
+      .pending-empty {
+        margin-top: 12px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: #ffffff;
+        border: 1px solid #eef2f7;
+        color: #5b6471;
+        font-size: 12px;
+        font-weight: 600;
+      }
 
       .table-card {
         background: var(--card);
@@ -1122,6 +1211,22 @@ $columns = [
             </div>
           </div>
         <?php endif; ?>
+        <div class="pending-card">
+          <div class="pending-title">Komoditas yang Masih Perlu Penjelasan</div>
+          <div class="pending-subtitle">Ringkasan ini mengikuti hak akses akun yang sedang login, sehingga admin kabupaten/kota bisa langsung melihat komoditas mana yang masih perlu dilengkapi.</div>
+          <?php if (!empty($pending_items)): ?>
+            <div class="pending-list">
+              <?php foreach ($pending_items as $item): ?>
+                <div class="pending-chip">
+                  <span><?php echo htmlspecialchars($item['label']); ?></span>
+                  <strong><?php echo (int)$item['count']; ?></strong>
+                </div>
+              <?php endforeach; ?>
+            </div>
+          <?php else: ?>
+            <div class="pending-empty">Semua komoditas yang relevan pada filter ini sudah terisi penjelasannya.</div>
+          <?php endif; ?>
+        </div>
         <?php if (!empty($komoditas_tabs)): ?>
           <div class="tabs" data-selected="<?php echo htmlspecialchars($komoditas_selected); ?>">
             <?php foreach ($komoditas_tabs as $k): ?>
