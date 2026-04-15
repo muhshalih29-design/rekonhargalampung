@@ -809,25 +809,25 @@ $top_attention = array_slice($top_attention, 0, 5);
       }
       .mini-row {
         display: grid;
-        grid-template-columns: 176px minmax(110px, 1fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(180px, 240px);
+        grid-template-columns: 152px minmax(92px, 1fr) minmax(92px, 1fr) minmax(92px, 1fr) minmax(92px, 1fr);
         align-items: center;
-        column-gap: 12px;
+        column-gap: 10px;
         row-gap: 0;
-        font-size: 11px;
-        padding: 6px 0;
+        font-size: 10px;
+        padding: 4px 0;
         border-top: 1px solid #f1f5f9;
       }
       .mini-header {
         display: grid;
-        grid-template-columns: 176px minmax(110px, 1fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(180px, 240px);
+        grid-template-columns: 152px minmax(92px, 1fr) minmax(92px, 1fr) minmax(92px, 1fr) minmax(92px, 1fr);
         gap: 10px;
         align-items: center;
-        min-height: 24px;
-        margin-bottom: 10px;
-        padding-bottom: 10px;
+        min-height: 20px;
+        margin-bottom: 8px;
+        padding-bottom: 8px;
         border-bottom: 1px solid #eef2f7;
         color: #6b7280;
-        font-size: 10px;
+        font-size: 9px;
         font-weight: 700;
         letter-spacing: 0.3px;
         text-transform: uppercase;
@@ -843,12 +843,13 @@ $top_attention = array_slice($top_attention, 0, 5);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        font-size: 10px;
       }
       .mini-cell {
         display: grid;
-        grid-template-columns: 1fr 50px;
+        grid-template-columns: 1fr 46px;
         align-items: center;
-        gap: 4px;
+        gap: 3px;
       }
       .mini-out {
         font-size: 10px;
@@ -859,14 +860,14 @@ $top_attention = array_slice($top_attention, 0, 5);
       }
       .mini-out.right {
         text-align: center;
-        width: 50px;
-        height: 16px;
-        line-height: 16px;
+        width: 46px;
+        height: 14px;
+        line-height: 14px;
         border-radius: 6px;
         background: #f3f4f6;
         color: #374151;
         border: 1px solid #e5e7eb;
-        font-size: 10px;
+        font-size: 9px;
       }
       .mini-out.pos {
         background: rgba(68,84,104,0.12);
@@ -886,7 +887,7 @@ $top_attention = array_slice($top_attention, 0, 5);
       }
       .mini-track {
         position: relative;
-        height: 14px;
+        height: 12px;
         background: #f1f5f9;
         border-radius: 999px;
         overflow: hidden;
@@ -895,8 +896,8 @@ $top_attention = array_slice($top_attention, 0, 5);
         content: "";
         position: absolute;
         left: 50%;
-        top: 3px;
-        bottom: 3px;
+        top: 2px;
+        bottom: 2px;
         border-left: 1px dashed rgba(55, 65, 81, 0.35);
       }
       .mini-fill {
@@ -915,6 +916,30 @@ $top_attention = array_slice($top_attention, 0, 5);
       .compare-scroll {
         overflow-x: auto;
         padding-bottom: 6px;
+      }
+      .notes-panel {
+        margin-top: 14px;
+      }
+      .notes-list {
+        display: grid;
+        gap: 8px;
+      }
+      .notes-row {
+        display: grid;
+        grid-template-columns: 170px 1fr;
+        align-items: start;
+        gap: 10px;
+        padding: 6px 0;
+        border-top: 1px solid #f1f5f9;
+      }
+      .notes-label {
+        font-size: 11px;
+        font-weight: 700;
+        color: #334155;
+        padding-top: 6px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .compare-notes {
         width: 100%;
@@ -965,7 +990,7 @@ $top_attention = array_slice($top_attention, 0, 5);
         .main { padding-right: 0; }
         .insight-strip { grid-template-columns: 1fr; }
         .status-grid { grid-template-columns: repeat(2, 1fr); }
-        .mini-row, .mini-header { min-width: 980px; }
+        .mini-row, .mini-header { min-width: 700px; }
       }
       @media (max-width: 768px) {
         .app { grid-template-columns: 1fr; padding: 14px; }
@@ -982,8 +1007,10 @@ $top_attention = array_slice($top_attention, 0, 5);
         .trend { font-size: 22px; }
         .metric-wrap { gap: 8px; }
         .mini-bars { padding-bottom: 6px; }
-        .mini-row, .mini-header { min-width: 980px; }
+        .mini-row, .mini-header { min-width: 700px; }
         .status-grid { grid-template-columns: 1fr; }
+        .notes-row { grid-template-columns: 1fr; }
+        .notes-label { padding-top: 0; }
       }
     
       /* B: Status colors */
@@ -1193,7 +1220,6 @@ $top_attention = array_slice($top_attention, 0, 5);
             <div>HPB</div>
             <div>HD</div>
             <div>HKD</div>
-            <div>Penjelasan</div>
           </div>
           <div class="compare-scroll">
           <div class="mini-bars">
@@ -1235,6 +1261,26 @@ $top_attention = array_slice($top_attention, 0, 5);
                     <?php endif; ?>
                   </div>
                 <?php endforeach; ?>
+              </div>
+            <?php endforeach; ?>
+          </div>
+          </div>
+
+        </div>
+
+        <div class="panel notes-panel">
+          <div class="panel-head">
+            <div class="panel-copy">
+              <div class="panel-title">Penjelasan Kabupaten/Kota</div>
+              <div class="panel-caption">Area isi penjelasan dipisahkan agar chart perbandingan tetap rapat dan mudah dibaca dalam satu layar.</div>
+            </div>
+          </div>
+          <div class="notes-list">
+            <?php foreach ($kabupaten_status_rows as $row_data): ?>
+              <div class="notes-row">
+                <div class="notes-label" title="<?php echo htmlspecialchars((string)$row_data['nama']); ?>">
+                  <?php echo htmlspecialchars((string)$row_data['nama']); ?>
+                </div>
                 <div class="compare-notes">
                   <textarea
                     class="compare-note"
@@ -1252,8 +1298,6 @@ $top_attention = array_slice($top_attention, 0, 5);
               </div>
             <?php endforeach; ?>
           </div>
-          </div>
-
         </div>
       </main>
     </div>
