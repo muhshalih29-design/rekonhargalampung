@@ -333,8 +333,8 @@ $user = require_auth();
       <main class="main">
         <div class="topbar">
           <div>
-            <div class="hello">Panduan Admin Kabupaten/Kota</div>
-            <div class="subhello">Panduan penggunaan sistem untuk admin kabupaten/kota dan admin provinsi.</div>
+            <div class="hello">Panduan Penggunaan Rekon Harga Lampung</div>
+            <div class="subhello">Panduan penggunaan sistem untuk admin kabupaten/kota dan admin provinsi sesuai alur kerja terbaru.</div>
           </div>
           <a class="icon-btn" href="logout.php" title="Logout"><i class="mdi mdi-logout"></i></a>
         </div>
@@ -361,7 +361,7 @@ $user = require_auth();
             <div class="quick-card">
               <div class="quick-number">4</div>
               <strong>Pastikan tersimpan</strong>
-              <span>Sistem akan menyimpan otomatis saat pindah sel atau saat pengguna berhenti mengisi beberapa saat.</span>
+              <span>Sistem akan menyimpan otomatis saat pindah sel, blur dari field, atau saat pengguna berhenti mengetik beberapa saat.</span>
             </div>
           </div>
           <div class="hint-strip">
@@ -377,11 +377,11 @@ $user = require_auth();
           <div class="role-grid">
             <div class="role-card emphasis">
               <strong>Admin Kabupaten/Kota</strong>
-              <span>Dapat melihat semua halaman, tetapi hanya dapat mengedit bagian yang diizinkan untuk kabupaten/kotanya sendiri. Pada halaman konfirmasi perubahan harga, fokus utamanya ada pada kolom <strong>Penjelasan</strong>.</span>
+              <span>Dapat melihat semua halaman, tetapi hanya dapat mengedit bagian yang diizinkan untuk kabupaten/kotanya sendiri. Pada halaman konfirmasi perubahan harga dan perbandingan harga, fokus utamanya ada pada kolom <strong>Penjelasan</strong> untuk wilayahnya.</span>
             </div>
             <div class="role-card">
               <strong>Admin Provinsi</strong>
-              <span>Dapat mengakses seluruh data dan fitur administratif, termasuk <strong>tambah komoditas</strong> serta <strong>hapus komoditas</strong> pada halaman level harga yang mendukung.</span>
+              <span>Dapat mengakses seluruh data dan fitur administratif, termasuk <strong>tambah komoditas</strong>, <strong>hapus komoditas</strong>, serta mengisi penjelasan lintas kabupaten/kota pada halaman yang mendukung.</span>
             </div>
             <div class="role-card">
               <strong>Bisa Diedit</strong>
@@ -422,7 +422,14 @@ $user = require_auth();
               <div class="legend-badge warn">⚠</div>
               <div>
                 <strong>Tanda Warning</strong>
-                <span>Menunjukkan arah perubahan yang tidak sejalan antar level harga atau ada kondisi yang perlu dicek lebih lanjut.</span>
+                <span>Menunjukkan arah perubahan yang tidak sejalan antar level harga atau ada kondisi yang perlu dicek lebih lanjut, terutama pada analisis perbandingan dan hulu hilir beras.</span>
+              </div>
+            </div>
+            <div class="legend-item">
+              <div class="legend-badge" style="background:#dcfce7;color:#166534;">✓</div>
+              <div>
+                <strong>Pill Komoditas Hijau</strong>
+                <span>Menandakan komoditas tersebut tidak lagi membutuhkan penjelasan, baik karena semua penjelasan sudah terisi maupun memang tidak ada baris yang membutuhkan penjelasan.</span>
               </div>
             </div>
           </div>
@@ -435,56 +442,56 @@ $user = require_auth();
               <div class="page-icon"><i class="mdi mdi-view-dashboard"></i></div>
               <div>
                 <strong>Dashboard</strong>
-                <span>Ringkasan progres pengisian penjelasan per kabupaten/kota, kabupaten prioritas, dan pengguna yang sedang online.</span>
+                <span>Ringkasan progres pengisian penjelasan per kabupaten/kota. Kartu-kartu dashboard menyesuaikan role yang sedang login, sedangkan tabel progres kabupaten/kota tetap tampil global.</span>
               </div>
             </div>
             <div class="page-item">
               <div class="page-icon"><i class="mdi mdi-chart-line"></i></div>
               <div>
                 <strong>Perbandingan Harga</strong>
-                <span>Melihat perbandingan rata-rata perubahan HK, HPB, HD, dan HKD serta arah perubahan per kabupaten/kota.</span>
+                <span>Melihat perbandingan rata-rata perubahan HK, HPB, HD, dan HKD serta chart ringkas per kabupaten/kota. Kolom penjelasan per kabupaten/kota tersedia pada panel terpisah di bawah chart.</span>
               </div>
             </div>
             <div class="page-item">
               <div class="page-icon"><span class="nav-text">HK</span></div>
               <div>
                 <strong>HK</strong>
-                <span>Konfirmasi perubahan harga konsumen, input SP2KP, catatan, penurunan konsumsi, dan penjelasan.</span>
+                <span>Konfirmasi perubahan harga konsumen, input SP2KP, catatan, penurunan konsumsi, dan penjelasan. Tersedia chip komoditas, kartu komoditas yang masih perlu penjelasan, serta tambah/hapus komoditas untuk admin provinsi.</span>
               </div>
             </div>
             <div class="page-item">
               <div class="page-icon"><span class="nav-text">HPB</span></div>
               <div>
                 <strong>HPB</strong>
-                <span>Konfirmasi perubahan harga perdagangan besar dengan struktur tabel per komoditas.</span>
+                <span>Konfirmasi perubahan harga perdagangan besar dengan struktur tabel per komoditas, chip status komoditas, dan kartu komoditas yang masih perlu penjelasan.</span>
               </div>
             </div>
             <div class="page-item">
               <div class="page-icon"><span class="nav-text">HD</span></div>
               <div>
                 <strong>HD</strong>
-                <span>Konfirmasi perubahan harga produsen pedesaan dan pengisian penjelasan per komoditas.</span>
+                <span>Konfirmasi perubahan harga produsen pedesaan dan pengisian penjelasan per komoditas, termasuk navigasi chip komoditas yang lebih ringkas.</span>
               </div>
             </div>
             <div class="page-item">
               <div class="page-icon"><span class="nav-text">HKD</span></div>
               <div>
                 <strong>HKD</strong>
-                <span>Konfirmasi perubahan harga konsumen pedesaan untuk komoditas yang tersedia pada tabel HKD.</span>
+                <span>Konfirmasi perubahan harga konsumen pedesaan untuk komoditas pada tabel HKD, dengan alur chip komoditas dan kartu penjelasan yang sama seperti level harga lainnya.</span>
               </div>
             </div>
             <div class="page-item">
               <div class="page-icon"><img src="assets/images/rice-2.png" alt="Hulu Hilir Beras"></div>
               <div>
                 <strong>Hulu Hilir Beras</strong>
-                <span>Pengisian tabel gabah dan beras yang menghubungkan SHPED_HD, SHPED_HKD, SHP, HPB, dan HK.</span>
+                <span>Pengisian tabel gabah dan beras yang menghubungkan SHPED_HD, SHPED_HKD, SHP, HPB, dan HK. Terdapat validasi arah RH dan warning dinamis pada kabupaten/kota terkait.</span>
               </div>
             </div>
             <div class="page-item">
               <div class="page-icon"><img src="assets/images/warning.png" alt="Ekstrem"></div>
               <div>
                 <strong>Ekstrem</strong>
-                <span>Input data harga ekstrem per subsektor, komoditas, kualitas, satuan, dan konfirmasi kabupaten.</span>
+                <span>Input data harga ekstrem per subsektor, komoditas, kualitas, satuan, dan konfirmasi kabupaten, lengkap dengan dukungan paste dari Excel dan filter header kolom.</span>
               </div>
             </div>
             <div class="page-item">
@@ -507,7 +514,7 @@ $user = require_auth();
               </div>
               <div class="step">
                 <strong>2) Cari komoditas dan baris wilayah</strong>
-                <p>Gunakan tab komoditas atau filter yang tersedia, lalu pastikan baris kabupaten/kota sesuai dengan wilayah yang sedang dikerjakan.</p>
+                <p>Gunakan chip/tab komoditas atau filter yang tersedia, lalu pastikan baris kabupaten/kota sesuai dengan wilayah yang sedang dikerjakan.</p>
               </div>
               <div class="step">
                 <strong>3) Isi sel yang aktif</strong>
@@ -528,8 +535,12 @@ $user = require_auth();
                 <p>Jika ada tanda warning, cek kembali apakah arah perubahan antar level harga sudah konsisten atau perlu konfirmasi tambahan.</p>
               </div>
               <div class="step">
-                <strong>7) Pantau progres di Dashboard</strong>
-                <p>Dashboard dapat dipakai untuk melihat progres pengisian, level harga yang tertinggal, dan kabupaten yang masih perlu perhatian.</p>
+                <strong>7) Gunakan kartu “Komoditas yang Masih Perlu Penjelasan”</strong>
+                <p>Kartu ini membantu melihat komoditas mana saja yang belum lengkap. Jika semua sudah lengkap, kartu akan berubah menjadi status selesai.</p>
+              </div>
+              <div class="step">
+                <strong>8) Pantau progres di Dashboard</strong>
+                <p>Dashboard dapat dipakai untuk melihat progres pengisian, level harga yang tertinggal, kabupaten yang masih perlu perhatian, serta akun yang sedang online.</p>
               </div>
             </div>
           </div>
@@ -547,12 +558,20 @@ $user = require_auth();
               <span>Data akan tersimpan otomatis saat Anda pindah sel atau berhenti mengisi. Setelah halaman di-refresh, nilai yang tersimpan akan tetap tampil.</span>
             </div>
             <div class="faq-item">
+              <strong>Kenapa pill komoditas berubah hijau?</strong>
+              <span>Itu berarti komoditas tersebut sudah tidak membutuhkan penjelasan lagi pada filter yang sedang aktif, baik karena semuanya sudah lengkap maupun memang tidak ada baris yang perlu diisi.</span>
+            </div>
+            <div class="faq-item">
               <strong>Kenapa data tidak muncul saat filter?</strong>
               <span>Biasanya karena bulan, tahun, atau komoditas yang dipilih belum memiliki data. Periksa kembali filter dan kembalikan ke periode yang benar.</span>
             </div>
             <div class="faq-item">
               <strong>Apa arti tanda warning?</strong>
               <span>Warning menunjukkan ada kondisi yang perlu perhatian, misalnya arah perubahan tidak sejalan atau isian tertentu perlu dicek ulang.</span>
+            </div>
+            <div class="faq-item">
+              <strong>Kenapa chart perbandingan dan penjelasan dipisah?</strong>
+              <span>Supaya chart perbandingan per kabupaten/kota bisa tampil lebih rapat dan mudah dibandingkan dalam satu layar, sementara area penjelasan tetap tersedia pada panel terpisah di bawahnya.</span>
             </div>
           </div>
         </div>
