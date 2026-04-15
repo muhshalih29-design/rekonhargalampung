@@ -454,12 +454,19 @@ $columns = [
         transition: all .2s ease;
         box-shadow: 0 8px 20px rgba(56,65,80,0.08);
       }
+      .tab-btn.is-done {
+        background: linear-gradient(135deg, rgba(22, 163, 74, 0.14), rgba(124, 227, 143, 0.22));
+        border-color: rgba(22, 163, 74, 0.28);
+        color: #136f3e;
+        box-shadow: 0 10px 20px rgba(22, 163, 74, 0.14);
+      }
       .tab-btn.active {
         background: linear-gradient(135deg, #f6b7c8, #f5a25d);
         color: #fff;
         border-color: transparent;
         box-shadow: 0 12px 24px rgba(255, 122, 182, 0.25);
       }
+      .tab-btn.active.is-done { color: #ffffff; }
       .table-card.hidden { display: none; }
 
       .hello {
@@ -741,6 +748,10 @@ $columns = [
         box-shadow: 0 12px 24px rgba(56, 65, 80, 0.06);
         margin-bottom: 16px;
       }
+      .pending-card.is-complete {
+        background: linear-gradient(135deg, rgba(22, 163, 74, 0.10), rgba(255, 255, 255, 0.98));
+        border-color: rgba(22, 163, 74, 0.18);
+      }
       .pending-title {
         font-size: 13px;
         font-weight: 700;
@@ -780,6 +791,16 @@ $columns = [
         font-size: 12px;
         font-weight: 600;
       }
+      .pending-complete-mark {
+        display: none;
+        margin-top: 14px;
+        justify-content: center;
+        align-items: center;
+        font-size: 54px;
+        line-height: 1;
+        color: #16a34a;
+      }
+      .pending-card.is-complete .pending-complete-mark { display: flex; }
 
       .table-card {
         background: var(--card);
@@ -1119,7 +1140,7 @@ $columns = [
             </div>
           </div>
         <?php endif; ?>
-        <div class="pending-card">
+        <div class="pending-card" id="pending-card">
           <div class="pending-title">Komoditas yang Masih Perlu Penjelasan</div>
           <div class="pending-subtitle">Ringkasan ini mengikuti hak akses akun yang sedang login, sehingga admin kabupaten/kota bisa langsung melihat komoditas mana yang masih perlu dilengkapi.</div>
           <?php if (!empty($pending_items)): ?>
@@ -1131,14 +1152,16 @@ $columns = [
               <?php endforeach; ?>
             </div>
           <?php else: ?>
-            <div class="pending-empty" id="pending-empty">Semua komoditas yang relevan pada filter ini sudah terisi penjelasannya.</div>
+            <div class="pending-empty" id="pending-empty">Semua penjelasan sudah terisi.</div>
           <?php endif; ?>
+          <div class="pending-complete-mark" id="pending-complete-mark"><i class="mdi mdi-check-circle"></i></div>
         </div>
         <?php if (!empty($komoditas_tabs)): ?>
           <div class="tabs" data-selected="<?php echo htmlspecialchars($komoditas_selected); ?>">
             <?php foreach ($komoditas_tabs as $k): ?>
               <?php $is_active = ($k === $komoditas_selected) ? 'active' : ''; ?>
-              <button type="button" class="tab-btn <?php echo $is_active; ?>" data-komoditas="<?php echo htmlspecialchars($k); ?>">
+              <?php $is_done = ((int)($komoditas_pending_map[$k] ?? 0) === 0) ? 'is-done' : ''; ?>
+              <button type="button" class="tab-btn <?php echo trim($is_active . ' ' . $is_done); ?>" data-komoditas="<?php echo htmlspecialchars($k); ?>">
                 <?php echo htmlspecialchars($k); ?>
               </button>
             <?php endforeach; ?>
@@ -1376,6 +1399,7 @@ $columns = [
         }
         var pendingList = document.getElementById('pending-list');
         var pendingEmpty = document.getElementById('pending-empty');
+        var pendingCard = document.getElementById('pending-card');
 
         function updatePendingChip(card) {
           if (!card) return;
@@ -1391,14 +1415,20 @@ $columns = [
           });
           var chip = document.querySelector('[data-pending-komoditas="' + CSS.escape(komoditas) + '"]');
           if (chip) chip.style.display = needsPending ? '' : 'none';
+          var tab = tabsWrap ? tabsWrap.querySelector('.tab-btn[data-komoditas="' + CSS.escape(komoditas) + '"]') : null;
+          if (tab) tab.classList.toggle('is-done', !needsPending);
           updatePendingEmptyState();
         }
 
         function updatePendingEmptyState() {
           var chips = pendingList ? Array.prototype.slice.call(pendingList.querySelectorAll('[data-pending-komoditas]')) : [];
           var visible = chips.filter(function (chip) { return chip.style.display !== 'none'; });
-          if (pendingEmpty) pendingEmpty.style.display = visible.length === 0 ? '' : 'none';
+          if (pendingEmpty) {
+            pendingEmpty.style.display = visible.length === 0 ? '' : 'none';
+            pendingEmpty.textContent = 'Semua penjelasan sudah terisi.';
+          }
           if (pendingList) pendingList.style.display = visible.length === 0 ? 'none' : 'flex';
+          if (pendingCard) pendingCard.classList.toggle('is-complete', visible.length === 0);
         }
 
         var perubahanInputs = document.querySelectorAll('.perubahan-input');

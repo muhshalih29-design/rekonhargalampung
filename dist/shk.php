@@ -811,6 +811,10 @@ $columns = [
         box-shadow: 0 12px 24px rgba(56, 65, 80, 0.06);
         margin-bottom: 16px;
       }
+      .pending-card.is-complete {
+        background: linear-gradient(135deg, rgba(22, 163, 74, 0.10), rgba(255, 255, 255, 0.98));
+        border-color: rgba(22, 163, 74, 0.18);
+      }
       .pending-title {
         font-size: 13px;
         font-weight: 700;
@@ -849,6 +853,18 @@ $columns = [
         color: #5b6471;
         font-size: 12px;
         font-weight: 600;
+      }
+      .pending-complete-mark {
+        display: none;
+        margin-top: 14px;
+        justify-content: center;
+        align-items: center;
+        font-size: 54px;
+        line-height: 1;
+        color: #16a34a;
+      }
+      .pending-card.is-complete .pending-complete-mark {
+        display: flex;
       }
 
       .table-card {
@@ -1181,7 +1197,7 @@ $columns = [
             </div>
           </div>
         <?php endif; ?>
-        <div class="pending-card">
+        <div class="pending-card" id="pending-card">
           <div class="pending-title">Komoditas yang Masih Perlu Penjelasan</div>
           <div class="pending-subtitle">Ringkasan ini mengikuti hak akses akun yang sedang login, sehingga admin kabupaten/kota bisa langsung melihat komoditas mana yang masih perlu dilengkapi.</div>
           <?php if (!empty($pending_items)): ?>
@@ -1193,8 +1209,9 @@ $columns = [
               <?php endforeach; ?>
             </div>
           <?php else: ?>
-            <div class="pending-empty" id="pending-empty">Semua komoditas yang relevan pada filter ini sudah terisi penjelasannya.</div>
+            <div class="pending-empty" id="pending-empty">Semua penjelasan sudah terisi.</div>
           <?php endif; ?>
+          <div class="pending-complete-mark" id="pending-complete-mark"><i class="mdi mdi-check-circle"></i></div>
         </div>
         <?php if (!empty($komoditas_tabs)): ?>
           <div class="tabs" data-selected="<?php echo htmlspecialchars($komoditas_selected); ?>">
@@ -1476,6 +1493,7 @@ $columns = [
         var canDeleteCurrent = <?php echo ($bulan !== '' && $tahun !== '' && ctype_digit((string)$tahun)) ? 'true' : 'false'; ?>;
         var pendingList = document.getElementById('pending-list');
         var pendingEmpty = document.getElementById('pending-empty');
+        var pendingCard = document.getElementById('pending-card');
 
         function updateTabCompletion(card) {
           if (!card || !tabsWrap) return;
@@ -1485,7 +1503,7 @@ $columns = [
           var requiredRows = rows.filter(function (row) {
             return isPerubahanRequired(row);
           });
-          var done = requiredRows.length > 0 && requiredRows.every(function (row) {
+          var done = requiredRows.length === 0 || requiredRows.every(function (row) {
             return hasPenjelasanFilled(row);
           });
           var tab = tabsWrap.querySelector('.tab-btn[data-komoditas="' + CSS.escape(komoditas) + '"]');
@@ -1518,9 +1536,13 @@ $columns = [
           });
           if (pendingEmpty) {
             pendingEmpty.style.display = visible.length === 0 ? '' : 'none';
+            pendingEmpty.textContent = 'Semua penjelasan sudah terisi.';
           }
           if (pendingList) {
             pendingList.style.display = visible.length === 0 ? 'none' : 'flex';
+          }
+          if (pendingCard) {
+            pendingCard.classList.toggle('is-complete', visible.length === 0);
           }
         }
 
