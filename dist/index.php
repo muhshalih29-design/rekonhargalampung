@@ -8,9 +8,25 @@ require_once __DIR__ . '/auth.php';
 $user = require_auth();
 $last_updated = date('d M Y H:i');
 $pdo = db();
+$is_provinsi_user = is_provinsi($user);
+$is_kabupaten_user = is_kabupaten($user);
+$user_kab_kode = (string)($user['kab_kode'] ?? '');
+$role_scope_label = $is_kabupaten_user ? 'kabupaten Anda' : 'seluruh provinsi';
 $online_users = [];
 try {
-    $stmt_online = $pdo->query("SELECT email, last_seen FROM users WHERE last_seen IS NOT NULL AND last_seen > (NOW() - INTERVAL '10 minutes') ORDER BY last_seen DESC");
+    $online_sql = "SELECT email, last_seen FROM users WHERE last_seen IS NOT NULL AND last_seen > (NOW() - INTERVAL '10 minutes')";
+    $online_params = [];
+    if ($is_kabupaten_user) {
+        $online_sql .= " AND role = ? AND kab_kode = ?";
+        $online_params[] = 'kabupaten';
+        $online_params[] = $user_kab_kode;
+    } elseif ($is_provinsi_user) {
+        $online_sql .= " AND role = ?";
+        $online_params[] = 'provinsi';
+    }
+    $online_sql .= " ORDER BY last_seen DESC";
+    $stmt_online = $pdo->prepare($online_sql);
+    $stmt_online->execute($online_params);
     $online_users = $stmt_online->fetchAll();
 } catch (Throwable $e) {
     $online_users = [];
@@ -105,7 +121,7 @@ foreach ($table_labels as $tbl => $label) {
     }
 }
 
-// Summary filled vs total for dashboard cards
+$scoped_summary_map = $summary_map;
 foreach ($table_labels as $tbl => $label) {
     if (!table_exists($pdo, $tbl)) {
         continue;
@@ -124,6 +140,10 @@ foreach ($table_labels as $tbl => $label) {
         $where[] = 'tahun = ?';
         $params[] = (int)$tahun;
     }
+    if ($is_kabupaten_user && $user_kab_kode !== '') {
+        $where[] = 'kode_kabupaten = ?';
+        $params[] = $user_kab_kode;
+    }
     if ($where) {
         $sql_sum .= ' WHERE ' . implode(' AND ', $where);
     }
@@ -131,7 +151,7 @@ foreach ($table_labels as $tbl => $label) {
     $stmt_sum->execute($params);
     $row_sum = $stmt_sum->fetch();
     if ($row_sum) {
-        $summary_map[$label] = [
+        $scoped_summary_map[$label] = [
             'filled' => (int)($row_sum['filled'] ?? 0),
             'total' => (int)($row_sum['total_nonzero'] ?? 0),
         ];
@@ -143,9 +163,19 @@ uksort($base, function ($a, $b) {
 });
 $progress_rows = array_values($base);
 
+$kabupaten_row = null;
+if ($is_kabupaten_user && $user_kab_kode !== '') {
+    foreach ($progress_rows as $candidate_row) {
+        if ((string)($candidate_row['kode'] ?? '') === $user_kab_kode) {
+            $kabupaten_row = $candidate_row;
+            break;
+        }
+    }
+}
+
 $overall_filled = 0;
 $overall_total = 0;
-foreach ($summary_map as $label => $values) {
+foreach ($scoped_summary_map as $label => $values) {
     $filled = (int)($values['filled'] ?? 0);
     $total = (int)($values['total'] ?? 0);
     $overall_filled += $filled;
@@ -207,6 +237,48 @@ usort($needs_attention, function ($a, $b) {
     return ($a['avg_percent'] ?? 0) <=> ($b['avg_percent'] ?? 0);
 });
 $needs_attention = array_slice($needs_attention, 0, 5);
+
+$summary_completed_count = 0;
+$summary_priority_count = 0;
+$attention_items = [];
+$attention_title = 'Kabupaten Prioritas';
+$attention_subtitle = 'Daftar tercepat untuk melihat wilayah dengan progres terendah pada filter yang aktif.';
+$summary_completed_label = 'Kabupaten lengkap';
+$summary_priority_label = 'Kabupaten prioritas';
+
+if ($is_kabupaten_user) {
+    $summary_completed_label = 'Level lengkap';
+    $summary_priority_label = 'Level perlu perhatian';
+    foreach (['HK', 'HPB', 'HD', 'HKD'] as $level) {
+        $item = $kabupaten_row['progress'][$level] ?? ['filled' => 0, 'total' => 0, 'percent' => 0];
+        $total_level = (int)($item['total'] ?? 0);
+        $percent_level = (int)($item['percent'] ?? 0);
+        if ($total_level > 0) {
+            if ($percent_level >= 100) {
+                $summary_completed_count++;
+            } else {
+                $summary_priority_count++;
+                $attention_items[] = [
+                    'label' => $level,
+                    'detail' => ((int)($item['filled'] ?? 0)) . ' dari ' . $total_level . ' penjelasan terisi',
+                    'score' => $percent_level . '%',
+                ];
+            }
+        }
+    }
+    $attention_title = 'Level Prioritas';
+    $attention_subtitle = 'Level harga pada kabupaten Anda yang masih membutuhkan pengisian penjelasan.';
+} else {
+    $summary_completed_count = $completed_kabupaten;
+    $summary_priority_count = count($needs_attention);
+    foreach ($needs_attention as $item) {
+        $attention_items[] = [
+            'label' => (string)$item['nama'],
+            'detail' => (int)$item['missing_levels'] . ' level belum lengkap dari ' . (int)$item['active_levels'] . ' level aktif',
+            'score' => (int)$item['avg_percent'] . '%',
+        ];
+    }
+}
 
 $overall_percent = $overall_total > 0 ? (int)round(($overall_filled / $overall_total) * 100) : 0;
 ?>
@@ -908,8 +980,8 @@ $overall_percent = $overall_total > 0 ? (int)round(($overall_filled / $overall_t
               'HKD' => 'hkd',
             ];
             foreach ($cards as $label => $class):
-              $filled = $summary_map[$label]['filled'] ?? 0;
-              $total = $summary_map[$label]['total'] ?? 0;
+              $filled = $scoped_summary_map[$label]['filled'] ?? 0;
+              $total = $scoped_summary_map[$label]['total'] ?? 0;
               $percent = $total > 0 ? (int)round(($filled / $total) * 100) : 0;
               $deg = $percent * 3.6;
               $status_label = 'Perlu perhatian';
@@ -938,43 +1010,47 @@ $overall_percent = $overall_total > 0 ? (int)round(($overall_filled / $overall_t
         <div class="overview-strip">
           <div class="summary-panel">
             <div class="panel-title">Ringkasan Monitoring</div>
-            <div class="panel-subtitle">Snapshot cepat untuk melihat progres total dan level yang perlu difokuskan lebih dulu.</div>
+            <div class="panel-subtitle">Snapshot cepat untuk melihat progres total pada <?php echo htmlspecialchars($role_scope_label); ?> dan area yang perlu difokuskan lebih dulu.</div>
             <div class="summary-grid">
               <div class="summary-tile emphasis">
                 <strong><?php echo $overall_percent; ?>%</strong>
                 <span>Progress keseluruhan</span>
               </div>
               <div class="summary-tile">
-                <strong><?php echo $completed_kabupaten; ?></strong>
-                <span>Kabupaten lengkap</span>
+                <strong><?php echo $summary_completed_count; ?></strong>
+                <span><?php echo htmlspecialchars($summary_completed_label); ?></span>
               </div>
               <div class="summary-tile">
                 <strong><?php echo htmlspecialchars((string)$level_lowest); ?></strong>
                 <span>Level paling tertinggal</span>
               </div>
               <div class="summary-tile">
-                <strong><?php echo count($needs_attention); ?></strong>
-                <span>Kabupaten prioritas</span>
+                <strong><?php echo $summary_priority_count; ?></strong>
+                <span><?php echo htmlspecialchars($summary_priority_label); ?></span>
               </div>
             </div>
           </div>
           <div class="attention-panel">
-            <div class="panel-title">Kabupaten Prioritas</div>
-            <div class="panel-subtitle">Daftar tercepat untuk melihat wilayah dengan progres terendah pada filter yang aktif.</div>
-            <?php if ($needs_attention): ?>
+            <div class="panel-title"><?php echo htmlspecialchars($attention_title); ?></div>
+            <div class="panel-subtitle"><?php echo htmlspecialchars($attention_subtitle); ?></div>
+            <?php if ($attention_items): ?>
               <div class="attention-list">
-                <?php foreach ($needs_attention as $item): ?>
+                <?php foreach ($attention_items as $item): ?>
                   <div class="attention-item">
                     <div>
-                      <strong><?php echo htmlspecialchars($item['nama']); ?></strong>
-                      <span><?php echo (int)$item['missing_levels']; ?> level belum lengkap dari <?php echo (int)$item['active_levels']; ?> level aktif</span>
+                      <strong><?php echo htmlspecialchars($item['label']); ?></strong>
+                      <span><?php echo htmlspecialchars($item['detail']); ?></span>
                     </div>
-                    <div class="attention-score"><?php echo (int)$item['avg_percent']; ?>%</div>
+                    <div class="attention-score"><?php echo htmlspecialchars($item['score']); ?></div>
                   </div>
                 <?php endforeach; ?>
               </div>
             <?php else: ?>
-              <div class="attention-empty">Semua kabupaten yang memiliki data pada filter ini sudah lengkap.</div>
+              <div class="attention-empty">
+                <?php echo $is_kabupaten_user
+                    ? 'Semua level harga pada kabupaten Anda yang memiliki data pada filter ini sudah lengkap.'
+                    : 'Semua kabupaten yang memiliki data pada filter ini sudah lengkap.'; ?>
+              </div>
             <?php endif; ?>
           </div>
         </div>
@@ -1036,7 +1112,11 @@ $overall_percent = $overall_total > 0 ? (int)round(($overall_filled / $overall_t
         <div class="panel" style="margin-top:16px;">
           <div class="panel-title">Pengguna Online (10 menit terakhir)</div>
           <div class="online-summary">
-            <div class="panel-subtitle" style="margin:0;">Akun yang masih aktif dalam 10 menit terakhir. Cocok untuk memantau siapa yang sedang bekerja di sistem.</div>
+            <div class="panel-subtitle" style="margin:0;">
+              <?php echo $is_kabupaten_user
+                  ? 'Akun admin kabupaten dengan kode yang sama yang masih aktif dalam 10 menit terakhir.'
+                  : 'Akun dengan role yang sama yang masih aktif dalam 10 menit terakhir.'; ?>
+            </div>
             <div class="online-count"><i class="mdi mdi-account-circle-outline"></i> <?php echo count($online_users); ?> akun online</div>
           </div>
           <?php if (empty($online_users)): ?>
