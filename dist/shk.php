@@ -8,29 +8,118 @@ require_once __DIR__ . '/auth.php';
 $user = require_auth();
 $pdo = db();
 
+$bulan_map = [
+    'january' => 'januari',
+    'february' => 'februari',
+    'march' => 'maret',
+    'april' => 'april',
+    'may' => 'mei',
+    'june' => 'juni',
+    'july' => 'juli',
+    'august' => 'agustus',
+    'september' => 'september',
+    'october' => 'oktober',
+    'november' => 'november',
+    'december' => 'desember',
+];
+$bulan_list = ['januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember'];
+
 $all = isset($_GET['all']) ? trim($_GET['all']) : '';
 $bulan = isset($_GET['bulan']) ? trim($_GET['bulan']) : '';
 $tahun = isset($_GET['tahun']) ? trim($_GET['tahun']) : '';
+$notice = isset($_GET['notice']) ? trim($_GET['notice']) : '';
+$notice_type = isset($_GET['notice_type']) ? trim($_GET['notice_type']) : 'success';
 
 if ($all === '' && $bulan === '' && $tahun === '') {
     $lastMonth = new DateTime('first day of last month');
     $bulan = strtolower($lastMonth->format('F'));
-    $map = [
-        'january' => 'januari',
-        'february' => 'februari',
-        'march' => 'maret',
-        'april' => 'april',
-        'may' => 'mei',
-        'june' => 'juni',
-        'july' => 'juli',
-        'august' => 'agustus',
-        'september' => 'september',
-        'october' => 'oktober',
-        'november' => 'november',
-        'december' => 'desember',
-    ];
-    $bulan = $map[$bulan] ?? $bulan;
+    $bulan = $bulan_map[$bulan] ?? $bulan;
     $tahun = $lastMonth->format('Y');
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_commodity') {
+    if (!is_provinsi($user)) {
+        http_response_code(403);
+        echo 'Forbidden';
+        exit;
+    }
+
+    $commodity_raw = isset($_POST['commodity_name']) ? (string)$_POST['commodity_name'] : '';
+    $commodity_name = preg_replace('/\s+/', ' ', trim($commodity_raw));
+    if ($commodity_name === '') {
+        header('Location: shk.php?notice_type=error&notice=' . urlencode('Nama komoditas tidak boleh kosong.'));
+        exit;
+    }
+
+    $today = new DateTime('now', new DateTimeZone('Asia/Jakarta'));
+    $current_month_en = strtolower($today->format('F'));
+    $current_month = $bulan_map[$current_month_en] ?? $current_month_en;
+    $current_year = (int)$today->format('Y');
+    $start_index = array_search($current_month, $bulan_list, true);
+    if ($start_index === false) {
+        $start_index = 0;
+    }
+    $months_to_create = array_slice($bulan_list, $start_index);
+
+    $stmt_kab = $pdo->query("SELECT DISTINCT kode_kabupaten, nama_kabupaten FROM shk WHERE TRIM(COALESCE(kode_kabupaten, '')) <> '' AND TRIM(COALESCE(nama_kabupaten, '')) <> '' ORDER BY kode_kabupaten ASC, nama_kabupaten ASC");
+    $kabupaten_rows = $stmt_kab->fetchAll();
+    if (empty($kabupaten_rows) || empty($months_to_create)) {
+        header('Location: shk.php?notice_type=error&notice=' . urlencode('Data kabupaten/kota dasar belum tersedia.'));
+        exit;
+    }
+
+    $insert_stmt = $pdo->prepare("
+        INSERT INTO shk (kode_kabupaten, nama_kabupaten, bulan, tahun, komoditas, time_stamp)
+        SELECT ?, ?, ?, ?, ?, NOW()
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM shk
+            WHERE kode_kabupaten = ?
+              AND nama_kabupaten = ?
+              AND TRIM(LOWER(bulan)) = ?
+              AND tahun = ?
+              AND TRIM(LOWER(komoditas)) = TRIM(LOWER(?))
+        )
+    ");
+    $inserted = 0;
+
+    try {
+        $pdo->beginTransaction();
+        foreach ($months_to_create as $target_month) {
+            foreach ($kabupaten_rows as $kabupaten) {
+                $kode = trim((string)$kabupaten['kode_kabupaten']);
+                $nama = trim((string)$kabupaten['nama_kabupaten']);
+                $insert_stmt->execute([
+                    $kode,
+                    $nama,
+                    $target_month,
+                    $current_year,
+                    $commodity_name,
+                    $kode,
+                    $nama,
+                    strtolower($target_month),
+                    $current_year,
+                    $commodity_name,
+                ]);
+                $inserted += $insert_stmt->rowCount();
+            }
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        header('Location: shk.php?notice_type=error&notice=' . urlencode('Gagal menambahkan komoditas baru.'));
+        exit;
+    }
+
+    $notice_text = $inserted > 0
+        ? 'Komoditas ' . $commodity_name . ' berhasil ditambahkan untuk ' . count($months_to_create) . ' bulan sampai Desember 2026.'
+        : 'Komoditas ' . $commodity_name . ' sudah tersedia untuk semua bulan berjalan sampai Desember 2026.';
+    $notice_kind = $inserted > 0 ? 'success' : 'info';
+
+    header('Location: shk.php?bulan=' . urlencode($current_month) . '&tahun=' . $current_year . '&komoditas=' . urlencode($commodity_name) . '&notice_type=' . urlencode($notice_kind) . '&notice=' . urlencode($notice_text));
+    exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update') {
@@ -360,6 +449,107 @@ $columns = [
         box-shadow: 0 10px 22px rgba(242, 139, 43, 0.25);
       }
 
+      .notice {
+        margin-bottom: 14px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        font-size: 12px;
+        font-weight: 600;
+        box-shadow: 0 10px 24px rgba(56, 65, 80, 0.08);
+      }
+      .notice-success {
+        background: rgba(22, 143, 74, 0.10);
+        color: #136f3e;
+        border: 1px solid rgba(22, 143, 74, 0.16);
+      }
+      .notice-error {
+        background: rgba(217, 75, 75, 0.10);
+        color: #b43636;
+        border: 1px solid rgba(217, 75, 75, 0.16);
+      }
+      .notice-info {
+        background: rgba(242, 139, 43, 0.10);
+        color: #b96a1b;
+        border: 1px solid rgba(242, 139, 43, 0.18);
+      }
+
+      .commodity-add-card {
+        background: linear-gradient(135deg, rgba(246, 183, 200, 0.18), rgba(245, 162, 93, 0.12));
+        border: 1px solid rgba(245, 162, 93, 0.18);
+        border-radius: 22px;
+        padding: 16px 18px;
+        box-shadow: 0 14px 28px rgba(56, 65, 80, 0.08);
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .commodity-add-copy {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .commodity-add-icon {
+        width: 46px;
+        height: 46px;
+        border-radius: 16px;
+        display: grid;
+        place-items: center;
+        background: var(--rh-gradient);
+        color: #fff;
+        box-shadow: 0 12px 24px rgba(242, 139, 43, 0.24);
+        flex: 0 0 auto;
+      }
+      .commodity-add-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--ink);
+      }
+      .commodity-add-subtitle {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 3px;
+      }
+      .commodity-add-form {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+      .commodity-add-input {
+        min-width: 280px;
+        height: 40px;
+        border-radius: 14px;
+        border: 1px solid #e8d8d0;
+        background: rgba(255, 255, 255, 0.96);
+        padding: 0 14px;
+        font-size: 13px;
+        color: var(--ink);
+        font-family: inherit;
+        box-shadow: inset 0 1px 1px rgba(15, 23, 42, 0.04);
+      }
+      .commodity-add-input:focus {
+        outline: none;
+        border-color: #ff9f91;
+        box-shadow: 0 0 0 3px rgba(255, 122, 182, 0.16);
+      }
+      .commodity-add-btn {
+        height: 40px;
+        padding: 0 16px;
+        border-radius: 14px;
+        border: none;
+        background: var(--rh-gradient);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 12px 24px rgba(242, 139, 43, 0.22);
+      }
+
       .table-card {
         background: var(--card);
         border-radius: var(--radius);
@@ -473,6 +663,10 @@ $columns = [
         .topbar { grid-template-columns: 1fr; }
         .pill { width: 100%; justify-content: space-between; }
         .pill select { width: 100%; }
+        .commodity-add-card { flex-direction: column; align-items: stretch; }
+        .commodity-add-form { justify-content: stretch; }
+        .commodity-add-input,
+        .commodity-add-btn { width: 100%; }
         .tabs { margin: 32px 0 16px; }
         .table-card { padding: 12px; }
       }
@@ -585,6 +779,30 @@ $columns = [
             <a class="icon-btn" href="logout.php" title="Logout"><i class="mdi mdi-logout"></i></a>
           </div>
         </form>
+        <?php if ($notice !== ''): ?>
+          <div class="notice notice-<?php echo htmlspecialchars(in_array($notice_type, ['success', 'error', 'info'], true) ? $notice_type : 'success'); ?>">
+            <?php echo htmlspecialchars($notice); ?>
+          </div>
+        <?php endif; ?>
+        <?php if (is_provinsi($user)): ?>
+          <div class="commodity-add-card">
+            <div class="commodity-add-copy">
+              <div class="commodity-add-icon"><i class="mdi mdi-plus-thick"></i></div>
+              <div>
+                <div class="commodity-add-title">Tambah Komoditas HK</div>
+                <div class="commodity-add-subtitle">Otomatis membuat tabel untuk semua kabupaten/kota dari bulan berjalan sampai Desember 2026.</div>
+              </div>
+            </div>
+            <form class="commodity-add-form" method="post" action="shk.php">
+              <input type="hidden" name="action" value="add_commodity">
+              <input type="text" name="commodity_name" class="commodity-add-input" placeholder="Contoh: Ikan Kembung" maxlength="100" required>
+              <button type="submit" class="commodity-add-btn">
+                <i class="mdi mdi-playlist-plus"></i>
+                Tambah Komoditas
+              </button>
+            </form>
+          </div>
+        <?php endif; ?>
         <?php if (!empty($komoditas_tabs)): ?>
           <div class="tabs" data-selected="<?php echo htmlspecialchars($komoditas_selected); ?>">
             <?php foreach ($komoditas_tabs as $k): ?>
