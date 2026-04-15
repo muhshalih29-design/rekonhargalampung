@@ -37,6 +37,66 @@ if ($all === '' && $bulan === '' && $tahun === '') {
     $tahun = $lastMonth->format('Y');
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_commodity') {
+    if (!is_provinsi($user)) {
+        http_response_code(403);
+        echo 'Forbidden';
+        exit;
+    }
+
+    $commodity_raw = isset($_POST['commodity_name']) ? (string)$_POST['commodity_name'] : '';
+    $commodity_name = preg_replace('/\s+/', ' ', trim($commodity_raw));
+    $delete_scope = isset($_POST['delete_scope']) ? trim((string)$_POST['delete_scope']) : 'current';
+    $filter_bulan = isset($_POST['filter_bulan']) ? trim((string)$_POST['filter_bulan']) : '';
+    $filter_tahun = isset($_POST['filter_tahun']) ? trim((string)$_POST['filter_tahun']) : '';
+
+    if ($commodity_name === '') {
+        header('Location: shk.php?notice_type=error&notice=' . urlencode('Komoditas yang akan dihapus belum dipilih.'));
+        exit;
+    }
+    if (!in_array($delete_scope, ['current', 'all'], true)) {
+        header('Location: shk.php?notice_type=error&notice=' . urlencode('Pilihan hapus komoditas tidak valid.'));
+        exit;
+    }
+
+    $redirect_query = [];
+    if ($filter_bulan !== '') {
+        $redirect_query['bulan'] = $filter_bulan;
+    }
+    if ($filter_tahun !== '' && ctype_digit($filter_tahun)) {
+        $redirect_query['tahun'] = $filter_tahun;
+    }
+
+    if ($delete_scope === 'current') {
+        if ($filter_bulan === '' || $filter_tahun === '' || !ctype_digit($filter_tahun)) {
+            $redirect_query['notice_type'] = 'error';
+            $redirect_query['notice'] = 'Filter bulan dan tahun harus dipilih untuk hapus komoditas pada bulan ini saja.';
+            header('Location: shk.php?' . http_build_query($redirect_query));
+            exit;
+        }
+        $delete_stmt = $pdo->prepare('DELETE FROM shk WHERE TRIM(LOWER(komoditas)) = TRIM(LOWER(?)) AND TRIM(LOWER(bulan)) = ? AND tahun = ?');
+        $delete_stmt->execute([$commodity_name, strtolower($filter_bulan), (int)$filter_tahun]);
+        $deleted = $delete_stmt->rowCount();
+        $notice_text = $deleted > 0
+            ? 'Komoditas ' . $commodity_name . ' berhasil dihapus untuk ' . ucfirst($filter_bulan) . ' ' . $filter_tahun . '.'
+            : 'Tidak ada data komoditas ' . $commodity_name . ' pada ' . ucfirst($filter_bulan) . ' ' . $filter_tahun . '.';
+        $redirect_query['notice_type'] = $deleted > 0 ? 'success' : 'info';
+        $redirect_query['notice'] = $notice_text;
+    } else {
+        $delete_stmt = $pdo->prepare('DELETE FROM shk WHERE TRIM(LOWER(komoditas)) = TRIM(LOWER(?))');
+        $delete_stmt->execute([$commodity_name]);
+        $deleted = $delete_stmt->rowCount();
+        $notice_text = $deleted > 0
+            ? 'Komoditas ' . $commodity_name . ' berhasil dihapus untuk semua bulan.'
+            : 'Tidak ada data komoditas ' . $commodity_name . ' yang bisa dihapus.';
+        $redirect_query['notice_type'] = $deleted > 0 ? 'success' : 'info';
+        $redirect_query['notice'] = $notice_text;
+    }
+
+    header('Location: shk.php?' . http_build_query($redirect_query));
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_commodity') {
     if (!is_provinsi($user)) {
         http_response_code(403);
@@ -549,6 +609,133 @@ $columns = [
         gap: 8px;
         box-shadow: 0 12px 24px rgba(242, 139, 43, 0.22);
       }
+      .commodity-delete-btn {
+        height: 40px;
+        padding: 0 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(217, 75, 75, 0.22);
+        background: rgba(255, 255, 255, 0.92);
+        color: #d94b4b;
+        font-size: 12px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 10px 22px rgba(217, 75, 75, 0.10);
+      }
+      .commodity-delete-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .delete-help {
+        width: 100%;
+        font-size: 11px;
+        color: var(--muted);
+        text-align: right;
+      }
+      .delete-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.42);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        z-index: 2000;
+      }
+      .delete-modal.open {
+        display: flex;
+      }
+      .delete-panel {
+        width: min(460px, 100%);
+        background: #ffffff;
+        border-radius: 24px;
+        padding: 22px;
+        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.18);
+      }
+      .delete-panel h3 {
+        margin: 0 0 8px;
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--ink);
+      }
+      .delete-panel p {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+      .delete-target {
+        margin-top: 14px;
+        padding: 12px 14px;
+        border-radius: 16px;
+        background: rgba(246, 183, 200, 0.12);
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .delete-scope {
+        margin-top: 16px;
+        display: grid;
+        gap: 10px;
+      }
+      .delete-option {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 12px 14px;
+        border: 1px solid #ece6ef;
+        border-radius: 16px;
+        background: #fbfbfd;
+      }
+      .delete-option input {
+        margin-top: 3px;
+      }
+      .delete-option strong {
+        display: block;
+        font-size: 13px;
+        color: var(--ink);
+      }
+      .delete-option span {
+        display: block;
+        margin-top: 2px;
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+      .delete-option.is-disabled {
+        opacity: 0.55;
+      }
+      .delete-actions {
+        margin-top: 18px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+      .delete-cancel-btn {
+        height: 40px;
+        padding: 0 16px;
+        border-radius: 14px;
+        border: 1px solid #e6e8ef;
+        background: #ffffff;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .delete-confirm-btn {
+        height: 40px;
+        padding: 0 16px;
+        border-radius: 14px;
+        border: none;
+        background: linear-gradient(135deg, #ef4444, #f28b2b);
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 12px 24px rgba(217, 75, 75, 0.20);
+      }
 
       .table-card {
         background: var(--card);
@@ -666,7 +853,12 @@ $columns = [
         .commodity-add-card { flex-direction: column; align-items: stretch; }
         .commodity-add-form { justify-content: stretch; }
         .commodity-add-input,
-        .commodity-add-btn { width: 100%; }
+        .commodity-add-btn,
+        .commodity-delete-btn { width: 100%; }
+        .delete-help { text-align: left; }
+        .delete-actions { flex-direction: column-reverse; }
+        .delete-cancel-btn,
+        .delete-confirm-btn { width: 100%; justify-content: center; }
         .tabs { margin: 32px 0 16px; }
         .table-card { padding: 12px; }
       }
@@ -800,7 +992,50 @@ $columns = [
                 <i class="mdi mdi-playlist-plus"></i>
                 Tambah Komoditas
               </button>
+              <button type="button" class="commodity-delete-btn" id="open-delete-commodity" disabled>
+                <i class="mdi mdi-delete-outline"></i>
+                Hapus Komoditas
+              </button>
+              <div class="delete-help" id="delete-help">Pilih tab komoditas yang ingin dihapus terlebih dahulu.</div>
             </form>
+          </div>
+          <div class="delete-modal" id="delete-commodity-modal" aria-hidden="true">
+            <div class="delete-panel" role="dialog" aria-modal="true" aria-labelledby="delete-commodity-title">
+              <h3 id="delete-commodity-title">Hapus Komoditas HK</h3>
+              <p>Data yang dihapus tidak bisa dikembalikan otomatis. Pastikan scope penghapusannya sudah sesuai.</p>
+              <div class="delete-target">
+                Komoditas terpilih: <span id="delete-commodity-name">-</span>
+              </div>
+              <form method="post" action="shk.php" id="delete-commodity-form">
+                <input type="hidden" name="action" value="delete_commodity">
+                <input type="hidden" name="commodity_name" id="delete-commodity-input" value="">
+                <input type="hidden" name="filter_bulan" value="<?php echo htmlspecialchars($bulan); ?>">
+                <input type="hidden" name="filter_tahun" value="<?php echo htmlspecialchars($tahun); ?>">
+                <div class="delete-scope">
+                  <label class="delete-option" id="delete-option-current">
+                    <input type="radio" name="delete_scope" value="current" checked>
+                    <div>
+                      <strong>Hapus pada bulan terfilter saja</strong>
+                      <span>Komoditas akan dihapus hanya untuk <span id="delete-current-label"><?php echo htmlspecialchars(($bulan !== '' ? ucfirst($bulan) : 'Bulan') . ($tahun !== '' ? ' ' . $tahun : '')); ?></span>.</span>
+                    </div>
+                  </label>
+                  <label class="delete-option" id="delete-option-all">
+                    <input type="radio" name="delete_scope" value="all">
+                    <div>
+                      <strong>Hapus untuk semua bulan</strong>
+                      <span>Menghapus seluruh data komoditas dari Januari sampai Desember 2026 yang tersedia di tabel HK.</span>
+                    </div>
+                  </label>
+                </div>
+                <div class="delete-actions">
+                  <button type="button" class="delete-cancel-btn" id="close-delete-commodity">Batal</button>
+                  <button type="submit" class="delete-confirm-btn">
+                    <i class="mdi mdi-alert-outline"></i>
+                    Ya, Hapus Komoditas
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         <?php endif; ?>
         <?php if (!empty($komoditas_tabs)): ?>
@@ -921,6 +1156,8 @@ $columns = [
 
     <script>
       (function () {
+        var selectedKomoditas = '';
+
         function autoResize(el) {
           el.style.height = 'auto';
           el.style.height = el.scrollHeight + 'px';
@@ -1041,6 +1278,57 @@ $columns = [
         });
 
         var tabsWrap = document.querySelector('.tabs');
+        var deleteButton = document.getElementById('open-delete-commodity');
+        var deleteHelp = document.getElementById('delete-help');
+        var deleteModal = document.getElementById('delete-commodity-modal');
+        var closeDeleteButton = document.getElementById('close-delete-commodity');
+        var deleteCommodityName = document.getElementById('delete-commodity-name');
+        var deleteCommodityInput = document.getElementById('delete-commodity-input');
+        var deleteCurrentOption = document.getElementById('delete-option-current');
+        var deleteCurrentRadio = deleteCurrentOption ? deleteCurrentOption.querySelector('input[name="delete_scope"]') : null;
+        var deleteAllRadio = document.querySelector('#delete-option-all input[name="delete_scope"]');
+        var canDeleteCurrent = <?php echo ($bulan !== '' && $tahun !== '' && ctype_digit((string)$tahun)) ? 'true' : 'false'; ?>;
+
+        function syncDeleteUi(name) {
+          selectedKomoditas = name || '';
+          if (deleteCommodityName) {
+            deleteCommodityName.textContent = selectedKomoditas || '-';
+          }
+          if (deleteCommodityInput) {
+            deleteCommodityInput.value = selectedKomoditas;
+          }
+          if (deleteButton) {
+            deleteButton.disabled = !selectedKomoditas;
+          }
+          if (deleteHelp) {
+            deleteHelp.textContent = selectedKomoditas
+              ? 'Komoditas aktif siap dihapus. Pilih scope hapus saat konfirmasi muncul.'
+              : 'Pilih tab komoditas yang ingin dihapus terlebih dahulu.';
+          }
+        }
+
+        function openDeleteModal() {
+          if (!deleteModal || !selectedKomoditas) return;
+          deleteModal.classList.add('open');
+          deleteModal.setAttribute('aria-hidden', 'false');
+          if (canDeleteCurrent && deleteCurrentRadio) {
+            deleteCurrentRadio.disabled = false;
+            deleteCurrentRadio.checked = true;
+            deleteCurrentOption.classList.remove('is-disabled');
+          } else if (deleteCurrentRadio) {
+            deleteCurrentRadio.disabled = true;
+            deleteCurrentRadio.checked = false;
+            deleteCurrentOption.classList.add('is-disabled');
+            if (deleteAllRadio) deleteAllRadio.checked = true;
+          }
+        }
+
+        function closeDeleteModal() {
+          if (!deleteModal) return;
+          deleteModal.classList.remove('open');
+          deleteModal.setAttribute('aria-hidden', 'true');
+        }
+
         if (tabsWrap) {
           function setActiveTab(name) {
             var buttons = tabsWrap.querySelectorAll('.tab-btn');
@@ -1051,6 +1339,7 @@ $columns = [
             cards.forEach(function (card) {
               card.classList.toggle('hidden', card.getAttribute('data-komoditas') !== name);
             });
+            syncDeleteUi(name);
           }
           tabsWrap.addEventListener('click', function (e) {
             var btn = e.target.closest('.tab-btn');
@@ -1067,6 +1356,37 @@ $columns = [
           if (initial) {
             setActiveTab(initial);
           }
+        } else {
+          syncDeleteUi('');
+        }
+
+        if (deleteButton) {
+          deleteButton.addEventListener('click', openDeleteModal);
+        }
+        if (closeDeleteButton) {
+          closeDeleteButton.addEventListener('click', closeDeleteModal);
+        }
+        if (deleteModal) {
+          deleteModal.addEventListener('click', function (e) {
+            if (e.target === deleteModal) {
+              closeDeleteModal();
+            }
+          });
+        }
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape') {
+            closeDeleteModal();
+          }
+        });
+
+        var deleteForm = document.getElementById('delete-commodity-form');
+        if (deleteForm) {
+          deleteForm.addEventListener('submit', function (e) {
+            if (!selectedKomoditas) {
+              e.preventDefault();
+              closeDeleteModal();
+            }
+          });
         }
 
         function saveCell(el) {
