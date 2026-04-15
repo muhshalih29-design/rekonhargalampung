@@ -506,23 +506,11 @@ $columns = [
         transition: all .2s ease;
         box-shadow: 0 6px 16px rgba(56,65,80,0.06);
       }
-      .tab-btn .tab-check {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        margin-left: 8px;
-        width: 18px;
-        height: 18px;
-        border-radius: 999px;
-        background: #16a34a;
-        color: #ffffff;
-        box-shadow: 0 6px 12px rgba(22, 163, 74, 0.28);
-        font-size: 13px;
-        line-height: 1;
-        flex: 0 0 auto;
-      }
-      .tab-btn .tab-check.is-hidden {
-        display: none;
+      .tab-btn.is-done {
+        background: linear-gradient(135deg, rgba(22, 163, 74, 0.14), rgba(124, 227, 143, 0.22));
+        border-color: rgba(22, 163, 74, 0.28);
+        color: #136f3e;
+        box-shadow: 0 10px 20px rgba(22, 163, 74, 0.14);
       }
       .tab-btn.active {
         background: linear-gradient(135deg, #f6b7c8, #f5a25d);
@@ -530,11 +518,7 @@ $columns = [
         border-color: transparent;
         box-shadow: 0 12px 24px rgba(255, 122, 182, 0.25);
       }
-      .tab-btn.active .tab-check {
-        background: rgba(255, 255, 255, 0.22);
-        color: #ffffff;
-        box-shadow: none;
-      }
+      .tab-btn.active.is-done { color: #ffffff; }
       .table-card.hidden { display: none; }
 
       .hello {
@@ -847,7 +831,6 @@ $columns = [
       .pending-chip {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
         padding: 8px 12px;
         border-radius: 999px;
         background: #ffffff;
@@ -856,19 +839,6 @@ $columns = [
         font-size: 12px;
         font-weight: 600;
         color: #475569;
-      }
-      .pending-chip strong {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 22px;
-        height: 22px;
-        padding: 0 7px;
-        border-radius: 999px;
-        background: rgba(242, 139, 43, 0.12);
-        color: #b96a1b;
-        font-size: 11px;
-        font-weight: 800;
       }
       .pending-empty {
         margin-top: 12px;
@@ -1215,25 +1185,24 @@ $columns = [
           <div class="pending-title">Komoditas yang Masih Perlu Penjelasan</div>
           <div class="pending-subtitle">Ringkasan ini mengikuti hak akses akun yang sedang login, sehingga admin kabupaten/kota bisa langsung melihat komoditas mana yang masih perlu dilengkapi.</div>
           <?php if (!empty($pending_items)): ?>
-            <div class="pending-list">
+            <div class="pending-list" id="pending-list">
               <?php foreach ($pending_items as $item): ?>
-                <div class="pending-chip">
+                <div class="pending-chip" data-pending-komoditas="<?php echo htmlspecialchars($item['label']); ?>">
                   <span><?php echo htmlspecialchars($item['label']); ?></span>
-                  <strong><?php echo (int)$item['count']; ?></strong>
                 </div>
               <?php endforeach; ?>
             </div>
           <?php else: ?>
-            <div class="pending-empty">Semua komoditas yang relevan pada filter ini sudah terisi penjelasannya.</div>
+            <div class="pending-empty" id="pending-empty">Semua komoditas yang relevan pada filter ini sudah terisi penjelasannya.</div>
           <?php endif; ?>
         </div>
         <?php if (!empty($komoditas_tabs)): ?>
           <div class="tabs" data-selected="<?php echo htmlspecialchars($komoditas_selected); ?>">
             <?php foreach ($komoditas_tabs as $k): ?>
               <?php $is_active = ($k === $komoditas_selected) ? 'active' : ''; ?>
-              <button type="button" class="tab-btn <?php echo $is_active; ?>" data-komoditas="<?php echo htmlspecialchars($k); ?>">
+              <?php $is_done = !empty($komoditas_done_map[$k]) ? 'is-done' : ''; ?>
+              <button type="button" class="tab-btn <?php echo trim($is_active . ' ' . $is_done); ?>" data-komoditas="<?php echo htmlspecialchars($k); ?>">
                 <?php echo htmlspecialchars($k); ?>
-                <span class="tab-check <?php echo !empty($komoditas_done_map[$k]) ? '' : 'is-hidden'; ?>" title="Penjelasan untuk role ini sudah lengkap"><i class="mdi mdi-check"></i></span>
               </button>
             <?php endforeach; ?>
           </div>
@@ -1459,7 +1428,9 @@ $columns = [
         }
 
         function isPerubahanRequired(row) {
-          if (!row || row.getAttribute('data-track-tab') !== '1') return false;
+          if (!row) return false;
+          var penjelasanInput = row.querySelector('textarea[data-field="penjelasan"]');
+          if (!penjelasanInput || penjelasanInput.disabled) return false;
           var perubahanInput = row.querySelector('.perubahan-input');
           var value = perubahanInput ? parseIdNumber(perubahanInput.value) : null;
           return value !== null && value !== 0;
@@ -1503,6 +1474,8 @@ $columns = [
         var deleteCurrentRadio = deleteCurrentOption ? deleteCurrentOption.querySelector('input[name="delete_scope"]') : null;
         var deleteAllRadio = document.querySelector('#delete-option-all input[name="delete_scope"]');
         var canDeleteCurrent = <?php echo ($bulan !== '' && $tahun !== '' && ctype_digit((string)$tahun)) ? 'true' : 'false'; ?>;
+        var pendingList = document.getElementById('pending-list');
+        var pendingEmpty = document.getElementById('pending-empty');
 
         function updateTabCompletion(card) {
           if (!card || !tabsWrap) return;
@@ -1517,15 +1490,38 @@ $columns = [
           });
           var tab = tabsWrap.querySelector('.tab-btn[data-komoditas="' + CSS.escape(komoditas) + '"]');
           if (!tab) return;
-          var check = tab.querySelector('.tab-check');
-          if (!check) return;
-          check.classList.toggle('is-hidden', !done);
+          tab.classList.toggle('is-done', done);
+          updatePendingChip(card, done);
         }
 
         function updateAllTabCompletion() {
           document.querySelectorAll('.table-card[data-komoditas]').forEach(function (card) {
             updateTabCompletion(card);
           });
+        }
+
+        function updatePendingChip(card, done) {
+          if (!card) return;
+          var komoditas = card.getAttribute('data-komoditas');
+          if (!komoditas) return;
+          var chip = document.querySelector('[data-pending-komoditas="' + CSS.escape(komoditas) + '"]');
+          if (chip) {
+            chip.style.display = done ? 'none' : '';
+          }
+          updatePendingEmptyState();
+        }
+
+        function updatePendingEmptyState() {
+          var chips = pendingList ? Array.prototype.slice.call(pendingList.querySelectorAll('[data-pending-komoditas]')) : [];
+          var visible = chips.filter(function (chip) {
+            return chip.style.display !== 'none';
+          });
+          if (pendingEmpty) {
+            pendingEmpty.style.display = visible.length === 0 ? '' : 'none';
+          }
+          if (pendingList) {
+            pendingList.style.display = visible.length === 0 ? 'none' : 'flex';
+          }
         }
 
         function syncDeleteUi(name) {
@@ -1768,6 +1764,7 @@ $columns = [
           });
         });
         updateAllTabCompletion();
+        updatePendingEmptyState();
       })();
     </script>
   

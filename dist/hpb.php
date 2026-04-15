@@ -761,7 +761,6 @@ $columns = [
       .pending-chip {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
         padding: 8px 12px;
         border-radius: 999px;
         background: #ffffff;
@@ -770,19 +769,6 @@ $columns = [
         font-size: 12px;
         font-weight: 600;
         color: #475569;
-      }
-      .pending-chip strong {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 22px;
-        height: 22px;
-        padding: 0 7px;
-        border-radius: 999px;
-        background: rgba(242, 139, 43, 0.12);
-        color: #b96a1b;
-        font-size: 11px;
-        font-weight: 800;
       }
       .pending-empty {
         margin-top: 12px;
@@ -1137,16 +1123,15 @@ $columns = [
           <div class="pending-title">Komoditas yang Masih Perlu Penjelasan</div>
           <div class="pending-subtitle">Ringkasan ini mengikuti hak akses akun yang sedang login, sehingga admin kabupaten/kota bisa langsung melihat komoditas mana yang masih perlu dilengkapi.</div>
           <?php if (!empty($pending_items)): ?>
-            <div class="pending-list">
+            <div class="pending-list" id="pending-list">
               <?php foreach ($pending_items as $item): ?>
-                <div class="pending-chip">
+                <div class="pending-chip" data-pending-komoditas="<?php echo htmlspecialchars($item['label']); ?>">
                   <span><?php echo htmlspecialchars($item['label']); ?></span>
-                  <strong><?php echo (int)$item['count']; ?></strong>
                 </div>
               <?php endforeach; ?>
             </div>
           <?php else: ?>
-            <div class="pending-empty">Semua komoditas yang relevan pada filter ini sudah terisi penjelasannya.</div>
+            <div class="pending-empty" id="pending-empty">Semua komoditas yang relevan pada filter ini sudah terisi penjelasannya.</div>
           <?php endif; ?>
         </div>
         <?php if (!empty($komoditas_tabs)): ?>
@@ -1389,6 +1374,32 @@ $columns = [
           var cards = document.querySelectorAll('.table-card');
           cards.forEach(function (card) { updateAvgForCard(card); });
         }
+        var pendingList = document.getElementById('pending-list');
+        var pendingEmpty = document.getElementById('pending-empty');
+
+        function updatePendingChip(card) {
+          if (!card) return;
+          var komoditas = card.getAttribute('data-komoditas');
+          if (!komoditas) return;
+          var rows = Array.prototype.slice.call(card.querySelectorAll('tbody tr'));
+          var needsPending = rows.some(function (row) {
+            var penjelasanInput = row.querySelector('textarea[data-field="penjelasan"]');
+            if (!penjelasanInput || penjelasanInput.disabled) return false;
+            var perubahanInput = row.querySelector('.perubahan-input');
+            var value = perubahanInput ? parseIdNumber(perubahanInput.value) : null;
+            return value !== null && value !== 0 && penjelasanInput.value.trim() === '';
+          });
+          var chip = document.querySelector('[data-pending-komoditas="' + CSS.escape(komoditas) + '"]');
+          if (chip) chip.style.display = needsPending ? '' : 'none';
+          updatePendingEmptyState();
+        }
+
+        function updatePendingEmptyState() {
+          var chips = pendingList ? Array.prototype.slice.call(pendingList.querySelectorAll('[data-pending-komoditas]')) : [];
+          var visible = chips.filter(function (chip) { return chip.style.display !== 'none'; });
+          if (pendingEmpty) pendingEmpty.style.display = visible.length === 0 ? '' : 'none';
+          if (pendingList) pendingList.style.display = visible.length === 0 ? 'none' : 'flex';
+        }
 
         var perubahanInputs = document.querySelectorAll('.perubahan-input');
         perubahanInputs.forEach(function (inp) {
@@ -1553,6 +1564,10 @@ $columns = [
             updateTrend(el);
             updateRowHighlight(el);
             updateAvgForCard(el.closest('.table-card'));
+            updatePendingChip(el.closest('.table-card'));
+          }
+          if (el.getAttribute('data-field') === 'penjelasan') {
+            updatePendingChip(el.closest('.table-card'));
           }
           saveCell(el);
         }
@@ -1605,10 +1620,18 @@ $columns = [
 
         var editable = document.querySelectorAll('.editable-cell');
         editable.forEach(function (el) {
-          el.addEventListener('blur', function () { saveCell(el); });
+          el.addEventListener('blur', function () {
+            if (el.getAttribute('data-field') === 'penjelasan' || el.classList.contains('perubahan-input')) {
+              updatePendingChip(el.closest('.table-card'));
+            }
+            saveCell(el);
+          });
           el.addEventListener('change', function () { saveCell(el); });
           if (el.tagName.toLowerCase() === 'textarea') {
-            el.addEventListener('input', function () { autoResize(el); });
+            el.addEventListener('input', function () {
+              autoResize(el);
+              updatePendingChip(el.closest('.table-card'));
+            });
           }
           el.addEventListener('keydown', function (e) {
             var row = el.closest('tr');
@@ -1633,6 +1656,8 @@ $columns = [
             }
           });
         });
+        document.querySelectorAll('.table-card[data-komoditas]').forEach(function (card) { updatePendingChip(card); });
+        updatePendingEmptyState();
       })();
     </script>
   
