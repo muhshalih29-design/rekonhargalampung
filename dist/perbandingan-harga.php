@@ -1180,7 +1180,6 @@ $top_attention = array_slice($top_attention, 0, 5);
           <div class="panel-head">
             <div class="panel-copy">
               <div class="panel-title">Perbandingan HK/HPB/HD/HKD per Kabupaten/Kota</div>
-              <div class="panel-caption">Fokus utamanya melihat apakah arah perubahan setiap level harga saling sejalan atau justru berlawanan.</div>
             </div>
             <div class="panel-subpill">
               Komoditas: <?php echo htmlspecialchars($display_komoditas); ?> · Bulan: <?php echo htmlspecialchars(ucfirst($bulan)); ?> · Tahun: <?php echo htmlspecialchars($tahun); ?>
