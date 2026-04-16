@@ -713,7 +713,7 @@ $top_attention = array_slice($top_attention, 0, 5);
       }
       .status-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(2, 1fr);
         gap: 10px;
       }
       .status-tile {
@@ -739,12 +739,6 @@ $top_attention = array_slice($top_attention, 0, 5);
       }
       .status-tile.mixed {
         background: rgba(245, 162, 93, 0.16);
-      }
-      .status-tile.partial {
-        background: rgba(148, 163, 184, 0.12);
-      }
-      .status-tile.empty {
-        background: #f8fafc;
       }
       .attention-list {
         display: grid;
@@ -1203,14 +1197,6 @@ $top_attention = array_slice($top_attention, 0, 5);
                 <div class="status-tile mixed">
                   <strong><?php echo (int)$status_summary['mixed']; ?></strong>
                   <span>Tidak searah</span>
-                </div>
-                <div class="status-tile partial">
-                  <strong><?php echo (int)$status_summary['partial']; ?></strong>
-                  <span>Data parsial</span>
-                </div>
-                <div class="status-tile empty">
-                  <strong><?php echo (int)$status_summary['empty']; ?></strong>
-                  <span>Tidak ada data</span>
                 </div>
               </div>
             </div>
