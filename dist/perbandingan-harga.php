@@ -1227,7 +1227,6 @@ $top_attention = array_slice($top_attention, 0, 5);
                     <div class="attention-item <?php echo ($idx >= 3) ? 'is-hidden' : ''; ?>">
                       <div>
                         <strong><?php echo htmlspecialchars($item['nama']); ?></strong>
-                        <span>Ada arah positif dan negatif pada level harga yang tampil</span>
                       </div>
                       <div class="attention-badge"><?php echo (int)$item['active_count']; ?> level aktif</div>
                     </div>
