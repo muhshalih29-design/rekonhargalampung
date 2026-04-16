@@ -680,6 +680,16 @@ $top_attention = array_slice($top_attention, 0, 5);
         gap: 16px;
         margin-bottom: 20px;
       }
+      .dual-panels {
+        display: grid;
+        grid-template-columns: 0.95fr 1.05fr;
+        gap: 16px;
+        align-items: start;
+        margin-bottom: 16px;
+      }
+      .dual-panels .panel {
+        margin: 0 !important;
+      }
       .status-board,
       .attention-board {
         border-radius: 18px;
@@ -990,6 +1000,7 @@ $top_attention = array_slice($top_attention, 0, 5);
         .main { padding-right: 0; }
         .insight-strip { grid-template-columns: 1fr; }
         .status-grid { grid-template-columns: repeat(2, 1fr); }
+        .dual-panels { grid-template-columns: 1fr; }
         .mini-row, .mini-header { min-width: 700px; }
       }
       @media (max-width: 768px) {
@@ -1116,7 +1127,8 @@ $top_attention = array_slice($top_attention, 0, 5);
           </div>
         </form>
 
-        <div class="panel" style="margin-bottom:16px;">
+        <div class="dual-panels">
+        <div class="panel">
           <div class="panel-head">
             <div class="panel-copy">
               <div class="panel-title">Ringkasan Level Harga</div>
@@ -1212,6 +1224,7 @@ $top_attention = array_slice($top_attention, 0, 5);
               <?php endif; ?>
             </div>
           </div>
+        </div>
         </div>
 
         <div class="panel compare-panel">
