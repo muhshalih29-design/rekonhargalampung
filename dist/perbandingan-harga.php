@@ -1116,42 +1116,49 @@ $top_attention = array_slice($top_attention, 0, 5);
           </div>
         </form>
 
-
-        <div class="cards">
-          <?php
-            $cards = [
-              'HK' => 'hk',
-              'HPB' => 'hpb',
-              'HD' => 'hd',
-              'HKD' => 'hkd',
-            ];
-            foreach ($cards as $label => $class):
-              $avg = $avg_map[$label];
-              $has = ($avg !== null);
-              if ($has) {
-                $display = number_format((float)$avg, 2, ',', '.') . '%';
-              } else {
-                $display = '-';
-              }
-              $trend = '';
-              if ($has) {
-                if ($avg > 0) $trend = 'up';
-                elseif ($avg < 0) $trend = 'down';
-                else $trend = 'zero';
-              }
-          ?>
-            <div class="card label-offset">
-              <div>
-                <h4><?php echo $label; ?></h4>
-              </div>
-              <div class="metric-wrap">
-                <div class="metric <?php echo $class; ?><?php echo $has ? ($avg >= 0 ? ' metric-pos' : ' metric-neg') : ''; ?>"><?php echo $display; ?></div>
-              </div>
-              <?php if ($has && $trend !== 'zero'): ?>
-                <div class="trend trend-<?php echo $trend; ?>"><?php echo $trend === 'up' ? '▲' : '▼'; ?></div>
-              <?php endif; ?>
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="panel-head">
+            <div class="panel-copy">
+              <div class="panel-title">Ringkasan Level Harga</div>
+              <div class="panel-caption">Ringkasan rata-rata perubahan untuk setiap level harga pada filter yang sedang aktif.</div>
             </div>
-          <?php endforeach; ?>
+          </div>
+          <div class="cards">
+            <?php
+              $cards = [
+                'HK' => 'hk',
+                'HPB' => 'hpb',
+                'HD' => 'hd',
+                'HKD' => 'hkd',
+              ];
+              foreach ($cards as $label => $class):
+                $avg = $avg_map[$label];
+                $has = ($avg !== null);
+                if ($has) {
+                  $display = number_format((float)$avg, 2, ',', '.') . '%';
+                } else {
+                  $display = '-';
+                }
+                $trend = '';
+                if ($has) {
+                  if ($avg > 0) $trend = 'up';
+                  elseif ($avg < 0) $trend = 'down';
+                  else $trend = 'zero';
+                }
+            ?>
+              <div class="card label-offset">
+                <div>
+                  <h4><?php echo $label; ?></h4>
+                </div>
+                <div class="metric-wrap">
+                  <div class="metric <?php echo $class; ?><?php echo $has ? ($avg >= 0 ? ' metric-pos' : ' metric-neg') : ''; ?>"><?php echo $display; ?></div>
+                </div>
+                <?php if ($has && $trend !== 'zero'): ?>
+                  <div class="trend trend-<?php echo $trend; ?>"><?php echo $trend === 'up' ? '▲' : '▼'; ?></div>
+                <?php endif; ?>
+              </div>
+            <?php endforeach; ?>
+          </div>
         </div>
 
         <div class="panel">
