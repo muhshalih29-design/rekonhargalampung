@@ -617,14 +617,37 @@ $top_attention = array_slice($top_attention, 0, 5);
         width: 100%;
       }
       .summary-cards .card {
-        padding: 8px 10px;
+        position: relative;
+        padding: 10px 12px;
+        min-height: 92px;
         border-radius: 16px;
         box-shadow: 0 10px 20px rgba(56, 65, 80, 0.07);
-        gap: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
-      .summary-cards .card h4 { font-size: 12px; }
-      .summary-cards .metric { font-size: 20px; }
-      .summary-cards .trend { font-size: 14px; }
+      .summary-cards .card h4 {
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 12px;
+      }
+      .summary-cards .metric-wrap {
+        width: 100%;
+        justify-content: center;
+      }
+      .summary-cards .metric {
+        font-size: 24px;
+        text-align: center;
+      }
+      .summary-cards .trend {
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 18px;
+      }
       .card h4 {
         margin: 0;
         font-size: 18px;
@@ -723,7 +746,7 @@ $top_attention = array_slice($top_attention, 0, 5);
       }
       .attention-list {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 6px;
       }
       .attention-item.is-hidden {
@@ -1022,7 +1045,7 @@ $top_attention = array_slice($top_attention, 0, 5);
         .insight-strip { grid-template-columns: 1fr; }
         .overview-grid { grid-template-columns: 1fr; }
         .summary-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .attention-list { grid-template-columns: 1fr; }
+        .attention-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .mini-row, .mini-header { min-width: 700px; }
       }
       @media (max-width: 768px) {
@@ -1035,6 +1058,7 @@ $top_attention = array_slice($top_attention, 0, 5);
         .pill select { width: 100%; }
         .cards { grid-template-columns: 1fr; }
         .summary-cards { grid-template-columns: 1fr; }
+        .attention-list { grid-template-columns: 1fr; }
         .card { padding: 14px 16px; border-radius: 24px; }
         .card h4 { font-size: 16px; }
         .metric { font-size: 28px; }
@@ -1203,7 +1227,7 @@ $top_attention = array_slice($top_attention, 0, 5);
               <?php if ($top_attention): ?>
                 <div class="attention-list">
                   <?php foreach ($top_attention as $idx => $item): ?>
-                    <div class="attention-item <?php echo ($idx >= 3) ? 'is-hidden' : ''; ?>">
+                    <div class="attention-item <?php echo ($idx >= 4) ? 'is-hidden' : ''; ?>">
                       <div>
                         <strong><?php echo htmlspecialchars($item['nama']); ?></strong>
                       </div>
@@ -1211,7 +1235,7 @@ $top_attention = array_slice($top_attention, 0, 5);
                     </div>
                   <?php endforeach; ?>
                 </div>
-                <?php if (count($top_attention) > 3): ?>
+                <?php if (count($top_attention) > 4): ?>
                   <button type="button" class="attention-toggle" id="attention-toggle">
                     Lihat semua (<?php echo (int)count($top_attention); ?>)
                     <i class="mdi mdi-chevron-down"></i>
