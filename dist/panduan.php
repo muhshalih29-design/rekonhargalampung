@@ -320,13 +320,13 @@ $user = require_auth();
       <aside class="sidebar">
         <div class="logo">RH</div>
         <a class="nav-dot" href="index.php" title="Dashboard"><i class="mdi mdi-view-dashboard"></i></a>
-        <a class="nav-dot" href="perbandingan-harga.php" title="Perbandingan Harga"><i class="mdi mdi-chart-line"></i></a>
         <a class="nav-dot" href="shk.php" title="SHK"><span class="nav-text">HK</span></a>
         <a class="nav-dot" href="hpb.php" title="HPB"><span class="nav-text">HPB</span></a>
         <a class="nav-dot" href="hd.php" title="HD"><span class="nav-text">HD</span></a>
         <a class="nav-dot" href="hkd.php" title="HKD"><span class="nav-text">HKD</span></a>
-        <a class="nav-dot" href="hulu-hilir-beras.php" title="Hulu Hilir Beras"><img src="assets/images/rice-2.png" alt="Hulu Hilir Beras" style="width:18px;height:18px;display:block;" /></a>
         <a class="nav-dot" href="ekstrem.php" title="Ekstrem"><img src="assets/images/warning.png" alt="Ekstrem" style="width:18px;height:18px;display:block;" /></a>
+        <a class="nav-dot" href="hulu-hilir-beras.php" title="Hulu Hilir Beras"><img src="assets/images/rice-2.png" alt="Hulu Hilir Beras" style="width:18px;height:18px;display:block;" /></a>
+        <a class="nav-dot" href="perbandingan-harga.php" title="Perbandingan Harga"><i class="mdi mdi-chart-line"></i></a>
         <a class="nav-dot active" href="panduan.php" title="Panduan"><i class="mdi mdi-book-open-variant"></i></a>
       </aside>
 
@@ -346,7 +346,7 @@ $user = require_auth();
             <div class="quick-card">
               <div class="quick-number">1</div>
               <strong>Pilih halaman</strong>
-              <span>Masuk ke HK, HPB, HD, HKD, Hulu Hilir Beras, atau Ekstrem sesuai jenis data yang akan diisi.</span>
+              <span>Masuk ke HK, HPB, HD, HKD, Harga Ekstrem, Hulu Hilir Beras, atau Perbandingan Harga sesuai kebutuhan pekerjaan.</span>
             </div>
             <div class="quick-card">
               <div class="quick-number">2</div>
@@ -446,24 +446,17 @@ $user = require_auth();
               </div>
             </div>
             <div class="page-item">
-              <div class="page-icon"><i class="mdi mdi-chart-line"></i></div>
-              <div>
-                <strong>Perbandingan Harga</strong>
-                <span>Melihat perbandingan rata-rata perubahan HK, HPB, HD, dan HKD serta chart ringkas per kabupaten/kota. Kolom penjelasan per kabupaten/kota tersedia pada panel terpisah di bawah chart.</span>
-              </div>
-            </div>
-            <div class="page-item">
               <div class="page-icon"><span class="nav-text">HK</span></div>
               <div>
                 <strong>HK</strong>
-                <span>Konfirmasi perubahan harga konsumen, input SP2KP, catatan, penurunan konsumsi, dan penjelasan. Tersedia chip komoditas, kartu komoditas yang masih perlu penjelasan, serta tambah/hapus komoditas untuk admin provinsi.</span>
+                <span>Konfirmasi perubahan harga konsumen, input SP2KP, catatan, penurunan konsumsi, dan penjelasan. Tersedia chip komoditas serta tambah/hapus komoditas untuk admin provinsi.</span>
               </div>
             </div>
             <div class="page-item">
               <div class="page-icon"><span class="nav-text">HPB</span></div>
               <div>
                 <strong>HPB</strong>
-                <span>Konfirmasi perubahan harga perdagangan besar dengan struktur tabel per komoditas, chip status komoditas, dan kartu komoditas yang masih perlu penjelasan.</span>
+                <span>Konfirmasi perubahan harga perdagangan besar dengan struktur tabel per komoditas, chip status komoditas, dan dukungan tambah/hapus komoditas untuk admin provinsi.</span>
               </div>
             </div>
             <div class="page-item">
@@ -477,7 +470,14 @@ $user = require_auth();
               <div class="page-icon"><span class="nav-text">HKD</span></div>
               <div>
                 <strong>HKD</strong>
-                <span>Konfirmasi perubahan harga konsumen pedesaan untuk komoditas pada tabel HKD, dengan alur chip komoditas dan kartu penjelasan yang sama seperti level harga lainnya.</span>
+                <span>Konfirmasi perubahan harga konsumen pedesaan untuk komoditas pada tabel HKD, dengan alur chip komoditas yang sama seperti level harga lainnya.</span>
+              </div>
+            </div>
+            <div class="page-item">
+              <div class="page-icon"><img src="assets/images/warning.png" alt="Ekstrem"></div>
+              <div>
+                <strong>Harga Ekstrem</strong>
+                <span>Input data harga ekstrem per subsektor, komoditas, kualitas, satuan, dan konfirmasi kabupaten, lengkap dengan dukungan paste dari Excel dan filter header kolom.</span>
               </div>
             </div>
             <div class="page-item">
@@ -488,10 +488,10 @@ $user = require_auth();
               </div>
             </div>
             <div class="page-item">
-              <div class="page-icon"><img src="assets/images/warning.png" alt="Ekstrem"></div>
+              <div class="page-icon"><i class="mdi mdi-chart-line"></i></div>
               <div>
-                <strong>Ekstrem</strong>
-                <span>Input data harga ekstrem per subsektor, komoditas, kualitas, satuan, dan konfirmasi kabupaten, lengkap dengan dukungan paste dari Excel dan filter header kolom.</span>
+                <strong>Perbandingan Harga</strong>
+                <span>Melihat perbandingan rata-rata perubahan HK, HPB, HD, dan HKD serta chart ringkas per kabupaten/kota. Kolom penjelasan per kabupaten/kota tersedia pada panel terpisah di bawah chart.</span>
               </div>
             </div>
             <div class="page-item">
@@ -535,8 +535,8 @@ $user = require_auth();
                 <p>Jika ada tanda warning, cek kembali apakah arah perubahan antar level harga sudah konsisten atau perlu konfirmasi tambahan.</p>
               </div>
               <div class="step">
-                <strong>7) Gunakan kartu “Komoditas yang Masih Perlu Penjelasan”</strong>
-                <p>Kartu ini membantu melihat komoditas mana saja yang belum lengkap. Jika semua sudah lengkap, kartu akan berubah menjadi status selesai.</p>
+                <strong>7) Gunakan chip komoditas sebagai penanda progres</strong>
+                <p>Pill komoditas akan berubah hijau jika pada periode aktif komoditas tersebut sudah tidak membutuhkan penjelasan lagi.</p>
               </div>
               <div class="step">
                 <strong>8) Pantau progres di Dashboard</strong>
