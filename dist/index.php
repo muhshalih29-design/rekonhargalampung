@@ -885,10 +885,24 @@ $overall_percent = $overall_total > 0 ? (int)round(($overall_filled / $overall_t
       .cards {
         gap: 12px;
       }
+      .card-link {
+        display: block;
+        color: inherit;
+        text-decoration: none;
+      }
       .card {
         border-radius: 22px;
         background: #ffffff;
         box-shadow: 0 14px 26px rgba(26, 30, 40, 0.08);
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+      }
+      .card-link:hover .card,
+      .card-link:focus-visible .card {
+        transform: translateY(-2px);
+        box-shadow: 0 18px 30px rgba(26, 30, 40, 0.12);
+      }
+      .card-link:focus-visible {
+        outline: none;
       }
       .panel {
         background: #ffffff;
@@ -974,12 +988,14 @@ $overall_percent = $overall_total > 0 ? (int)round(($overall_filled / $overall_t
         <div class="cards">
           <?php
             $cards = [
-              'HK' => 'hk',
-              'HPB' => 'hpb',
-              'HD' => 'hd',
-              'HKD' => 'hkd',
+              'HK' => ['class' => 'hk', 'href' => 'shk.php'],
+              'HPB' => ['class' => 'hpb', 'href' => 'hpb.php'],
+              'HD' => ['class' => 'hd', 'href' => 'hd.php'],
+              'HKD' => ['class' => 'hkd', 'href' => 'hkd.php'],
             ];
-            foreach ($cards as $label => $class):
+            foreach ($cards as $label => $card_config):
+              $class = $card_config['class'];
+              $href = $card_config['href'];
               $filled = $scoped_summary_map[$label]['filled'] ?? 0;
               $total = $scoped_summary_map[$label]['total'] ?? 0;
               $percent = $total > 0 ? (int)round(($filled / $total) * 100) : 0;
@@ -991,19 +1007,21 @@ $overall_percent = $overall_total > 0 ? (int)round(($overall_filled / $overall_t
                   $status_label = 'Paling tertinggal';
               }
           ?>
-            <div class="card label-offset">
-              <div>
-                <div class="card-label">
-                  <h4><?php echo $label; ?></h4>
-                  <span class="card-pill"><?php echo htmlspecialchars($status_label); ?></span>
+            <a class="card-link" href="<?php echo htmlspecialchars($href); ?>">
+              <div class="card label-offset">
+                <div>
+                  <div class="card-label">
+                    <h4><?php echo $label; ?></h4>
+                    <span class="card-pill"><?php echo htmlspecialchars($status_label); ?></span>
+                  </div>
+                  <div class="metric"><?php echo $percent; ?>%</div>
+                  <div class="metric-sub"><?php echo $filled; ?> dari <?php echo $total; ?> penjelasan terisi</div>
                 </div>
-                <div class="metric"><?php echo $percent; ?>%</div>
-                <div class="metric-sub"><?php echo $filled; ?> dari <?php echo $total; ?> penjelasan terisi</div>
+                <div class="donut" style="--p: <?php echo $deg; ?>deg;">
+                  <div class="donut-label"><?php echo $percent; ?>%</div>
+                </div>
               </div>
-              <div class="donut" style="--p: <?php echo $deg; ?>deg;">
-                <div class="donut-label"><?php echo $percent; ?>%</div>
-              </div>
-            </div>
+            </a>
           <?php endforeach; ?>
         </div>
 
