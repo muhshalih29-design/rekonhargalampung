@@ -675,73 +675,6 @@ $columns = [
         gap: 8px;
         box-shadow: 0 12px 24px rgba(217, 75, 75, 0.20);
       }
-      .pending-card {
-        background: linear-gradient(135deg, rgba(246, 183, 200, 0.14), rgba(255, 255, 255, 0.98));
-        border: 1px solid rgba(245, 162, 93, 0.16);
-        border-radius: 20px;
-        padding: 14px 72px 14px 16px;
-        box-shadow: 0 12px 24px rgba(56, 65, 80, 0.06);
-        margin-bottom: 16px;
-        position: relative;
-      }
-      .pending-card.is-complete {
-        background: linear-gradient(135deg, rgba(22, 163, 74, 0.10), rgba(255, 255, 255, 0.98));
-        border-color: rgba(22, 163, 74, 0.18);
-      }
-      .pending-title {
-        font-size: 13px;
-        font-weight: 700;
-        color: var(--ink);
-        margin-bottom: 4px;
-      }
-      .pending-subtitle {
-        font-size: 12px;
-        color: var(--muted);
-        line-height: 1.45;
-      }
-      .pending-list {
-        margin-top: 12px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-      .pending-chip {
-        display: inline-flex;
-        align-items: center;
-        padding: 8px 12px;
-        border-radius: 999px;
-        background: #ffffff;
-        border: 1px solid #eef0f4;
-        box-shadow: 0 8px 18px rgba(56, 65, 80, 0.06);
-        font-size: 12px;
-        font-weight: 600;
-        color: #475569;
-      }
-      .pending-empty {
-        margin-top: 12px;
-        padding: 10px 12px;
-        border-radius: 14px;
-        background: #ffffff;
-        border: 1px solid #eef2f7;
-        color: #5b6471;
-        font-size: 12px;
-        font-weight: 600;
-      }
-      .pending-complete-mark {
-        display: none;
-        position: absolute;
-        top: 14px;
-        right: 16px;
-        width: 42px;
-        height: 42px;
-        justify-content: center;
-        align-items: center;
-        font-size: 34px;
-        line-height: 1;
-        color: #16a34a;
-      }
-      .pending-card.is-complete .pending-complete-mark { display: flex; }
-
       .table-card {
         background: var(--card);
         border-radius: var(--radius);
@@ -1080,22 +1013,6 @@ $columns = [
             </div>
           </div>
         <?php endif; ?>
-        <div class="pending-card" id="pending-card">
-          <div class="pending-title">Komoditas yang Masih Perlu Penjelasan</div>
-          <div class="pending-subtitle">Ringkasan ini mengikuti hak akses akun yang sedang login, sehingga admin kabupaten/kota bisa langsung melihat komoditas mana yang masih perlu dilengkapi.</div>
-          <?php if (!empty($pending_items)): ?>
-            <div class="pending-list" id="pending-list">
-              <?php foreach ($pending_items as $item): ?>
-                <div class="pending-chip" data-pending-komoditas="<?php echo htmlspecialchars($item['label']); ?>">
-                  <span><?php echo htmlspecialchars($item['label']); ?></span>
-                </div>
-              <?php endforeach; ?>
-            </div>
-          <?php else: ?>
-            <div class="pending-empty" id="pending-empty">Semua penjelasan sudah terisi.</div>
-          <?php endif; ?>
-          <div class="pending-complete-mark" id="pending-complete-mark"><i class="mdi mdi-check-circle"></i></div>
-        </div>
         <?php if (!empty($komoditas_tabs)): ?>
           <div class="tabs" data-selected="<?php echo htmlspecialchars($komoditas_selected); ?>">
             <?php foreach ($komoditas_tabs as $k): ?>
@@ -1337,10 +1254,6 @@ $columns = [
           var cards = document.querySelectorAll('.table-card');
           cards.forEach(function (card) { updateAvgForCard(card); });
         }
-        var pendingList = document.getElementById('pending-list');
-        var pendingEmpty = document.getElementById('pending-empty');
-        var pendingCard = document.getElementById('pending-card');
-
         function updatePendingChip(card) {
           if (!card) return;
           var komoditas = card.getAttribute('data-komoditas');
@@ -1353,22 +1266,8 @@ $columns = [
             var value = perubahanInput ? parseIdNumber(perubahanInput.value) : null;
             return value !== null && value !== 0 && penjelasanInput.value.trim() === '';
           });
-          var chip = document.querySelector('[data-pending-komoditas="' + CSS.escape(komoditas) + '"]');
-          if (chip) chip.style.display = needsPending ? '' : 'none';
           var tab = tabsWrap ? tabsWrap.querySelector('.tab-btn[data-komoditas="' + CSS.escape(komoditas) + '"]') : null;
           if (tab) tab.classList.toggle('is-done', !needsPending);
-          updatePendingEmptyState();
-        }
-
-        function updatePendingEmptyState() {
-          var chips = pendingList ? Array.prototype.slice.call(pendingList.querySelectorAll('[data-pending-komoditas]')) : [];
-          var visible = chips.filter(function (chip) { return chip.style.display !== 'none'; });
-          if (pendingEmpty) {
-            pendingEmpty.style.display = visible.length === 0 ? '' : 'none';
-            pendingEmpty.textContent = 'Semua penjelasan sudah terisi.';
-          }
-          if (pendingList) pendingList.style.display = visible.length === 0 ? 'none' : 'flex';
-          if (pendingCard) pendingCard.classList.toggle('is-complete', visible.length === 0);
         }
 
         var perubahanInputs = document.querySelectorAll('.perubahan-input');
@@ -1627,7 +1526,6 @@ $columns = [
           });
         });
         document.querySelectorAll('.table-card[data-komoditas]').forEach(function (card) { updatePendingChip(card); });
-        updatePendingEmptyState();
       })();
     </script>
   
