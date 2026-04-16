@@ -682,9 +682,9 @@ $top_attention = array_slice($top_attention, 0, 5);
       }
       .dual-panels {
         display: grid;
-        grid-template-columns: 0.95fr 1.05fr;
+        grid-template-columns: 1fr 1fr;
         gap: 16px;
-        align-items: start;
+        align-items: stretch;
         margin-bottom: 16px;
       }
       .dual-panels .panel {
