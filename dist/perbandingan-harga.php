@@ -608,6 +608,14 @@ $top_attention = array_slice($top_attention, 0, 5);
         align-items: center;
         gap: 14px;
       }
+      .summary-cards {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .summary-cards .card {
+        width: 100%;
+      }
       .card h4 {
         margin: 0;
         font-size: 18px;
@@ -1012,6 +1020,7 @@ $top_attention = array_slice($top_attention, 0, 5);
         .pill { width: 100%; justify-content: space-between; }
         .pill select { width: 100%; }
         .cards { grid-template-columns: 1fr; }
+        .summary-cards { grid-template-columns: 1fr; }
         .card { padding: 14px 16px; border-radius: 24px; }
         .card h4 { font-size: 16px; }
         .metric { font-size: 28px; }
@@ -1135,7 +1144,7 @@ $top_attention = array_slice($top_attention, 0, 5);
               <div class="panel-caption">Ringkasan rata-rata perubahan untuk setiap level harga pada filter yang sedang aktif.</div>
             </div>
           </div>
-          <div class="cards">
+          <div class="summary-cards">
             <?php
               $cards = [
                 'HK' => 'hk',
