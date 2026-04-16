@@ -717,20 +717,20 @@ $top_attention = array_slice($top_attention, 0, 5);
         gap: 10px;
       }
       .status-tile {
-        padding: 8px 10px;
+        padding: 6px 8px;
         border-radius: 14px;
         background: #f8fafc;
       }
       .status-tile strong {
         display: block;
-        font-size: 16px;
+        font-size: 14px;
         font-weight: 800;
         color: #334155;
         margin-bottom: 2px;
       }
       .status-tile span {
         display: block;
-        font-size: 10px;
+        font-size: 9px;
         font-weight: 700;
         color: #64748b;
       }
