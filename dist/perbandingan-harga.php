@@ -744,12 +744,15 @@ $top_attention = array_slice($top_attention, 0, 5);
         display: grid;
         gap: 8px;
       }
+      .attention-item.is-hidden {
+        display: none;
+      }
       .attention-item {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 10px;
-        padding: 10px 12px;
+        padding: 8px 10px;
         border-radius: 14px;
         background: #fff7ed;
       }
@@ -772,6 +775,23 @@ $top_attention = array_slice($top_attention, 0, 5);
         font-size: 10px;
         font-weight: 800;
         white-space: nowrap;
+      }
+      .attention-toggle {
+        margin-top: 10px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: none;
+        background: transparent;
+        color: #b45309;
+        font-weight: 800;
+        font-size: 11px;
+        padding: 6px 8px;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+      .attention-toggle:hover {
+        background: rgba(245, 158, 11, 0.10);
       }
       .attention-empty {
         border-radius: 14px;
@@ -1203,8 +1223,8 @@ $top_attention = array_slice($top_attention, 0, 5);
               <div class="strip-title">Kabupaten yang perlu dicek lebih dulu</div>
               <?php if ($top_attention): ?>
                 <div class="attention-list">
-                  <?php foreach ($top_attention as $item): ?>
-                    <div class="attention-item">
+                  <?php foreach ($top_attention as $idx => $item): ?>
+                    <div class="attention-item <?php echo ($idx >= 3) ? 'is-hidden' : ''; ?>">
                       <div>
                         <strong><?php echo htmlspecialchars($item['nama']); ?></strong>
                         <span>Ada arah positif dan negatif pada level harga yang tampil</span>
@@ -1213,6 +1233,12 @@ $top_attention = array_slice($top_attention, 0, 5);
                     </div>
                   <?php endforeach; ?>
                 </div>
+                <?php if (count($top_attention) > 3): ?>
+                  <button type="button" class="attention-toggle" id="attention-toggle">
+                    Lihat semua (<?php echo (int)count($top_attention); ?>)
+                    <i class="mdi mdi-chevron-down"></i>
+                  </button>
+                <?php endif; ?>
               <?php else: ?>
                 <div class="attention-empty">Belum ada kabupaten dengan arah campuran untuk filter yang sedang dipilih.</div>
               <?php endif; ?>
@@ -1333,6 +1359,18 @@ $top_attention = array_slice($top_attention, 0, 5);
 
       (function () {
         var textareas = Array.prototype.slice.call(document.querySelectorAll('.compare-note'));
+        var attentionToggle = document.getElementById('attention-toggle');
+        var attentionExpanded = false;
+        if (attentionToggle) {
+          attentionToggle.addEventListener('click', function () {
+            attentionExpanded = !attentionExpanded;
+            var hidden = Array.prototype.slice.call(document.querySelectorAll('.attention-item.is-hidden'));
+            hidden.forEach(function (el) { el.style.display = attentionExpanded ? 'flex' : ''; });
+            attentionToggle.innerHTML = attentionExpanded
+              ? 'Tutup <i class="mdi mdi-chevron-up"></i>'
+              : 'Lihat semua (' + hidden.length + ') <i class="mdi mdi-chevron-down"></i>';
+          });
+        }
 
         function resize(el) {
           if (!el) return;
