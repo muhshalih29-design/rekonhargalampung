@@ -611,19 +611,20 @@ $top_attention = array_slice($top_attention, 0, 5);
       .summary-cards {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
+        gap: 10px;
       }
       .summary-cards .card {
         width: 100%;
       }
       .summary-cards .card {
-        padding: 12px 14px;
-        border-radius: 22px;
-        box-shadow: 0 10px 22px rgba(56, 65, 80, 0.08);
+        padding: 10px 12px;
+        border-radius: 18px;
+        box-shadow: 0 10px 20px rgba(56, 65, 80, 0.07);
+        gap: 10px;
       }
       .summary-cards .card h4 { font-size: 14px; }
-      .summary-cards .metric { font-size: 26px; }
-      .summary-cards .trend { font-size: 18px; }
+      .summary-cards .metric { font-size: 24px; }
+      .summary-cards .trend { font-size: 16px; }
       .card h4 {
         margin: 0;
         font-size: 18px;
@@ -659,10 +660,10 @@ $top_attention = array_slice($top_attention, 0, 5);
         box-shadow: 0 14px 28px rgba(56, 65, 80, 0.10);
       }
       .panel.compact {
-        padding: 16px 18px 18px;
+        padding: 14px 16px 16px;
       }
       .panel.compact .panel-head {
-        margin-bottom: 12px;
+        margin-bottom: 10px;
       }
 
       .panel-title {
@@ -705,27 +706,28 @@ $top_attention = array_slice($top_attention, 0, 5);
       }
       .overview-grid {
         display: grid;
-        grid-template-columns: 1fr 0.9fr;
-        gap: 14px;
+        grid-template-columns: 1fr 0.85fr;
+        gap: 12px;
         align-items: start;
       }
       .overview-left,
       .overview-right { min-width: 0; }
       .attention-board {
-        border-radius: 18px;
+        border-radius: 16px;
         background: linear-gradient(180deg, #fffdfa 0%, #ffffff 100%);
         border: 1px solid #f1f5f9;
-        padding: 12px 14px;
+        padding: 10px 12px;
+        height: fit-content;
       }
       .strip-title {
         font-size: 12px;
         font-weight: 700;
         color: #475569;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
       }
       .attention-list {
         display: grid;
-        gap: 8px;
+        gap: 6px;
       }
       .attention-item.is-hidden {
         display: none;
@@ -735,8 +737,8 @@ $top_attention = array_slice($top_attention, 0, 5);
         align-items: center;
         justify-content: space-between;
         gap: 10px;
-        padding: 8px 10px;
-        border-radius: 14px;
+        padding: 7px 9px;
+        border-radius: 12px;
         background: #fff7ed;
       }
       .attention-item strong {
@@ -751,7 +753,7 @@ $top_attention = array_slice($top_attention, 0, 5);
         margin-top: 2px;
       }
       .attention-badge {
-        padding: 6px 10px;
+        padding: 5px 9px;
         border-radius: 999px;
         background: rgba(245, 158, 11, 0.16);
         color: #b45309;
@@ -760,7 +762,7 @@ $top_attention = array_slice($top_attention, 0, 5);
         white-space: nowrap;
       }
       .attention-toggle {
-        margin-top: 10px;
+        margin-top: 8px;
         display: inline-flex;
         align-items: center;
         gap: 6px;
@@ -769,7 +771,7 @@ $top_attention = array_slice($top_attention, 0, 5);
         color: #b45309;
         font-weight: 800;
         font-size: 11px;
-        padding: 6px 8px;
+        padding: 5px 8px;
         border-radius: 10px;
         cursor: pointer;
       }
