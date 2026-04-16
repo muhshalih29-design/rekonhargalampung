@@ -616,6 +616,14 @@ $top_attention = array_slice($top_attention, 0, 5);
       .summary-cards .card {
         width: 100%;
       }
+      .summary-cards .card {
+        padding: 12px 14px;
+        border-radius: 22px;
+        box-shadow: 0 10px 22px rgba(56, 65, 80, 0.08);
+      }
+      .summary-cards .card h4 { font-size: 14px; }
+      .summary-cards .metric { font-size: 26px; }
+      .summary-cards .trend { font-size: 18px; }
       .card h4 {
         margin: 0;
         font-size: 18px;
@@ -649,6 +657,12 @@ $top_attention = array_slice($top_attention, 0, 5);
         border-radius: var(--radius);
         padding: 20px 22px 22px;
         box-shadow: 0 14px 28px rgba(56, 65, 80, 0.10);
+      }
+      .panel.compact {
+        padding: 16px 18px 18px;
+      }
+      .panel.compact .panel-head {
+        margin-bottom: 12px;
       }
 
       .panel-title {
@@ -689,16 +703,14 @@ $top_attention = array_slice($top_attention, 0, 5);
         margin-bottom: 20px;
         align-items: start;
       }
-      .dual-panels {
+      .overview-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-        align-items: stretch;
-        margin-bottom: 16px;
+        grid-template-columns: 1fr 0.9fr;
+        gap: 14px;
+        align-items: start;
       }
-      .dual-panels .panel {
-        margin: 0 !important;
-      }
+      .overview-left,
+      .overview-right { min-width: 0; }
       .attention-board {
         border-radius: 18px;
         background: linear-gradient(180deg, #fffdfa 0%, #ffffff 100%);
@@ -923,6 +935,23 @@ $top_attention = array_slice($top_attention, 0, 5);
       .notes-panel {
         margin-top: 14px;
       }
+      .notes-panel .panel-head { margin-bottom: 10px; }
+      .notes-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid #eef0f4;
+        background: #ffffff;
+        color: #6b7280;
+        font-weight: 800;
+        font-size: 11px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        cursor: pointer;
+        box-shadow: 0 10px 22px rgba(56, 65, 80, 0.06);
+      }
+      .notes-toggle:hover { border-color: rgba(245, 162, 93, 0.35); }
+      .notes-body.is-collapsed { display: none; }
       .notes-list {
         display: grid;
         gap: 8px;
@@ -992,7 +1021,7 @@ $top_attention = array_slice($top_attention, 0, 5);
         .sidebar { flex-direction: row; justify-content: flex-start; overflow-x: auto; }
         .main { padding-right: 0; }
         .insight-strip { grid-template-columns: 1fr; }
-        .dual-panels { grid-template-columns: 1fr; }
+        .overview-grid { grid-template-columns: 1fr; }
         .mini-row, .mini-header { min-width: 700px; }
       }
       @media (max-width: 768px) {
@@ -1119,15 +1148,20 @@ $top_attention = array_slice($top_attention, 0, 5);
           </div>
         </form>
 
-        <div class="dual-panels">
-        <div class="panel">
+        <div class="panel compact" style="margin-bottom:12px;">
           <div class="panel-head">
             <div class="panel-copy">
               <div class="panel-title">Ringkasan Level Harga</div>
-              <div class="panel-caption">Ringkasan rata-rata perubahan untuk setiap level harga pada filter yang sedang aktif.</div>
+              <div class="panel-caption">Ringkasan rata-rata perubahan per level dan daftar kabupaten/kota yang perlu dicek.</div>
+            </div>
+            <div class="panel-subpill">
+              Komoditas: <?php echo htmlspecialchars($display_komoditas); ?> · Bulan: <?php echo htmlspecialchars(ucfirst($bulan)); ?> · Tahun: <?php echo htmlspecialchars($tahun); ?>
             </div>
           </div>
-          <div class="summary-cards">
+
+          <div class="overview-grid">
+            <div class="overview-left">
+              <div class="summary-cards">
             <?php
               $cards = [
                 'HK' => 'hk',
@@ -1162,51 +1196,42 @@ $top_attention = array_slice($top_attention, 0, 5);
                 <?php endif; ?>
               </div>
             <?php endforeach; ?>
-          </div>
-        </div>
+              </div>
+            </div>
 
-        <div class="panel">
-          <div class="panel-head">
-            <div class="panel-copy">
-              <div class="panel-title">Perbandingan HK/HPB/HD/HKD per Kabupaten/Kota</div>
-            </div>
-            <div class="panel-subpill">
-              Komoditas: <?php echo htmlspecialchars($display_komoditas); ?> · Bulan: <?php echo htmlspecialchars(ucfirst($bulan)); ?> · Tahun: <?php echo htmlspecialchars($tahun); ?>
-            </div>
-          </div>
-          <div class="insight-strip">
-            <div class="attention-board">
-              <div class="strip-title">Kabupaten yang perlu dicek lebih dulu</div>
-              <?php if ($top_attention): ?>
-                <div class="attention-list">
-                  <?php foreach ($top_attention as $idx => $item): ?>
-                    <div class="attention-item <?php echo ($idx >= 3) ? 'is-hidden' : ''; ?>">
-                      <div>
-                        <strong><?php echo htmlspecialchars($item['nama']); ?></strong>
+            <div class="overview-right">
+              <div class="attention-board">
+                <div class="strip-title">Kabupaten yang perlu dicek lebih dulu</div>
+                <?php if ($top_attention): ?>
+                  <div class="attention-list">
+                    <?php foreach ($top_attention as $idx => $item): ?>
+                      <div class="attention-item <?php echo ($idx >= 3) ? 'is-hidden' : ''; ?>">
+                        <div>
+                          <strong><?php echo htmlspecialchars($item['nama']); ?></strong>
+                        </div>
+                        <div class="attention-badge"><?php echo (int)$item['active_count']; ?> level aktif</div>
                       </div>
-                      <div class="attention-badge"><?php echo (int)$item['active_count']; ?> level aktif</div>
-                    </div>
-                  <?php endforeach; ?>
-                </div>
-                <?php if (count($top_attention) > 3): ?>
-                  <button type="button" class="attention-toggle" id="attention-toggle">
-                    Lihat semua (<?php echo (int)count($top_attention); ?>)
-                    <i class="mdi mdi-chevron-down"></i>
-                  </button>
+                    <?php endforeach; ?>
+                  </div>
+                  <?php if (count($top_attention) > 3): ?>
+                    <button type="button" class="attention-toggle" id="attention-toggle">
+                      Lihat semua (<?php echo (int)count($top_attention); ?>)
+                      <i class="mdi mdi-chevron-down"></i>
+                    </button>
+                  <?php endif; ?>
+                <?php else: ?>
+                  <div class="attention-empty">Belum ada kabupaten dengan arah campuran untuk filter yang sedang dipilih.</div>
                 <?php endif; ?>
-              <?php else: ?>
-                <div class="attention-empty">Belum ada kabupaten dengan arah campuran untuk filter yang sedang dipilih.</div>
-              <?php endif; ?>
+              </div>
             </div>
           </div>
         </div>
-        </div>
 
-        <div class="panel compare-panel">
+        <div class="panel compare-panel compact">
           <div class="panel-head">
             <div class="panel-copy">
               <div class="panel-title">Chart Kabupaten/Kota</div>
-              <div class="panel-caption">Tampilan ringkas untuk membandingkan nilai antar kabupaten/kota dengan lebih cepat.</div>
+              <div class="panel-caption">Tampilan ringkas untuk membandingkan nilai antar kabupaten/kota.</div>
             </div>
           </div>
           <div class="mini-header">
@@ -1263,13 +1288,17 @@ $top_attention = array_slice($top_attention, 0, 5);
 
         </div>
 
-        <div class="panel notes-panel">
+        <div class="panel notes-panel compact">
           <div class="panel-head">
             <div class="panel-copy">
               <div class="panel-title">Penjelasan Kabupaten/Kota</div>
               <div class="panel-caption">Area isi penjelasan dipisahkan agar chart perbandingan tetap rapat dan mudah dibaca dalam satu layar.</div>
             </div>
+            <button type="button" class="notes-toggle" id="notes-toggle">
+              Tampilkan penjelasan <i class="mdi mdi-chevron-down"></i>
+            </button>
           </div>
+          <div class="notes-body is-collapsed" id="notes-body">
           <div class="notes-list">
             <?php foreach ($kabupaten_status_rows as $row_data): ?>
               <div class="notes-row">
@@ -1292,6 +1321,7 @@ $top_attention = array_slice($top_attention, 0, 5);
                 </div>
               </div>
             <?php endforeach; ?>
+          </div>
           </div>
         </div>
       </main>
@@ -1316,6 +1346,9 @@ $top_attention = array_slice($top_attention, 0, 5);
         var textareas = Array.prototype.slice.call(document.querySelectorAll('.compare-note'));
         var attentionToggle = document.getElementById('attention-toggle');
         var attentionExpanded = false;
+        var notesToggle = document.getElementById('notes-toggle');
+        var notesBody = document.getElementById('notes-body');
+        var notesOpen = false;
         if (attentionToggle) {
           attentionToggle.addEventListener('click', function () {
             attentionExpanded = !attentionExpanded;
@@ -1324,6 +1357,20 @@ $top_attention = array_slice($top_attention, 0, 5);
             attentionToggle.innerHTML = attentionExpanded
               ? 'Tutup <i class="mdi mdi-chevron-up"></i>'
               : 'Lihat semua (' + hidden.length + ') <i class="mdi mdi-chevron-down"></i>';
+          });
+        }
+        if (notesToggle && notesBody) {
+          notesToggle.addEventListener('click', function () {
+            notesOpen = !notesOpen;
+            notesBody.classList.toggle('is-collapsed', !notesOpen);
+            notesToggle.innerHTML = notesOpen
+              ? 'Sembunyikan penjelasan <i class="mdi mdi-chevron-up"></i>'
+              : 'Tampilkan penjelasan <i class="mdi mdi-chevron-down"></i>';
+            if (notesOpen) {
+              setTimeout(function () {
+                textareas.forEach(function (el) { resize(el); });
+              }, 0);
+            }
           });
         }
 
