@@ -706,12 +706,8 @@ $top_attention = array_slice($top_attention, 0, 5);
       }
       .overview-grid {
         display: grid;
-        grid-template-columns: 1fr 0.85fr;
-        gap: 12px;
-        align-items: start;
+        gap: 10px;
       }
-      .overview-left,
-      .overview-right { min-width: 0; }
       .attention-board {
         border-radius: 16px;
         background: linear-gradient(180deg, #fffdfa 0%, #ffffff 100%);
@@ -1165,8 +1161,7 @@ $top_attention = array_slice($top_attention, 0, 5);
           </div>
 
           <div class="overview-grid">
-            <div class="overview-left">
-              <div class="summary-cards">
+            <div class="summary-cards">
             <?php
               $cards = [
                 'HK' => 'hk',
@@ -1201,33 +1196,30 @@ $top_attention = array_slice($top_attention, 0, 5);
                 <?php endif; ?>
               </div>
             <?php endforeach; ?>
-              </div>
             </div>
 
-            <div class="overview-right">
-              <div class="attention-board">
-                <div class="strip-title">Kabupaten yang perlu dicek lebih dulu</div>
-                <?php if ($top_attention): ?>
-                  <div class="attention-list">
-                    <?php foreach ($top_attention as $idx => $item): ?>
-                      <div class="attention-item <?php echo ($idx >= 3) ? 'is-hidden' : ''; ?>">
-                        <div>
-                          <strong><?php echo htmlspecialchars($item['nama']); ?></strong>
-                        </div>
-                        <div class="attention-badge"><?php echo (int)$item['active_count']; ?> level aktif</div>
+            <div class="attention-board">
+              <div class="strip-title">Kabupaten yang perlu dicek lebih dulu</div>
+              <?php if ($top_attention): ?>
+                <div class="attention-list">
+                  <?php foreach ($top_attention as $idx => $item): ?>
+                    <div class="attention-item <?php echo ($idx >= 3) ? 'is-hidden' : ''; ?>">
+                      <div>
+                        <strong><?php echo htmlspecialchars($item['nama']); ?></strong>
                       </div>
-                    <?php endforeach; ?>
-                  </div>
-                  <?php if (count($top_attention) > 3): ?>
-                    <button type="button" class="attention-toggle" id="attention-toggle">
-                      Lihat semua (<?php echo (int)count($top_attention); ?>)
-                      <i class="mdi mdi-chevron-down"></i>
-                    </button>
-                  <?php endif; ?>
-                <?php else: ?>
-                  <div class="attention-empty">Belum ada kabupaten dengan arah campuran untuk filter yang sedang dipilih.</div>
+                      <div class="attention-badge"><?php echo (int)$item['active_count']; ?> level aktif</div>
+                    </div>
+                  <?php endforeach; ?>
+                </div>
+                <?php if (count($top_attention) > 3): ?>
+                  <button type="button" class="attention-toggle" id="attention-toggle">
+                    Lihat semua (<?php echo (int)count($top_attention); ?>)
+                    <i class="mdi mdi-chevron-down"></i>
+                  </button>
                 <?php endif; ?>
-              </div>
+              <?php else: ?>
+                <div class="attention-empty">Belum ada kabupaten dengan arah campuran untuk filter yang sedang dipilih.</div>
+              <?php endif; ?>
             </div>
           </div>
         </div>
