@@ -424,6 +424,10 @@ usort($top_attention, function ($a, $b) {
     return $b['active_count'] <=> $a['active_count'];
 });
 $top_attention = array_slice($top_attention, 0, 5);
+$top_attention_codes = [];
+foreach ($top_attention as $attention_item) {
+    $top_attention_codes[(string)$attention_item['kode']] = true;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -638,7 +642,7 @@ $top_attention = array_slice($top_attention, 0, 5);
         justify-content: center;
       }
       .summary-cards .metric {
-        font-size: 24px;
+        font-size: 30px;
         text-align: center;
       }
       .summary-cards .trend {
@@ -853,6 +857,19 @@ $top_attention = array_slice($top_attention, 0, 5);
         font-size: 10px;
         padding: 4px 0;
         border-top: 1px solid #f1f5f9;
+      }
+      .mini-row.attention-row {
+        position: relative;
+        padding: 6px 8px;
+        border-radius: 14px;
+        background: linear-gradient(90deg, rgba(245, 162, 93, 0.08), rgba(255, 255, 255, 0.96));
+        border: 1px solid rgba(245, 162, 93, 0.16);
+      }
+      .mini-row.attention-row + .mini-row {
+        border-top-color: transparent;
+      }
+      .mini-row.attention-row .mini-label {
+        color: #9a3412;
       }
       .mini-header {
         display: grid;
@@ -1280,7 +1297,7 @@ $top_attention = array_slice($top_attention, 0, 5);
                 ];
                 $maxAbs = (float)$global_max_abs;
             ?>
-              <div class="mini-row">
+              <div class="mini-row <?php echo isset($top_attention_codes[(string)$kode]) ? 'attention-row' : ''; ?>">
                 <div class="mini-label" title="<?php echo htmlspecialchars($label_text); ?>"><?php echo htmlspecialchars($label_text); ?></div>
                 <?php foreach ($rows as $label => $v): 
                   $val = ($v === null) ? 0 : (float)$v;
