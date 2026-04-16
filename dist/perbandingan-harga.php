@@ -699,7 +699,6 @@ $top_attention = array_slice($top_attention, 0, 5);
       .dual-panels .panel {
         margin: 0 !important;
       }
-      .status-board,
       .attention-board {
         border-radius: 18px;
         background: linear-gradient(180deg, #fffdfa 0%, #ffffff 100%);
@@ -711,36 +710,6 @@ $top_attention = array_slice($top_attention, 0, 5);
         font-weight: 700;
         color: #475569;
         margin-bottom: 8px;
-      }
-      .status-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(120px, 1fr));
-        gap: 8px;
-        max-width: 360px;
-      }
-      .status-tile {
-        padding: 8px 10px;
-        border-radius: 12px;
-        background: #f8fafc;
-      }
-      .status-tile strong {
-        display: block;
-        font-size: 16px;
-        font-weight: 800;
-        color: #334155;
-        margin-bottom: 2px;
-      }
-      .status-tile span {
-        display: block;
-        font-size: 10px;
-        font-weight: 700;
-        color: #64748b;
-      }
-      .status-tile.aligned {
-        background: rgba(22, 143, 74, 0.08);
-      }
-      .status-tile.mixed {
-        background: rgba(245, 162, 93, 0.16);
       }
       .attention-list {
         display: grid;
@@ -1023,7 +992,6 @@ $top_attention = array_slice($top_attention, 0, 5);
         .sidebar { flex-direction: row; justify-content: flex-start; overflow-x: auto; }
         .main { padding-right: 0; }
         .insight-strip { grid-template-columns: 1fr; }
-        .status-grid { grid-template-columns: repeat(2, 1fr); }
         .dual-panels { grid-template-columns: 1fr; }
         .mini-row, .mini-header { min-width: 700px; }
       }
@@ -1044,7 +1012,6 @@ $top_attention = array_slice($top_attention, 0, 5);
         .metric-wrap { gap: 8px; }
         .mini-bars { padding-bottom: 6px; }
         .mini-row, .mini-header { min-width: 700px; }
-        .status-grid { grid-template-columns: 1fr; max-width: none; }
         .notes-row { grid-template-columns: 1fr; }
         .notes-label { padding-top: 0; }
       }
@@ -1208,19 +1175,6 @@ $top_attention = array_slice($top_attention, 0, 5);
             </div>
           </div>
           <div class="insight-strip">
-            <div class="status-board">
-              <div class="strip-title">Ringkasan arah kabupaten/kota</div>
-              <div class="status-grid">
-                <div class="status-tile aligned">
-                  <strong><?php echo (int)$status_summary['aligned']; ?></strong>
-                  <span>Searah</span>
-                </div>
-                <div class="status-tile mixed">
-                  <strong><?php echo (int)$status_summary['mixed']; ?></strong>
-                  <span>Tidak searah</span>
-                </div>
-              </div>
-            </div>
             <div class="attention-board">
               <div class="strip-title">Kabupaten yang perlu dicek lebih dulu</div>
               <?php if ($top_attention): ?>
