@@ -12,6 +12,54 @@ $all = isset($_GET['all']) ? trim($_GET['all']) : '';
 $bulan = isset($_GET['bulan']) ? trim($_GET['bulan']) : '';
 $tahun = isset($_GET['tahun']) ? trim($_GET['tahun']) : '';
 
+function ensure_minimum_ekstrem_rows(PDO $pdo, string $bulan, string $tahun, ?string $kabScope = null, int $minimum = 150): void
+{
+    if ($bulan === '' || $tahun === '' || !ctype_digit($tahun)) {
+        return;
+    }
+
+    $countSql = 'SELECT COUNT(*) FROM ekstrem WHERE TRIM(LOWER(bulan)) = ? AND tahun = ?';
+    $countParams = [strtolower(trim($bulan)), (int)$tahun];
+    if ($kabScope !== null && $kabScope !== '') {
+        $countSql .= ' AND kab = ?';
+        $countParams[] = $kabScope;
+    }
+
+    $countStmt = $pdo->prepare($countSql);
+    $countStmt->execute($countParams);
+    $existing = (int)$countStmt->fetchColumn();
+    $needed = max(0, $minimum - $existing);
+    if ($needed === 0) {
+        return;
+    }
+
+    $insertSql = '
+        INSERT INTO ekstrem (
+            subsektor, kab, kecamatan, komoditas, kualitas, satuan,
+            harga_bulan_ini, harga_bulan_lalu, perubahan_rata_rata,
+            konfirmasi_kab, bulan, tahun
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ';
+    $insertStmt = $pdo->prepare($insertSql);
+
+    for ($i = 0; $i < $needed; $i++) {
+        $insertStmt->execute([
+            '',
+            ($kabScope !== null && $kabScope !== '') ? $kabScope : null,
+            null,
+            '',
+            '',
+            '',
+            null,
+            null,
+            null,
+            '',
+            strtolower(trim($bulan)),
+            (int)$tahun,
+        ]);
+    }
+}
+
 if ($all === '' && $bulan === '' && $tahun === '') {
     $currentMonth = new DateTime('first day of this month');
     $bulan = strtolower($currentMonth->format('F'));
@@ -32,6 +80,16 @@ if ($all === '' && $bulan === '' && $tahun === '') {
     $bulan = $map[$bulan] ?? $bulan;
     $tahun = $currentMonth->format('Y');
 }
+
+$kab_scope = null;
+if (is_kabupaten($user)) {
+    $kab_code = (int)($user['kab_kode'] ?? 0);
+    if ($kab_code > 0) {
+        $kab_scope = (string)($kab_code % 100);
+    }
+}
+
+ensure_minimum_ekstrem_rows($pdo, $bulan, $tahun, $kab_scope, 150);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update') {
     $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
@@ -239,7 +297,7 @@ $sql = 'SELECT * FROM ekstrem';
 if ($where) {
     $sql .= ' WHERE ' . implode(' AND ', $where);
 }
-$sql .= ' ORDER BY komoditas ASC, kab ASC, kecamatan ASC';
+$sql .= " ORDER BY CASE WHEN TRIM(COALESCE(komoditas, '')) = '' THEN 1 ELSE 0 END ASC, komoditas ASC, kab ASC, kecamatan ASC, id ASC";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
