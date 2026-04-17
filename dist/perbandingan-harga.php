@@ -158,7 +158,7 @@ $bulan = isset($_GET['bulan']) ? trim($_GET['bulan']) : '';
 $tahun = isset($_GET['tahun']) ? trim($_GET['tahun']) : '';
 
 if ($bulan === '' || $tahun === '') {
-    $lastMonth = new DateTime('first day of last month');
+    $currentMonth = new DateTime('first day of this month');
     $map = [
         'january' => 'januari',
         'february' => 'februari',
@@ -174,10 +174,10 @@ if ($bulan === '' || $tahun === '') {
         'december' => 'desember',
     ];
     if ($bulan === '') {
-        $bulan = $map[strtolower($lastMonth->format('F'))] ?? strtolower($lastMonth->format('F'));
+        $bulan = $map[strtolower($currentMonth->format('F'))] ?? strtolower($currentMonth->format('F'));
     }
     if ($tahun === '') {
-        $tahun = $lastMonth->format('Y');
+        $tahun = $currentMonth->format('Y');
     }
 }
 

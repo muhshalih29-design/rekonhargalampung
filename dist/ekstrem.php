@@ -13,8 +13,8 @@ $bulan = isset($_GET['bulan']) ? trim($_GET['bulan']) : '';
 $tahun = isset($_GET['tahun']) ? trim($_GET['tahun']) : '';
 
 if ($all === '' && $bulan === '' && $tahun === '') {
-    $lastMonth = new DateTime('first day of last month');
-    $bulan = strtolower($lastMonth->format('F'));
+    $currentMonth = new DateTime('first day of this month');
+    $bulan = strtolower($currentMonth->format('F'));
     $map = [
         'january' => 'januari',
         'february' => 'februari',
@@ -30,7 +30,7 @@ if ($all === '' && $bulan === '' && $tahun === '') {
         'december' => 'desember',
     ];
     $bulan = $map[$bulan] ?? $bulan;
-    $tahun = $lastMonth->format('Y');
+    $tahun = $currentMonth->format('Y');
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update') {

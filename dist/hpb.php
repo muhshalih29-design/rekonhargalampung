@@ -31,10 +31,10 @@ $notice = isset($_GET['notice']) ? trim($_GET['notice']) : '';
 $notice_type = isset($_GET['notice_type']) ? trim($_GET['notice_type']) : 'success';
 
 if ($all === '' && $bulan === '' && $tahun === '') {
-    $lastMonth = new DateTime('first day of last month');
-    $bulan = strtolower($lastMonth->format('F'));
+    $currentMonth = new DateTime('first day of this month');
+    $bulan = strtolower($currentMonth->format('F'));
     $bulan = $bulan_map[$bulan] ?? $bulan;
-    $tahun = $lastMonth->format('Y');
+    $tahun = $currentMonth->format('Y');
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_commodity') {
