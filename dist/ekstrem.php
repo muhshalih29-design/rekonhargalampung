@@ -45,8 +45,8 @@ function ensure_minimum_ekstrem_rows(PDO $pdo, string $bulan, string $tahun, ?st
     for ($i = 0; $i < $needed; $i++) {
         $insertStmt->execute([
             '',
-            ($kabScope !== null && $kabScope !== '') ? $kabScope : null,
-            null,
+            ($kabScope !== null && $kabScope !== '') ? $kabScope : '0',
+            0,
             '',
             '',
             '',
