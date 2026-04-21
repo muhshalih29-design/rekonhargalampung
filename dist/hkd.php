@@ -248,6 +248,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'batch_update') {
+    $payload = isset($_POST['payload']) ? $_POST['payload'] : '';
+    $items = json_decode($payload, true);
+    if (!is_array($items)) {
+        http_response_code(400);
+        echo 'Invalid payload';
+        exit;
+    }
+
+    $allowed = [
+        'perubahan' => 'decimal',
+        'catatan' => 'text',
+        'penjelasan' => 'text',
+    ];
+
+    try {
+        $pdo->beginTransaction();
+        $stmtKab = null;
+        foreach ($items as $item) {
+            $id = isset($item['id']) ? (int)$item['id'] : 0;
+            $field = isset($item['field']) ? trim((string)$item['field']) : '';
+            $value = $item['value'] ?? null;
+
+            if ($id <= 0 || !isset($allowed[$field])) {
+                continue;
+            }
+
+            if (is_kabupaten($user) && $field !== 'penjelasan') {
+                continue;
+            }
+
+            if (is_kabupaten($user)) {
+                if ($stmtKab === null) {
+                    $stmtKab = $pdo->prepare('SELECT kode_kabupaten FROM hkd WHERE id = ?');
+                }
+                $stmtKab->execute([$id]);
+                $rowKab = $stmtKab->fetch();
+                $kode = $rowKab ? (string)$rowKab['kode_kabupaten'] : '';
+                if (!can_edit_penjelasan($user, $kode)) {
+                    continue;
+                }
+            }
+
+            $type = $allowed[$field];
+            if ($type === 'decimal') {
+                $raw = is_string($value) ? trim($value) : '';
+                if ($raw === '') {
+                    $stmt = $pdo->prepare("UPDATE hkd SET {$field} = NULL WHERE id = ?");
+                    $stmt->execute([$id]);
+                } else {
+                    $normalized = str_replace('.', '', $raw);
+                    $normalized = str_replace(',', '.', $normalized);
+                    $num = is_numeric($normalized) ? (float)$normalized : null;
+                    if ($num === null) {
+                        continue;
+                    }
+                    $stmt = $pdo->prepare("UPDATE hkd SET {$field} = ? WHERE id = ?");
+                    $stmt->execute([$num, $id]);
+                }
+            } else {
+                $raw = is_string($value) ? $value : '';
+                $stmt = $pdo->prepare("UPDATE hkd SET {$field} = ? WHERE id = ?");
+                $stmt->execute([$raw, $id]);
+            }
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        http_response_code(500);
+        echo 'Batch failed';
+        exit;
+    }
+
+    echo 'OK';
+    exit;
+}
+
 $where = [];
 $types = '';
 $params = [];
@@ -263,7 +342,26 @@ if ($tahun !== '' && ctype_digit($tahun)) {
     $params[] = (int)$tahun;
 }
 
-$sql = 'SELECT * FROM hkd';
+$hkd_base_sql = "
+    SELECT *
+    FROM (
+        SELECT
+            hkd.*,
+            ROW_NUMBER() OVER (
+                PARTITION BY
+                    TRIM(LOWER(COALESCE(komoditas, ''))),
+                    TRIM(COALESCE(kode_kabupaten, '')),
+                    TRIM(LOWER(COALESCE(nama_kabupaten, ''))),
+                    TRIM(LOWER(COALESCE(bulan, ''))),
+                    tahun
+                ORDER BY id DESC
+            ) AS rn
+        FROM hkd
+    ) hkd_latest
+    WHERE rn = 1
+";
+
+$sql = 'SELECT * FROM (' . $hkd_base_sql . ') hkd_view';
 if ($where) {
     $sql .= ' WHERE ' . implode(' AND ', $where);
 }
@@ -274,7 +372,7 @@ $stmt->execute($params);
 $rows = $stmt->fetchAll();
 
 $avg_map = [];
-$avg_sql = 'SELECT komoditas, AVG(NULLIF(perubahan,0)) AS avg_perubahan FROM hkd';
+$avg_sql = 'SELECT komoditas, AVG(NULLIF(perubahan,0)) AS avg_perubahan FROM (' . $hkd_base_sql . ') hkd_view';
 if ($where) {
     $avg_sql .= ' WHERE ' . implode(' AND ', $where);
 }
@@ -291,7 +389,7 @@ foreach ($stmt_avg as $avg_row) {
 
 $komoditas_tabs = [];
 $komoditas_tab_map = [];
-$tab_sql = 'SELECT DISTINCT komoditas FROM hkd';
+$tab_sql = 'SELECT DISTINCT komoditas FROM (' . $hkd_base_sql . ') hkd_view';
 if ($where) {
     $tab_sql .= ' WHERE ' . implode(' AND ', $where);
 }
@@ -311,7 +409,7 @@ foreach ($stmt_tabs as $row) {
 $komoditas_pending_map = [];
 $pending_sql = "SELECT komoditas,
     SUM(CASE WHEN perubahan IS NOT NULL AND perubahan <> 0 AND (penjelasan IS NULL OR TRIM(penjelasan) = '') THEN 1 ELSE 0 END) AS pending_count
-    FROM hkd";
+    FROM (" . $hkd_base_sql . ") hkd_view";
 $pending_where = $where;
 $pending_params = $params;
 if (is_kabupaten($user) && !empty($user['kab_kode'])) {
@@ -1450,24 +1548,42 @@ $columns = [
           saveTimers.set(el, t);
         }
 
+        function applyInputSideEffects(el) {
+          if (!el) return;
+          if (el.classList.contains('perubahan-input')) {
+            updateTrend(el);
+            updateRowHighlight(el);
+            updateAvgForCard(el.closest('.table-card'));
+          }
+          if (el.getAttribute('data-field') === 'penjelasan' || el.classList.contains('perubahan-input')) {
+            updatePendingChip(el.closest('.table-card'));
+          }
+          if (el.tagName.toLowerCase() === 'textarea') {
+            autoResize(el);
+          }
+        }
+
+        function batchSave(items) {
+          if (!items || !items.length) return Promise.resolve();
+          var formData = new FormData();
+          formData.append('action', 'batch_update');
+          formData.append('payload', JSON.stringify(items));
+          return fetch('hkd.php', { method: 'POST', body: formData })
+            .then(function (res) { return res.text(); })
+            .catch(function () { /* silent */ });
+        }
+
         var editable = document.querySelectorAll('.editable-cell');
         editable.forEach(function (el) {
           el.addEventListener('blur', function () {
-            if (el.getAttribute('data-field') === 'penjelasan' || el.classList.contains('perubahan-input')) {
-              updatePendingChip(el.closest('.table-card'));
-            }
+            applyInputSideEffects(el);
             saveCell(el);
           });
           el.addEventListener('change', function () { saveCell(el); });
           el.addEventListener('input', function () {
             scheduleSave(el);
-            if (el.getAttribute('data-field') === 'penjelasan' || el.classList.contains('perubahan-input')) {
-              updatePendingChip(el.closest('.table-card'));
-            }
+            applyInputSideEffects(el);
           });
-          if (el.tagName.toLowerCase() === 'textarea') {
-            el.addEventListener('input', function () { autoResize(el); });
-          }
           el.addEventListener('keydown', function (e) {
             var row = el.closest('tr');
             if (!row) return;
@@ -1491,6 +1607,59 @@ $columns = [
             }
           });
         });
+
+        document.addEventListener('paste', function (e) {
+          var target = e.target;
+          if (!target || !target.classList || !target.classList.contains('editable-cell')) return;
+          var text = (e.clipboardData || window.clipboardData).getData('text');
+          if (!text || (text.indexOf('\t') === -1 && text.indexOf('\n') === -1 && text.indexOf('\r') === -1)) return;
+
+          var startRow = target.closest('tr');
+          var card = target.closest('.table-card');
+          if (!startRow || !card) return;
+
+          e.preventDefault();
+
+          var rowList = Array.prototype.slice.call(startRow.closest('tbody').querySelectorAll('tr'));
+          var startRowIdx = rowList.indexOf(startRow);
+          if (startRowIdx < 0) return;
+
+          var startCells = Array.prototype.slice.call(startRow.querySelectorAll('.editable-cell'));
+          var startColIdx = startCells.indexOf(target);
+          if (startColIdx < 0) return;
+
+          var rows = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+          if (rows.length && rows[rows.length - 1].trim() === '') rows.pop();
+
+          var batch = [];
+          rows.forEach(function (rowText, rIdx) {
+            var cells = rowText.split('\t');
+            var targetRow = rowList[startRowIdx + rIdx];
+            if (!targetRow) return;
+            var targetCells = Array.prototype.slice.call(targetRow.querySelectorAll('.editable-cell'));
+
+            cells.forEach(function (cellText, cIdx) {
+              var targetEl = targetCells[startColIdx + cIdx];
+              if (!targetEl || targetEl.disabled) return;
+
+              targetEl.value = cellText;
+              applyInputSideEffects(targetEl);
+
+              var rowId = targetRow.getAttribute('data-id');
+              var field = targetEl.getAttribute('data-field');
+              if (!rowId || !field) return;
+              batch.push({
+                id: parseInt(rowId, 10),
+                field: field,
+                value: targetEl.value
+              });
+            });
+          });
+
+          if (!batch.length) return;
+          batchSave(batch);
+        });
+
         document.querySelectorAll('.table-card[data-komoditas]').forEach(function (card) { updatePendingChip(card); });
       })();
     </script>
