@@ -341,7 +341,22 @@ if ($tahun !== '' && ctype_digit($tahun)) {
     $params[] = (int)$tahun;
 }
 
-$sql = 'SELECT * FROM hpb';
+$hpb_base_sql = "SELECT * FROM (
+    SELECT
+        hpb.*,
+        ROW_NUMBER() OVER (
+            PARTITION BY
+                TRIM(LOWER(COALESCE(komoditas, ''))),
+                TRIM(COALESCE(kode_kabupaten, '')),
+                TRIM(LOWER(COALESCE(nama_kabupaten, ''))),
+                TRIM(LOWER(COALESCE(bulan, ''))),
+                tahun
+            ORDER BY id DESC
+        ) AS rn
+    FROM hpb
+) hpb_latest WHERE rn = 1";
+
+$sql = "SELECT * FROM ({$hpb_base_sql}) hpb_view";
 if ($where) {
     $sql .= ' WHERE ' . implode(' AND ', $where);
 }
@@ -352,7 +367,7 @@ $stmt->execute($params);
 $rows = $stmt->fetchAll();
 
 $avg_map = [];
-$avg_sql = 'SELECT komoditas, AVG(NULLIF(perubahan,0)) AS avg_perubahan FROM hpb';
+$avg_sql = "SELECT komoditas, AVG(NULLIF(perubahan,0)) AS avg_perubahan FROM ({$hpb_base_sql}) hpb_view";
 if ($where) {
     $avg_sql .= ' WHERE ' . implode(' AND ', $where);
 }
@@ -365,7 +380,7 @@ foreach ($stmt_avg as $avg_row) {
 }
 
 $komoditas_tabs = [];
-$tab_sql = 'SELECT DISTINCT komoditas FROM hpb';
+$tab_sql = "SELECT DISTINCT komoditas FROM ({$hpb_base_sql}) hpb_view";
 if ($where) {
     $tab_sql .= ' WHERE ' . implode(' AND ', $where);
 }
@@ -381,7 +396,7 @@ foreach ($stmt_tabs as $row) {
 $komoditas_pending_map = [];
 $pending_sql = "SELECT komoditas,
     SUM(CASE WHEN perubahan IS NOT NULL AND perubahan <> 0 AND (penjelasan IS NULL OR TRIM(penjelasan) = '') THEN 1 ELSE 0 END) AS pending_count
-    FROM hpb";
+    FROM ({$hpb_base_sql}) hpb_view";
 $pending_where = $where;
 $pending_params = $params;
 if (is_kabupaten($user) && !empty($user['kab_kode'])) {
