@@ -843,6 +843,59 @@ $columns = [
         background: linear-gradient(135deg, #f6b7c8, #f5a25d);
         color: #fff;
       }
+      .action-toolbar {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+      }
+      .preview-note {
+        margin-top: 8px;
+        font-size: 12px;
+        color: #64748b;
+      }
+      .preview-wrap {
+        margin-top: 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        overflow: auto;
+        max-height: 320px;
+      }
+      .preview-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 980px;
+      }
+      .preview-table th,
+      .preview-table td {
+        padding: 8px 10px;
+        font-size: 12px;
+        border-bottom: 1px solid #eef2f7;
+        background: #fff;
+        color: #334155;
+        text-align: left;
+      }
+      .preview-table th {
+        position: sticky;
+        top: 0;
+        background: #f8fafc;
+        font-weight: 700;
+        z-index: 1;
+      }
+      .preview-summary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #475569;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+      }
       .komoditas-head {
         display: flex;
         align-items: center;
@@ -1063,6 +1116,19 @@ $columns = [
             <a class="icon-btn" href="logout.php" title="Logout"><i class="mdi mdi-logout"></i></a>
           </div>
         </form>
+        <?php if (!is_kabupaten($user)): ?>
+          <div class="table-card">
+            <div class="action-toolbar">
+              <input type="file" id="importFileInput" class="hidden-file-input" accept=".csv,.xlsx,.xls" />
+              <button type="button" id="downloadTemplateBtn" class="tab-btn" style="box-shadow:none;">Download Template</button>
+              <button type="button" id="uploadFileBtn" class="tab-btn" style="box-shadow:none;">Upload Excel/CSV</button>
+              <button type="button" id="pasteRangeBtn" class="tab-btn" style="box-shadow:none;">Paste Range</button>
+              <button type="button" id="add50" class="tab-btn" style="box-shadow:none;">Tambah 50 baris</button>
+              <button type="button" id="clearMonthBtn" class="tab-btn" style="box-shadow:none;">Hapus Semua Bulan Ini</button>
+              <div class="paste-status" id="add-status" style="display:none;">Memproses...</div>
+            </div>
+          </div>
+        <?php endif; ?>
         <?php if (empty($rows)): ?>
           <div class="table-card">
             <div class="text-center">Belum ada data.</div>
@@ -1182,16 +1248,6 @@ $columns = [
             <?php $row_index++; ?>
           <?php endforeach; ?>
             </tbody></table></div></div>
-          <?php if (!is_kabupaten($user)): ?>
-            <div class="table-card" style="padding:14px 16px; display:flex; justify-content:flex-end; gap:10px; align-items:center;">
-              <input type="file" id="importFileInput" class="hidden-file-input" accept=".csv,.xlsx,.xls" />
-              <button type="button" id="uploadFileBtn" class="tab-btn" style="box-shadow:none;">Upload Excel/CSV</button>
-              <button type="button" id="pasteRangeBtn" class="tab-btn" style="box-shadow:none;">Paste Range</button>
-              <button type="button" id="add50" class="tab-btn" style="box-shadow:none;">Tambah 50 baris</button>
-              <button type="button" id="clearMonthBtn" class="tab-btn" style="box-shadow:none;">Hapus Semua Bulan Ini</button>
-              <div class="paste-status" id="add-status" style="display:none;">Memproses...</div>
-            </div>
-          <?php endif; ?>
         <?php endif; ?>
       </main>
     </div>
@@ -1205,6 +1261,37 @@ $columns = [
           <button type="button" class="paste-modal-btn" id="pasteModalCancel">Batal</button>
           <button type="button" class="paste-modal-btn" id="pasteModalApplyVertical">Tempel Vertikal (1 Kolom)</button>
           <button type="button" class="paste-modal-btn primary" id="pasteModalApply">Tempel ke Tabel</button>
+        </div>
+      </div>
+    </div>
+    <div class="paste-modal-backdrop" id="importPreviewModal">
+      <div class="paste-modal" style="width:min(1120px, 95vw);">
+        <h4>Preview Import Ekstrem</h4>
+        <p>Pastikan urutan kolom file sudah sesuai sebelum diimpor ke bulan dan tahun filter saat ini.</p>
+        <div class="preview-summary" id="importPreviewSummary">0 baris terdeteksi</div>
+        <div class="preview-note">Urutan kolom template: Subsektor, Kab/Kot, Kec, Komoditas, Kualitas, Satuan, Harga Bulan Ini, Harga Bulan Lalu, Perubahan Rata-rata (%), Konfirmasi Kab.</div>
+        <div class="preview-wrap">
+          <table class="preview-table">
+            <thead>
+              <tr>
+                <th>Subsektor</th>
+                <th>Kab/Kot</th>
+                <th>Kec</th>
+                <th>Komoditas</th>
+                <th>Kualitas</th>
+                <th>Satuan</th>
+                <th>Harga Bulan Ini</th>
+                <th>Harga Bulan Lalu</th>
+                <th>Perubahan Rata-rata (%)</th>
+                <th>Konfirmasi Kab</th>
+              </tr>
+            </thead>
+            <tbody id="importPreviewBody"></tbody>
+          </table>
+        </div>
+        <div class="paste-modal-actions">
+          <button type="button" class="paste-modal-btn" id="importPreviewCancel">Batal</button>
+          <button type="button" class="paste-modal-btn primary" id="importPreviewApply">Import Sekarang</button>
         </div>
       </div>
     </div>
@@ -1757,9 +1844,15 @@ $columns = [
         });
 
         var pasteRangeBtn = document.getElementById('pasteRangeBtn');
+        var downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
         var uploadFileBtn = document.getElementById('uploadFileBtn');
         var importFileInput = document.getElementById('importFileInput');
         var clearMonthBtn = document.getElementById('clearMonthBtn');
+        var importPreviewModal = document.getElementById('importPreviewModal');
+        var importPreviewBody = document.getElementById('importPreviewBody');
+        var importPreviewSummary = document.getElementById('importPreviewSummary');
+        var importPreviewCancel = document.getElementById('importPreviewCancel');
+        var importPreviewApply = document.getElementById('importPreviewApply');
         var pasteModal = document.getElementById('pasteModal');
         var pasteModalHtml = document.getElementById('pasteModalHtml');
         var pasteModalText = document.getElementById('pasteModalText');
@@ -1767,6 +1860,7 @@ $columns = [
         var pasteModalApply = document.getElementById('pasteModalApply');
         var pasteModalApplyVertical = document.getElementById('pasteModalApplyVertical');
         var modalClipboardMatrix = null;
+        var pendingImportRows = [];
         var lastFocusedEditableCell = null;
         document.addEventListener('focusin', function (ev) {
           var el = ev.target;
@@ -1842,6 +1936,46 @@ $columns = [
             return normalized;
           });
         }
+        function renderImportPreview(rows) {
+          if (!importPreviewBody || !importPreviewSummary) return;
+          importPreviewBody.innerHTML = '';
+          importPreviewSummary.textContent = rows.length + ' baris terdeteksi';
+          rows.slice(0, 12).forEach(function (row) {
+            var tr = document.createElement('tr');
+            row.forEach(function (cell) {
+              var td = document.createElement('td');
+              td.textContent = cell;
+              tr.appendChild(td);
+            });
+            importPreviewBody.appendChild(tr);
+          });
+          if (rows.length > 12) {
+            var trMore = document.createElement('tr');
+            var tdMore = document.createElement('td');
+            tdMore.colSpan = 10;
+            tdMore.style.fontWeight = '700';
+            tdMore.style.color = '#64748b';
+            tdMore.textContent = '... dan ' + (rows.length - 12) + ' baris lainnya';
+            trMore.appendChild(tdMore);
+            importPreviewBody.appendChild(trMore);
+          }
+        }
+        function openImportPreview(rows) {
+          pendingImportRows = rows.slice();
+          renderImportPreview(rows);
+          if (importPreviewModal) {
+            importPreviewModal.classList.add('open');
+          }
+        }
+        function closeImportPreview() {
+          pendingImportRows = [];
+          if (importPreviewModal) {
+            importPreviewModal.classList.remove('open');
+          }
+          if (importPreviewBody) {
+            importPreviewBody.innerHTML = '';
+          }
+        }
         function importRowsToServer(rows) {
           if (!rows.length) {
             alert('Tidak ada data yang bisa diimpor.');
@@ -1867,6 +2001,33 @@ $columns = [
               setActionStatus('Import gagal', false);
               alert('Import file gagal. Pastikan format kolom file sudah sesuai.');
             });
+        }
+        if (downloadTemplateBtn) {
+          downloadTemplateBtn.addEventListener('click', function () {
+            if (typeof XLSX === 'undefined') {
+              alert('Library template belum termuat. Coba refresh halaman.');
+              return;
+            }
+            var templateRows = [[
+              'Subsektor',
+              'Kab/Kot',
+              'Kec',
+              'Komoditas',
+              'Kualitas',
+              'Satuan',
+              'Harga Bulan Ini',
+              'Harga Bulan Lalu',
+              'Perubahan Rata-rata (%)',
+              'Konfirmasi Kab'
+            ]];
+            for (var i = 0; i < 5; i += 1) {
+              templateRows.push(['', '', '', '', '', '', '', '', '', '']);
+            }
+            var wb = XLSX.utils.book_new();
+            var ws = XLSX.utils.aoa_to_sheet(templateRows);
+            XLSX.utils.book_append_sheet(wb, ws, 'Ekstrem');
+            XLSX.writeFile(wb, 'template-ekstrem.xlsx');
+          });
         }
         if (uploadFileBtn && importFileInput) {
           uploadFileBtn.addEventListener('click', function () {
@@ -1894,7 +2055,7 @@ $columns = [
                   alert('File tidak berisi data yang bisa diimpor.');
                   return;
                 }
-                importRowsToServer(normalized);
+                openImportPreview(normalized);
               } catch (err) {
                 alert('File tidak bisa dibaca. Gunakan file Excel/CSV yang valid.');
               } finally {
@@ -1910,7 +2071,9 @@ $columns = [
         }
         if (clearMonthBtn) {
           clearMonthBtn.addEventListener('click', function () {
-            if (!confirm('Hapus semua data pada bulan dan tahun filter saat ini? Baris kosong akan dibuat ulang setelah dihapus.')) {
+            var monthLabel = '<?php echo htmlspecialchars(ucfirst(strtolower(trim($bulan)))); ?>';
+            var yearLabel = '<?php echo htmlspecialchars((string)$tahun); ?>';
+            if (!confirm('Peringatan: semua data Ekstrem untuk ' + monthLabel + ' ' + yearLabel + ' akan dihapus. Setelah itu sistem hanya membuat ulang baris kosong minimum. Lanjutkan?')) {
               return;
             }
             var fd = new FormData();
@@ -1931,6 +2094,27 @@ $columns = [
                 setActionStatus('Gagal menghapus data', false);
                 alert('Gagal menghapus semua data pada bulan ini.');
               });
+          });
+        }
+        if (importPreviewCancel) {
+          importPreviewCancel.addEventListener('click', closeImportPreview);
+        }
+        if (importPreviewApply) {
+          importPreviewApply.addEventListener('click', function () {
+            if (!pendingImportRows.length) {
+              alert('Tidak ada data yang siap diimpor.');
+              return;
+            }
+            var rowsToImport = pendingImportRows.slice();
+            closeImportPreview();
+            importRowsToServer(rowsToImport);
+          });
+        }
+        if (importPreviewModal) {
+          importPreviewModal.addEventListener('click', function (e) {
+            if (e.target === importPreviewModal) {
+              closeImportPreview();
+            }
           });
         }
         function updateModalMatrixFromHtml() {
