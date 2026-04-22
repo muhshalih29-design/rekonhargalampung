@@ -23,6 +23,22 @@ $bulan_map = [
     'december' => 'desember',
 ];
 $bulan_list = ['januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember'];
+$target_kabupaten_hpb = [
+    ['kode' => '1801', 'nama' => 'Lampung Barat'],
+    ['kode' => '1802', 'nama' => 'Tanggamus'],
+    ['kode' => '1803', 'nama' => 'Lampung Selatan'],
+    ['kode' => '1804', 'nama' => 'Lampung Timur'],
+    ['kode' => '1805', 'nama' => 'Lampung Tengah'],
+    ['kode' => '1806', 'nama' => 'Lampung Utara'],
+    ['kode' => '1807', 'nama' => 'Way Kanan'],
+    ['kode' => '1808', 'nama' => 'Tulang Bawang'],
+    ['kode' => '1809', 'nama' => 'Pesawaran'],
+    ['kode' => '1810', 'nama' => 'Pringsewu'],
+    ['kode' => '1811', 'nama' => 'Mesuji'],
+    ['kode' => '1813', 'nama' => 'Pesisir Barat'],
+    ['kode' => '1871', 'nama' => 'Bandar Lampung'],
+    ['kode' => '1872', 'nama' => 'Metro'],
+];
 
 $all = isset($_GET['all']) ? trim($_GET['all']) : '';
 $bulan = isset($_GET['bulan']) ? trim($_GET['bulan']) : '';
@@ -36,6 +52,70 @@ if ($all === '' && $bulan === '' && $tahun === '') {
     $bulan = $bulan_map[$bulan] ?? $bulan;
     $tahun = $currentMonth->format('Y');
 }
+
+function ensure_hpb_kabupaten_coverage(PDO $pdo, array $kabupatenTargets, array $bulanList, string $tahun): void
+{
+    if ($tahun === '' || !ctype_digit($tahun) || empty($kabupatenTargets)) {
+        return;
+    }
+
+    $commodityStmt = $pdo->query("SELECT DISTINCT TRIM(komoditas) AS komoditas FROM hpb WHERE TRIM(COALESCE(komoditas, '')) <> '' ORDER BY komoditas ASC");
+    $commodities = $commodityStmt->fetchAll(PDO::FETCH_COLUMN);
+    $commodities = array_values(array_filter(array_map(static function ($item) {
+        return trim((string)$item);
+    }, $commodities), static function ($item) {
+        return $item !== '';
+    }));
+
+    if (empty($commodities)) {
+        return;
+    }
+
+    $insertStmt = $pdo->prepare("
+        INSERT INTO hpb (kode_kabupaten, nama_kabupaten, bulan, tahun, komoditas, time_stamp)
+        SELECT ?, ?, ?, ?, ?, NOW()
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM hpb
+            WHERE kode_kabupaten = ?
+              AND TRIM(LOWER(nama_kabupaten)) = TRIM(LOWER(?))
+              AND TRIM(LOWER(bulan)) = ?
+              AND tahun = ?
+              AND TRIM(LOWER(komoditas)) = TRIM(LOWER(?))
+        )
+    ");
+
+    try {
+        $pdo->beginTransaction();
+        foreach ($commodities as $commodity) {
+            foreach ($bulanList as $targetMonth) {
+                foreach ($kabupatenTargets as $kabupaten) {
+                    $kode = trim((string)$kabupaten['kode']);
+                    $nama = trim((string)$kabupaten['nama']);
+                    $insertStmt->execute([
+                        $kode,
+                        $nama,
+                        $targetMonth,
+                        (int)$tahun,
+                        $commodity,
+                        $kode,
+                        $nama,
+                        strtolower($targetMonth),
+                        (int)$tahun,
+                        $commodity,
+                    ]);
+                }
+            }
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+    }
+}
+
+ensure_hpb_kabupaten_coverage($pdo, $target_kabupaten_hpb, $bulan_list, $tahun);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_commodity') {
     if (!is_provinsi($user)) {
