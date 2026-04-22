@@ -644,12 +644,12 @@ $columns = [
         left: 0;
         z-index: 2;
       }
-      .ekstrem-table thead {
+      .ekstrem-scroll thead th {
         position: sticky;
         top: 0;
         z-index: 6;
       }
-      .ekstrem-table thead th:first-child { z-index: 7; }
+      .ekstrem-scroll thead th:first-child { z-index: 7; }
       thead th {
         background: #445468; color: #ffffff; padding: 10px 12px; font-size: 12px; font-weight: 700; white-space: normal; line-height: 1.1;
       }
@@ -1294,22 +1294,54 @@ $columns = [
             return out.length ? out : null;
           }
 
+          function parseRtfMatrix() {
+            var rtf = '';
+            try { rtf = dt.getData('text/rtf') || ''; } catch (_) {}
+            if (!rtf) return null;
+
+            // Decode hex escapes \'hh
+            var decoded = rtf.replace(/\\'([0-9a-fA-F]{2})/g, function (_, h) {
+              return String.fromCharCode(parseInt(h, 16));
+            });
+            decoded = decoded
+              .replace(/\\tab/g, '\t')
+              .replace(/\\cell/g, '\t')
+              .replace(/\\row/g, '\n')
+              .replace(/\\par/g, '\n');
+            // Strip control words and groups braces.
+            decoded = decoded
+              .replace(/\{\\\*[^}]*\}/g, '')
+              .replace(/[{}]/g, '')
+              .replace(/\\[a-zA-Z]+-?\d* ?/g, '')
+              .replace(/\\\\/g, '\\')
+              .trim();
+
+            if (!decoded) return null;
+            if (decoded.indexOf('\t') === -1 || decoded.indexOf('\n') === -1) return null;
+            var lines = decoded.split('\n').filter(function (l) { return l.trim() !== ''; });
+            if (!lines.length) return null;
+            return lines.map(function (line) {
+              return line.split('\t').map(function (x) { return (x || '').trim(); });
+            });
+          }
+
           // Some clipboard implementations (notably Excel on some browsers) put only
           // the first row into text/plain, but provide full range via text/html.
           var plain = parsePlainMatrix();
           var htmlM = parseHtmlMatrix();
+          var rtfM = parseRtfMatrix();
           var plainMultiRow = !!(plain && plain.length > 1);
           var htmlMultiRow = !!(htmlM && htmlM.length > 1);
+          var rtfMultiRow = !!(rtfM && rtfM.length > 1);
           if (plainMultiRow) return plain;
           if (htmlMultiRow) return htmlM;
-          return plain || htmlM;
+          if (rtfMultiRow) return rtfM;
+          return plain || htmlM || rtfM;
         }
 
         document.addEventListener('paste', function (e) {
           var target = e.target;
           if (!target || !target.classList || !target.classList.contains('editable-cell')) return;
-          e.preventDefault();
-
           function hasMultiple(matrix) {
             return !!(matrix && matrix.length && (matrix.length > 1 || (matrix[0] && matrix[0].length > 1)));
           }
@@ -1422,14 +1454,26 @@ $columns = [
           }
 
           var matrix = parseClipboardMatrix(e);
-          if (matrix && matrix.length > 1) return applyMatrix(matrix);
+          if (hasMultiple(matrix)) {
+            e.preventDefault();
+            return applyMatrix(matrix);
+          }
 
-          Promise.all([getClipboardStringAsync('text/html'), getClipboardStringAsync('text/plain')])
+          // If clipboard indicates richer types, try async items extraction.
+          var dt = (e.clipboardData || window.clipboardData);
+          var types = dt && dt.types ? Array.prototype.slice.call(dt.types) : [];
+          var shouldTryAsync = types.indexOf('text/html') !== -1 || types.indexOf('text/rtf') !== -1;
+          if (!shouldTryAsync) return; // let normal paste happen
+
+          e.preventDefault();
+          Promise.all([getClipboardStringAsync('text/html'), getClipboardStringAsync('text/plain'), getClipboardStringAsync('text/rtf')])
             .then(function (vals) {
               var htmlM = parseMatrixFromHtml(vals[0] || '');
               if (htmlM && htmlM.length > 1) return applyMatrix(htmlM);
               var plainM = parseMatrixFromText(vals[1] || '');
               if (plainM && plainM.length > 1) return applyMatrix(plainM);
+              var rtfM = parseMatrixFromText((vals[2] || '').replace(/\\tab/g, '\t').replace(/\\row|\\par/g, '\n'));
+              if (rtfM && rtfM.length > 1) return applyMatrix(rtfM);
               // fallback to whatever sync we had (might be single-row)
               applyMatrix(matrix);
             })
