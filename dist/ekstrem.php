@@ -70,6 +70,7 @@ function parse_decimal_input($value): ?float
     $raw = str_replace(["\u{00A0}", "\u{202F}", ' '], '', $raw);
     $raw = str_replace(["\u{2212}", "\u{2013}", "\u{2014}"], '-', $raw);
     $raw = str_replace('%', '', $raw);
+    $raw = preg_replace('/[^0-9,\.\-]/u', '', $raw) ?? $raw;
     $raw = str_replace('.', '', $raw);
     $raw = str_replace(',', '.', $raw);
     if ($raw === '' || $raw === '-' || !is_numeric($raw)) {
@@ -431,8 +432,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         ensure_minimum_ekstrem_rows($pdo, $bulan_norm, (string)$tahun_int, null, 150);
     } catch (Throwable $e) {
         $pdo->rollBack();
+        header('Content-Type: application/json; charset=utf-8');
         http_response_code(500);
-        echo 'Import failed';
+        echo json_encode(['error' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
@@ -1981,25 +1983,40 @@ $columns = [
             alert('Tidak ada data yang bisa diimpor.');
             return;
           }
+          var currentMonth = '<?php echo htmlspecialchars(strtolower(trim($bulan))); ?>';
+          var currentYear = '<?php echo htmlspecialchars((string)$tahun); ?>';
+          if (!currentMonth || !currentYear) {
+            alert('Pilih dulu bulan dan tahun spesifik sebelum import file.');
+            return;
+          }
           var fd = new FormData();
           fd.append('action', 'import_rows');
-          fd.append('bulan', '<?php echo htmlspecialchars(strtolower(trim($bulan))); ?>');
-          fd.append('tahun', '<?php echo htmlspecialchars((string)$tahun); ?>');
+          fd.append('bulan', currentMonth);
+          fd.append('tahun', currentYear);
           fd.append('payload', JSON.stringify(rows));
           setActionStatus('Mengimpor file...', true);
           fetch('ekstrem.php', { method: 'POST', body: fd })
             .then(function (r) {
-              if (!r.ok) throw new Error('Import gagal');
-              return r.json();
+              return r.text().then(function (text) {
+                var data = null;
+                try {
+                  data = text ? JSON.parse(text) : null;
+                } catch (_) {}
+                if (!r.ok) {
+                  var detail = (data && data.error) ? data.error : (text || 'Import gagal');
+                  throw new Error(detail);
+                }
+                return data || {};
+              });
             })
             .then(function (data) {
               var inserted = data && typeof data.inserted !== 'undefined' ? Number(data.inserted) : rows.length;
               setActionStatus('Import selesai (' + inserted + ' baris)', false);
               window.location.reload();
             })
-            .catch(function () {
+            .catch(function (err) {
               setActionStatus('Import gagal', false);
-              alert('Import file gagal. Pastikan format kolom file sudah sesuai.');
+              alert('Import file gagal: ' + (err && err.message ? err.message : 'Pastikan format kolom file sudah sesuai.'));
             });
         }
         if (downloadTemplateBtn) {
