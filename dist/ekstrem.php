@@ -667,9 +667,28 @@ $columns = [
         font-size: 12px;
         color: #64748b;
       }
-      .paste-modal textarea {
+      .paste-dropzone {
         width: 100%;
         min-height: 140px;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        padding: 10px;
+        font-size: 12px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        resize: vertical;
+        outline: none;
+        overflow: auto;
+        white-space: pre-wrap;
+        background: #fff;
+      }
+      .paste-dropzone:focus {
+        border-color: #ff9f91;
+        box-shadow: 0 0 0 3px rgba(255, 122, 182, 0.18);
+      }
+      .paste-plain {
+        width: 100%;
+        min-height: 84px;
+        margin-top: 10px;
         border: 1px solid #cbd5e1;
         border-radius: 10px;
         padding: 10px;
@@ -1051,8 +1070,9 @@ $columns = [
     <div class="paste-modal-backdrop" id="pasteModal">
       <div class="paste-modal">
         <h4>Paste Range Excel</h4>
-        <p>Klik dulu cell tujuan di tabel, lalu paste data Excel di kotak ini (Cmd+V), kemudian klik Tempel ke Tabel.</p>
-        <textarea id="pasteModalText" placeholder="Paste data range dari Excel di sini..."></textarea>
+        <p>Klik dulu cell tujuan di tabel, lalu paste data Excel di kotak di bawah (Cmd+V). Kalau browser mengubahnya jadi teks biasa, pakai kotak cadangan di bawahnya.</p>
+        <div id="pasteModalHtml" class="paste-dropzone" contenteditable="true" spellcheck="false"></div>
+        <textarea id="pasteModalText" class="paste-plain" placeholder="Cadangan teks paste..."></textarea>
         <div class="paste-modal-actions">
           <button type="button" class="paste-modal-btn" id="pasteModalCancel">Batal</button>
           <button type="button" class="paste-modal-btn" id="pasteModalApplyVertical">Tempel Vertikal (1 Kolom)</button>
@@ -1608,6 +1628,7 @@ $columns = [
 
         var pasteRangeBtn = document.getElementById('pasteRangeBtn');
         var pasteModal = document.getElementById('pasteModal');
+        var pasteModalHtml = document.getElementById('pasteModalHtml');
         var pasteModalText = document.getElementById('pasteModalText');
         var pasteModalCancel = document.getElementById('pasteModalCancel');
         var pasteModalApply = document.getElementById('pasteModalApply');
@@ -1632,12 +1653,48 @@ $columns = [
             if (pasteModal) {
               pasteModal.classList.add('open');
               modalClipboardMatrix = null;
+              if (pasteModalHtml) {
+                pasteModalHtml.innerHTML = '';
+              }
               if (pasteModalText) {
                 pasteModalText.value = '';
-                pasteModalText.focus();
+              }
+              if (pasteModalHtml) {
+                pasteModalHtml.focus();
               }
             }
           });
+        }
+        function updateModalMatrixFromHtml() {
+          if (!pasteModalHtml) return false;
+          var html = pasteModalHtml.innerHTML || '';
+          var matrix = null;
+          if (html && html !== '<br>') {
+            var tmp = document.createElement('div');
+            tmp.innerHTML = html;
+            var rows = tmp.querySelectorAll('tr');
+            if (rows && rows.length) {
+              matrix = [];
+              rows.forEach(function (row) {
+                var cells = row.querySelectorAll('th,td');
+                if (!cells || !cells.length) return;
+                var cols = [];
+                cells.forEach(function (cell) { cols.push((cell.textContent || '').trim()); });
+                matrix.push(cols);
+              });
+            } else {
+              matrix = parseMatrixFromRawText(tmp.textContent || '');
+            }
+          }
+          if (hasMultipleMatrix(matrix)) {
+            modalClipboardMatrix = matrix;
+            var rowsCount = matrix.length;
+            var colsCount = 0;
+            matrix.forEach(function (r) { colsCount = Math.max(colsCount, r.length); });
+            setPasteStatus('Terdeteksi range ' + rowsCount + 'x' + colsCount, true);
+            return true;
+          }
+          return false;
         }
         if (pasteModalText) {
           pasteModalText.addEventListener('paste', function (evt) {
@@ -1651,6 +1708,22 @@ $columns = [
             } else {
               modalClipboardMatrix = null;
             }
+          });
+        }
+        if (pasteModalHtml) {
+          pasteModalHtml.addEventListener('paste', function () {
+            setTimeout(function () {
+              if (!updateModalMatrixFromHtml() && pasteModalText) {
+                pasteModalText.value = pasteModalHtml.textContent || '';
+              }
+            }, 30);
+          });
+          pasteModalHtml.addEventListener('input', function () {
+            setTimeout(function () {
+              if (!updateModalMatrixFromHtml() && pasteModalText) {
+                pasteModalText.value = pasteModalHtml.textContent || '';
+              }
+            }, 30);
           });
         }
         if (pasteModalCancel) {
@@ -1667,6 +1740,9 @@ $columns = [
               alert('Sel tujuan tidak ditemukan. Klik dulu sel tujuan di tabel.');
               return;
             }
+            if (!hasMultipleMatrix(modalClipboardMatrix)) {
+              updateModalMatrixFromHtml();
+            }
             var raw = pasteModalText ? pasteModalText.value : '';
             var matrix = hasMultipleMatrix(modalClipboardMatrix) ? modalClipboardMatrix : parseMatrixFromRawText(raw);
             if (!hasMultipleMatrix(matrix)) {
@@ -1676,6 +1752,8 @@ $columns = [
             applyMatrixToTarget(target, matrix);
             if (pasteModal) pasteModal.classList.remove('open');
             modalClipboardMatrix = null;
+            if (pasteModalHtml) pasteModalHtml.innerHTML = '';
+            if (pasteModalText) pasteModalText.value = '';
           });
         }
         if (pasteModalApplyVertical) {
@@ -1686,6 +1764,9 @@ $columns = [
             if (!target || !target.classList || !target.classList.contains('editable-cell')) {
               alert('Sel tujuan tidak ditemukan. Klik dulu sel tujuan di tabel.');
               return;
+            }
+            if (!hasMultipleMatrix(modalClipboardMatrix)) {
+              updateModalMatrixFromHtml();
             }
             var raw = pasteModalText ? pasteModalText.value : '';
             var matrix = hasMultipleMatrix(modalClipboardMatrix) ? modalClipboardMatrix : parseMatrixFromRawText(raw);
@@ -1708,6 +1789,8 @@ $columns = [
             applyMatrixToTarget(target, vertical);
             if (pasteModal) pasteModal.classList.remove('open');
             modalClipboardMatrix = null;
+            if (pasteModalHtml) pasteModalHtml.innerHTML = '';
+            if (pasteModalText) pasteModalText.value = '';
           });
         }
         if (pasteModal) {
