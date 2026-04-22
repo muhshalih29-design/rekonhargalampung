@@ -627,6 +627,66 @@ $columns = [
         background: rgba(65,179,138,0.12);
         border-color: rgba(65,179,138,0.35);
       }
+      .paste-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+      }
+      .paste-modal-backdrop.open { display: flex; }
+      .paste-modal {
+        width: min(720px, 92vw);
+        background: #fff;
+        border-radius: 14px;
+        padding: 16px;
+        box-shadow: 0 22px 48px rgba(15, 23, 42, 0.3);
+      }
+      .paste-modal h4 {
+        margin: 0 0 8px;
+        font-size: 16px;
+        font-weight: 700;
+        color: #334155;
+      }
+      .paste-modal p {
+        margin: 0 0 10px;
+        font-size: 12px;
+        color: #64748b;
+      }
+      .paste-modal textarea {
+        width: 100%;
+        min-height: 140px;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        padding: 10px;
+        font-size: 12px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        resize: vertical;
+        outline: none;
+      }
+      .paste-modal-actions {
+        margin-top: 10px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+      .paste-modal-btn {
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        color: #334155;
+        border-radius: 10px;
+        padding: 7px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .paste-modal-btn.primary {
+        border: none;
+        background: linear-gradient(135deg, #f6b7c8, #f5a25d);
+        color: #fff;
+      }
       .komoditas-head {
         display: flex;
         align-items: center;
@@ -975,6 +1035,17 @@ $columns = [
           <?php endif; ?>
         <?php endif; ?>
       </main>
+    </div>
+    <div class="paste-modal-backdrop" id="pasteModal">
+      <div class="paste-modal">
+        <h4>Paste Range Excel</h4>
+        <p>Klik dulu cell tujuan di tabel, lalu paste data Excel di kotak ini (Cmd+V), kemudian klik Tempel ke Tabel.</p>
+        <textarea id="pasteModalText" placeholder="Paste data range dari Excel di sini..."></textarea>
+        <div class="paste-modal-actions">
+          <button type="button" class="paste-modal-btn" id="pasteModalCancel">Batal</button>
+          <button type="button" class="paste-modal-btn primary" id="pasteModalApply">Tempel ke Tabel</button>
+        </div>
+      </div>
     </div>
 
     <script>
@@ -1493,6 +1564,10 @@ $columns = [
         });
 
         var pasteRangeBtn = document.getElementById('pasteRangeBtn');
+        var pasteModal = document.getElementById('pasteModal');
+        var pasteModalText = document.getElementById('pasteModalText');
+        var pasteModalCancel = document.getElementById('pasteModalCancel');
+        var pasteModalApply = document.getElementById('pasteModalApply');
         var lastFocusedEditableCell = null;
         document.addEventListener('focusin', function (ev) {
           var el = ev.target;
@@ -1509,27 +1584,42 @@ $columns = [
               alert('Klik dulu sel tujuan (baris mana pun), lalu klik Paste Range.');
               return;
             }
-            if (!navigator.clipboard || !navigator.clipboard.readText) {
-              alert('Browser tidak mendukung baca clipboard otomatis.');
+            if (pasteModal) {
+              pasteModal.classList.add('open');
+              if (pasteModalText) {
+                pasteModalText.value = '';
+                pasteModalText.focus();
+              }
+            }
+          });
+        }
+        if (pasteModalCancel) {
+          pasteModalCancel.addEventListener('click', function () {
+            if (pasteModal) pasteModal.classList.remove('open');
+          });
+        }
+        if (pasteModalApply) {
+          pasteModalApply.addEventListener('click', function () {
+            var target = (document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('editable-cell'))
+              ? document.activeElement
+              : lastFocusedEditableCell;
+            if (!target || !target.classList || !target.classList.contains('editable-cell')) {
+              alert('Sel tujuan tidak ditemukan. Klik dulu sel tujuan di tabel.');
               return;
             }
-            pasteRangeBtn.disabled = true;
-            setPasteStatus('Membaca clipboard...', true);
-            navigator.clipboard.readText()
-              .then(function (txt) {
-                var matrix = parseMatrixFromRawText(txt);
-                if (!hasMultipleMatrix(matrix)) {
-                  setPasteStatus('Clipboard bukan range tabel', false);
-                  return;
-                }
-                applyMatrixToTarget(target, matrix);
-              })
-              .catch(function () {
-                setPasteStatus('Izin clipboard ditolak', false);
-              })
-              .finally(function () {
-                pasteRangeBtn.disabled = false;
-              });
+            var raw = pasteModalText ? pasteModalText.value : '';
+            var matrix = parseMatrixFromRawText(raw);
+            if (!hasMultipleMatrix(matrix)) {
+              alert('Data range tidak valid. Pastikan menempel tabel lebih dari 1 baris atau 1 kolom.');
+              return;
+            }
+            applyMatrixToTarget(target, matrix);
+            if (pasteModal) pasteModal.classList.remove('open');
+          });
+        }
+        if (pasteModal) {
+          pasteModal.addEventListener('click', function (e) {
+            if (e.target === pasteModal) pasteModal.classList.remove('open');
           });
         }
 
