@@ -644,10 +644,10 @@ $columns = [
         left: 0;
         z-index: 2;
       }
-      .ekstrem-table thead th {
+      .ekstrem-table thead {
         position: sticky;
         top: 0;
-        z-index: 5;
+        z-index: 6;
       }
       .ekstrem-table thead th:first-child { z-index: 7; }
       thead th {
@@ -1308,80 +1308,132 @@ $columns = [
         document.addEventListener('paste', function (e) {
           var target = e.target;
           if (!target || !target.classList || !target.classList.contains('editable-cell')) return;
-          var matrix = parseClipboardMatrix(e);
-          if (!matrix || !matrix.length) return;
-          var hasMultiple = matrix.length > 1 || (matrix[0] && matrix[0].length > 1);
-          if (!hasMultiple) return;
           e.preventDefault();
 
-          var startRow = target.closest('tr');
-          if (!startRow) return;
-          var card = target.closest('.table-card');
-          if (!card) return;
-          var rowList = Array.prototype.slice.call(card.querySelectorAll('tbody tr')).filter(function (tr) {
-            if (tr.style && tr.style.display === 'none') return false;
-            return tr.offsetParent !== null;
-          });
-          var startRowIdx = rowList.indexOf(startRow);
-          if (startRowIdx < 0) return;
-          var startColIdx = Array.prototype.indexOf.call(startRow.querySelectorAll('.editable-cell'), target);
-          if (startColIdx < 0) return;
+          function hasMultiple(matrix) {
+            return !!(matrix && matrix.length && (matrix.length > 1 || (matrix[0] && matrix[0].length > 1)));
+          }
 
-          var total = 0;
-          matrix.forEach(function (r) { total += r.length; });
-          var done = 0;
-          setPasteStatus('Menempel 0/' + total, true);
-
-          var batch = [];
-          matrix.forEach(function (cols, rIdx) {
-            var rowEl = rowList[startRowIdx + rIdx];
-            if (!rowEl) return;
-            var editables = rowEl.querySelectorAll('.editable-cell');
-            cols.forEach(function (cellText, cIdx) {
-              var el = editables[startColIdx + cIdx];
-              if (!el) return;
-              var val = (cellText == null ? '' : String(cellText)).trim();
-              setEditableValue(el, val);
-              var rowId = rowEl.getAttribute('data-id');
-              var field = el.getAttribute('data-field');
-              if (rowId && field) {
-                batch.push({ id: rowId, field: field, value: val });
-              }
-              done += 1;
-              setPasteStatus('Menempel ' + done + '/' + total, true);
+          function getClipboardStringAsync(wantedType) {
+            return new Promise(function (resolve) {
+              var dt = (e.clipboardData || window.clipboardData);
+              if (!dt || !dt.items) return resolve('');
+              var items = Array.prototype.slice.call(dt.items);
+              var item = items.find(function (it) { return it && it.kind === 'string' && it.type === wantedType; });
+              if (!item || !item.getAsString) return resolve('');
+              item.getAsString(function (s) { resolve(s || ''); });
             });
-          });
-          if (batch.length && !IS_KABUPATEN) {
-            var fd = new FormData();
-            fd.append('action', 'batch_update');
-            fd.append('payload', JSON.stringify(batch));
-            fetch('ekstrem.php', { method: 'POST', body: fd })
-              .then(function () { setPasteStatus('Selesai', false); })
-              .catch(function () { setPasteStatus('Gagal', false); });
-          } else if (batch.length && IS_KABUPATEN) {
-            // Kabupaten: simpan per-cell (hanya kolom yang boleh akan berhasil).
-            var idx = 0;
-            function next() {
-              if (idx >= batch.length) {
-                setPasteStatus('Selesai', false);
-                return;
+          }
+
+          function parseMatrixFromText(raw) {
+            if (!raw) return null;
+            var s = String(raw).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+            if (s.indexOf('\t') === -1 && s.indexOf('\n') === -1) return null;
+            var lines = s.split('\n');
+            if (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
+            return lines.map(function (line) { return line.split('\t'); });
+          }
+
+          function parseMatrixFromHtml(html) {
+            if (!html) return null;
+            var tmp = document.createElement('div');
+            tmp.innerHTML = html;
+            var tr = tmp.querySelectorAll('tr');
+            if (!tr || !tr.length) return null;
+            var out = [];
+            tr.forEach(function (row) {
+              var cells = row.querySelectorAll('th,td');
+              if (!cells || !cells.length) return;
+              var cols = [];
+              cells.forEach(function (c) { cols.push((c.textContent || '').trim()); });
+              out.push(cols);
+            });
+            return out.length ? out : null;
+          }
+
+          function applyMatrix(matrix) {
+            if (!hasMultiple(matrix)) return;
+
+            var startRow = target.closest('tr');
+            if (!startRow) return;
+            var card = target.closest('.table-card');
+            if (!card) return;
+            var rowList = Array.prototype.slice.call(card.querySelectorAll('tbody tr')).filter(function (tr) {
+              if (tr.style && tr.style.display === 'none') return false;
+              return tr.offsetParent !== null;
+            });
+            var startRowIdx = rowList.indexOf(startRow);
+            if (startRowIdx < 0) return;
+            var startColIdx = Array.prototype.indexOf.call(startRow.querySelectorAll('.editable-cell'), target);
+            if (startColIdx < 0) return;
+
+            var total = 0;
+            matrix.forEach(function (r) { total += r.length; });
+            var done = 0;
+            setPasteStatus('Menempel 0/' + total, true);
+
+            var batch = [];
+            matrix.forEach(function (cols, rIdx) {
+              var rowEl = rowList[startRowIdx + rIdx];
+              if (!rowEl) return;
+              var editables = rowEl.querySelectorAll('.editable-cell');
+              cols.forEach(function (cellText, cIdx) {
+                var el = editables[startColIdx + cIdx];
+                if (!el) return;
+                var val = (cellText == null ? '' : String(cellText)).trim();
+                setEditableValue(el, val);
+                var rowId = rowEl.getAttribute('data-id');
+                var field = el.getAttribute('data-field');
+                if (rowId && field) {
+                  batch.push({ id: rowId, field: field, value: val });
+                }
+                done += 1;
+                setPasteStatus('Menempel ' + done + '/' + total, true);
+              });
+            });
+            if (batch.length && !IS_KABUPATEN) {
+              var fd = new FormData();
+              fd.append('action', 'batch_update');
+              fd.append('payload', JSON.stringify(batch));
+              fetch('ekstrem.php', { method: 'POST', body: fd })
+                .then(function () { setPasteStatus('Selesai', false); })
+                .catch(function () { setPasteStatus('Gagal', false); });
+            } else if (batch.length && IS_KABUPATEN) {
+              var idx = 0;
+              function next() {
+                if (idx >= batch.length) {
+                  setPasteStatus('Selesai', false);
+                  return;
+                }
+                var item = batch[idx++];
+                var rowEl = card.querySelector('tr[data-id=\"' + item.id + '\"]');
+                if (!rowEl) return next();
+                var el = rowEl.querySelector('.editable-cell[data-field=\"' + item.field + '\"]');
+                if (!el) return next();
+                saveCell(el).finally(next);
               }
-              var item = batch[idx++];
-              var rowEl = card.querySelector('tr[data-id="' + item.id + '"]');
-              if (!rowEl) return next();
-              var el = rowEl.querySelector('.editable-cell[data-field="' + item.field + '"]');
-              if (!el) return next();
-              saveCell(el).finally(next);
+              next();
             }
-            next();
+            if (card) buildHeaderFilters(card);
+            applyHeaderFilters();
+            if (!batch.length) {
+              setTimeout(function () { setPasteStatus('Selesai', false); }, 400);
+            }
           }
-          if (card) buildHeaderFilters(card);
-          applyHeaderFilters();
-          if (!batch.length) {
-            setTimeout(function () {
-              setPasteStatus('Selesai', false);
-            }, 400);
-          }
+
+          var matrix = parseClipboardMatrix(e);
+          if (matrix && matrix.length > 1) return applyMatrix(matrix);
+
+          Promise.all([getClipboardStringAsync('text/html'), getClipboardStringAsync('text/plain')])
+            .then(function (vals) {
+              var htmlM = parseMatrixFromHtml(vals[0] || '');
+              if (htmlM && htmlM.length > 1) return applyMatrix(htmlM);
+              var plainM = parseMatrixFromText(vals[1] || '');
+              if (plainM && plainM.length > 1) return applyMatrix(plainM);
+              // fallback to whatever sync we had (might be single-row)
+              applyMatrix(matrix);
+            })
+            .catch(function () { applyMatrix(matrix); });
         });
 
         var addBtn = document.getElementById('add50');
