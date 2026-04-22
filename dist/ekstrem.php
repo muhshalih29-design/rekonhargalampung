@@ -1337,7 +1337,8 @@ $columns = [
           });
         });
 
-        function setEditableValue(el, value) {
+        function setEditableValue(el, value, options) {
+          options = options || {};
           if (!el) return;
           if (el.tagName.toLowerCase() === 'select') {
             var found = false;
@@ -1365,7 +1366,9 @@ $columns = [
             updateRowHighlight(el);
             updateAvgForCard(el.closest('.table-card'));
           }
-          saveCell(el);
+          if (!options.skipSave) {
+            saveCell(el);
+          }
         }
 
         var pasteStatusEl = document.getElementById('paste-status');
@@ -1443,7 +1446,7 @@ $columns = [
               var el = editables[startColIdx + cIdx];
               if (!el) return;
               var val = (cellText == null ? '' : String(cellText)).trim();
-              setEditableValue(el, val);
+              setEditableValue(el, val, { skipSave: true });
               var rowId = rowEl.getAttribute('data-id');
               var field = el.getAttribute('data-field');
               if (rowId && field) batch.push({ id: rowId, field: field, value: val });
