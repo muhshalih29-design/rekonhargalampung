@@ -71,8 +71,33 @@ function parse_decimal_input($value): ?float
     $raw = str_replace(["\u{2212}", "\u{2013}", "\u{2014}"], '-', $raw);
     $raw = str_replace('%', '', $raw);
     $raw = preg_replace('/[^0-9,\.\-]/u', '', $raw) ?? $raw;
-    $raw = str_replace('.', '', $raw);
-    $raw = str_replace(',', '.', $raw);
+    $hasComma = strpos($raw, ',') !== false;
+    $hasDot = strpos($raw, '.') !== false;
+
+    if ($hasComma && $hasDot) {
+        // Indonesian style: 1.234,56
+        $raw = str_replace('.', '', $raw);
+        $raw = str_replace(',', '.', $raw);
+    } elseif ($hasComma) {
+        // Could be decimal comma or thousands comma.
+        $parts = explode(',', $raw);
+        $last = end($parts);
+        if ($last !== false && strlen($last) <= 2) {
+            $raw = str_replace(',', '.', $raw);
+        } else {
+            $raw = str_replace(',', '', $raw);
+        }
+    } elseif ($hasDot) {
+        // Excel/raw numeric style: 1234.56 or -6.25
+        $parts = explode('.', $raw);
+        $last = end($parts);
+        if ($last !== false && strlen($last) <= 2) {
+            // Keep decimal dot as-is.
+        } else {
+            // Treat as thousands separators.
+            $raw = str_replace('.', '', $raw);
+        }
+    }
     if ($raw === '' || $raw === '-' || !is_numeric($raw)) {
         return null;
     }
