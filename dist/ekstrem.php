@@ -1588,6 +1588,7 @@ $columns = [
         var pasteModalText = document.getElementById('pasteModalText');
         var pasteModalCancel = document.getElementById('pasteModalCancel');
         var pasteModalApply = document.getElementById('pasteModalApply');
+        var modalClipboardMatrix = null;
         var lastFocusedEditableCell = null;
         document.addEventListener('focusin', function (ev) {
           var el = ev.target;
@@ -1606,10 +1607,25 @@ $columns = [
             }
             if (pasteModal) {
               pasteModal.classList.add('open');
+              modalClipboardMatrix = null;
               if (pasteModalText) {
                 pasteModalText.value = '';
                 pasteModalText.focus();
               }
+            }
+          });
+        }
+        if (pasteModalText) {
+          pasteModalText.addEventListener('paste', function (evt) {
+            var matrix = parseClipboardMatrix(evt);
+            if (hasMultipleMatrix(matrix)) {
+              modalClipboardMatrix = matrix;
+              var rows = matrix.length;
+              var cols = 0;
+              matrix.forEach(function (r) { cols = Math.max(cols, r.length); });
+              setPasteStatus('Terdeteksi range ' + rows + 'x' + cols, true);
+            } else {
+              modalClipboardMatrix = null;
             }
           });
         }
@@ -1628,13 +1644,14 @@ $columns = [
               return;
             }
             var raw = pasteModalText ? pasteModalText.value : '';
-            var matrix = parseMatrixFromRawText(raw);
+            var matrix = hasMultipleMatrix(modalClipboardMatrix) ? modalClipboardMatrix : parseMatrixFromRawText(raw);
             if (!hasMultipleMatrix(matrix)) {
               alert('Data range tidak valid. Pastikan menempel tabel lebih dari 1 baris atau 1 kolom.');
               return;
             }
             applyMatrixToTarget(target, matrix);
             if (pasteModal) pasteModal.classList.remove('open');
+            modalClipboardMatrix = null;
           });
         }
         if (pasteModal) {
