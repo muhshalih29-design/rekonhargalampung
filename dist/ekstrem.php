@@ -609,7 +609,12 @@ $columns = [
         left: 0;
         z-index: 2;
       }
-      .ekstrem-table thead th:first-child { z-index: 6; }
+      .ekstrem-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+      }
+      .ekstrem-table thead th:first-child { z-index: 7; }
       thead th {
         background: #445468; color: #ffffff; padding: 10px 12px; font-size: 12px; font-weight: 700; white-space: normal; line-height: 1.1;
       }
