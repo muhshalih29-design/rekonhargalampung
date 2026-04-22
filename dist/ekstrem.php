@@ -1493,11 +1493,20 @@ $columns = [
         });
 
         var pasteRangeBtn = document.getElementById('pasteRangeBtn');
+        var lastFocusedEditableCell = null;
+        document.addEventListener('focusin', function (ev) {
+          var el = ev.target;
+          if (el && el.classList && el.classList.contains('editable-cell')) {
+            lastFocusedEditableCell = el;
+          }
+        });
         if (pasteRangeBtn) {
           pasteRangeBtn.addEventListener('click', function () {
-            var target = document.activeElement;
+            var target = (document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('editable-cell'))
+              ? document.activeElement
+              : lastFocusedEditableCell;
             if (!target || !target.classList || !target.classList.contains('editable-cell')) {
-              alert('Klik dulu sel awal tujuan paste.');
+              alert('Klik dulu sel tujuan (baris mana pun), lalu klik Paste Range.');
               return;
             }
             if (!navigator.clipboard || !navigator.clipboard.readText) {
