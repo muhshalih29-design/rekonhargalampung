@@ -270,6 +270,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_rows') {
+    if (is_kabupaten($user)) {
+        http_response_code(403);
+        echo 'Forbidden';
+        exit;
+    }
+    $bulan_req = isset($_POST['bulan']) ? trim((string)$_POST['bulan']) : '';
+    $tahun_req = isset($_POST['tahun']) ? trim((string)$_POST['tahun']) : '';
+    if ($bulan_req === '' || $tahun_req === '' || !ctype_digit($tahun_req)) {
+        http_response_code(400);
+        echo 'Invalid request';
+        exit;
+    }
+
+    $bulan_norm = strtolower(trim($bulan_req));
+    $tahun_int = (int)$tahun_req;
+
+    $insertSql = "
+        INSERT INTO ekstrem (
+            subsektor, kab, kecamatan, komoditas, kualitas, satuan,
+            harga_bulan_ini, harga_bulan_lalu, perubahan_rata_rata,
+            konfirmasi_kab, bulan, tahun
+        )
+        SELECT
+            ''::text,
+            0::int,
+            0::int,
+            ''::text,
+            ''::text,
+            ''::text,
+            NULL::numeric,
+            NULL::numeric,
+            NULL::numeric,
+            ''::text,
+            ?::text,
+            ?::int
+        FROM generate_series(1, 50)
+        RETURNING id
+    ";
+    $stmtIns = $pdo->prepare($insertSql);
+    $stmtIns->execute([$bulan_norm, $tahun_int]);
+    $ids = $stmtIns->fetchAll(PDO::FETCH_COLUMN);
+
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ids' => array_map('intval', $ids)], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 $where = [];
 $types = '';
 $params = [];
@@ -555,12 +603,20 @@ $columns = [
       .ekstrem-table td:nth-child(2) { width: 80px; }
       .ekstrem-table th:nth-child(3),
       .ekstrem-table td:nth-child(3) { width: 80px; }
+      .ekstrem-table th:first-child,
+      .ekstrem-table td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 2;
+      }
+      .ekstrem-table thead th:first-child { z-index: 6; }
       thead th {
         background: #445468; color: #ffffff; padding: 10px 12px; font-size: 12px; font-weight: 700; white-space: normal; line-height: 1.1;
       }
       tbody td {
         padding: 10px 12px; vertical-align: top; border-bottom: 1px solid #eef3f2; background: #ffffff; font-size: 13px; line-height: 1.4;
       }
+      tbody td:first-child { background: #ffffff; }
       tbody tr.row-pos td:first-child {
         background: linear-gradient(90deg, rgba(124,227,143,0.45) 0%, #ffffff 85%) !important;
       }
@@ -853,12 +909,20 @@ $columns = [
             <?php $row_index++; ?>
           <?php endforeach; ?>
             </tbody></table></div></div>
+          <?php if (!is_kabupaten($user)): ?>
+            <div class="table-card" style="padding:14px 16px; display:flex; justify-content:flex-end; gap:10px; align-items:center;">
+              <button type="button" id="add50" class="tab-btn" style="box-shadow:none;">Tambah 50 baris</button>
+              <div class="paste-status" id="add-status" style="display:none;">Menambah...</div>
+            </div>
+          <?php endif; ?>
         <?php endif; ?>
       </main>
     </div>
 
     <script>
       (function () {
+        var IS_KABUPATEN = <?php echo is_kabupaten($user) ? 'true' : 'false'; ?>;
+
         function autoResize(el) {
           el.style.height = 'auto';
           el.style.height = el.scrollHeight + 'px';
@@ -1139,15 +1203,49 @@ $columns = [
           pasteStatusEl.classList.toggle('active', !!active);
         }
 
+        function parseClipboardMatrix(e) {
+          var dt = (e.clipboardData || window.clipboardData);
+          if (!dt) return null;
+
+          var textPlain = '';
+          try { textPlain = dt.getData('text/plain') || ''; } catch (_) {}
+          if (!textPlain) {
+            try { textPlain = dt.getData('text') || ''; } catch (_) {}
+          }
+
+          var raw = (textPlain || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+          if (raw && (raw.indexOf('\t') !== -1 || raw.indexOf('\n') !== -1)) {
+            var lines = raw.split('\n');
+            if (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
+            return lines.map(function (line) { return line.split('\t'); });
+          }
+
+          var html = '';
+          try { html = dt.getData('text/html') || ''; } catch (_) {}
+          if (!html) return null;
+          var tmp = document.createElement('div');
+          tmp.innerHTML = html;
+          var tr = tmp.querySelectorAll('tr');
+          if (!tr || !tr.length) return null;
+          var out = [];
+          tr.forEach(function (row) {
+            var cells = row.querySelectorAll('th,td');
+            if (!cells || !cells.length) return;
+            var cols = [];
+            cells.forEach(function (c) { cols.push((c.textContent || '').trim()); });
+            out.push(cols);
+          });
+          return out.length ? out : null;
+        }
+
         document.addEventListener('paste', function (e) {
           var target = e.target;
           if (!target || !target.classList || !target.classList.contains('editable-cell')) return;
-          var text = (e.clipboardData || window.clipboardData).getData('text');
-          if (!text || (text.indexOf('\t') === -1 && text.indexOf('\n') === -1 && text.indexOf('\r') === -1)) return;
+          var matrix = parseClipboardMatrix(e);
+          if (!matrix || !matrix.length) return;
+          var hasMultiple = matrix.length > 1 || (matrix[0] && matrix[0].length > 1);
+          if (!hasMultiple) return;
           e.preventDefault();
-
-          var rows = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-          if (rows.length && rows[rows.length - 1].trim() === '') rows.pop();
 
           var startRow = target.closest('tr');
           if (!startRow) return;
@@ -1160,22 +1258,19 @@ $columns = [
           if (startColIdx < 0) return;
 
           var total = 0;
-          rows.forEach(function (rowText) {
-            total += rowText.split('\t').length;
-          });
+          matrix.forEach(function (r) { total += r.length; });
           var done = 0;
           setPasteStatus('Menempel 0/' + total, true);
 
           var batch = [];
-          rows.forEach(function (rowText, rIdx) {
-            var cols = rowText.split('\t');
+          matrix.forEach(function (cols, rIdx) {
             var rowEl = rowList[startRowIdx + rIdx];
             if (!rowEl) return;
             var editables = rowEl.querySelectorAll('.editable-cell');
             cols.forEach(function (cellText, cIdx) {
               var el = editables[startColIdx + cIdx];
               if (!el) return;
-              var val = cellText.trim();
+              var val = (cellText == null ? '' : String(cellText)).trim();
               setEditableValue(el, val);
               var rowId = rowEl.getAttribute('data-id');
               var field = el.getAttribute('data-field');
@@ -1186,13 +1281,29 @@ $columns = [
               setPasteStatus('Menempel ' + done + '/' + total, true);
             });
           });
-          if (batch.length) {
+          if (batch.length && !IS_KABUPATEN) {
             var fd = new FormData();
             fd.append('action', 'batch_update');
             fd.append('payload', JSON.stringify(batch));
             fetch('ekstrem.php', { method: 'POST', body: fd })
               .then(function () { setPasteStatus('Selesai', false); })
               .catch(function () { setPasteStatus('Gagal', false); });
+          } else if (batch.length && IS_KABUPATEN) {
+            // Kabupaten: simpan per-cell (hanya kolom yang boleh akan berhasil).
+            var idx = 0;
+            function next() {
+              if (idx >= batch.length) {
+                setPasteStatus('Selesai', false);
+                return;
+              }
+              var item = batch[idx++];
+              var rowEl = card.querySelector('tr[data-id="' + item.id + '"]');
+              if (!rowEl) return next();
+              var el = rowEl.querySelector('.editable-cell[data-field="' + item.field + '"]');
+              if (!el) return next();
+              saveCell(el).finally(next);
+            }
+            next();
           }
           if (card) buildHeaderFilters(card);
           applyHeaderFilters();
@@ -1202,6 +1313,58 @@ $columns = [
             }, 400);
           }
         });
+
+        var addBtn = document.getElementById('add50');
+        if (addBtn) {
+          addBtn.addEventListener('click', function () {
+            addBtn.disabled = true;
+            var status = document.getElementById('add-status');
+            if (status) status.style.display = 'inline-flex';
+            var fd = new FormData();
+            fd.append('action', 'add_rows');
+            fd.append('bulan', '<?php echo htmlspecialchars(strtolower(trim($bulan))); ?>');
+            fd.append('tahun', '<?php echo htmlspecialchars((string)$tahun); ?>');
+            fetch('ekstrem.php', { method: 'POST', body: fd })
+              .then(function (r) { return r.json(); })
+              .then(function (data) {
+                var ids = (data && data.ids) ? data.ids : [];
+                var tbody = document.querySelector('.ekstrem-table tbody');
+                if (!tbody || !ids.length) return;
+                var template = tbody.querySelector('tr');
+                ids.forEach(function (id) {
+                  var tr = template ? template.cloneNode(true) : document.createElement('tr');
+                  tr.setAttribute('data-id', String(id));
+                  tr.setAttribute('data-row', String(tbody.querySelectorAll('tr').length));
+                  tr.className = '';
+                  tr.querySelectorAll('input, textarea, select').forEach(function (el) {
+                    if (el.tagName.toLowerCase() === 'textarea') {
+                      el.value = '';
+                      autoResize(el);
+                    } else {
+                      el.value = '';
+                    }
+                    if (el.classList.contains('perubahan-input')) {
+                      el.classList.remove('text-perubahan-pos', 'text-perubahan-neg');
+                    }
+                  });
+                  tr.querySelectorAll('.trend').forEach(function (sp) {
+                    sp.textContent = '=';
+                    sp.className = 'trend trend-zero';
+                  });
+                  tbody.appendChild(tr);
+                });
+                var table = document.querySelector('.ekstrem-table');
+                var card = table ? table.closest('.table-card') : null;
+                if (card) buildHeaderFilters(card);
+                applyHeaderFilters();
+              })
+              .catch(function () {})
+              .finally(function () {
+                if (status) status.style.display = 'none';
+                addBtn.disabled = false;
+              });
+          });
+        }
       })();
     </script>
   
