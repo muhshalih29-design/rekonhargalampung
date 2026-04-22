@@ -78,6 +78,19 @@ function parse_decimal_input($value): ?float
     return (float)$raw;
 }
 
+function parse_int_input($value): int
+{
+    $raw = is_string($value) ? trim($value) : '';
+    if ($raw === '') {
+        return 0;
+    }
+    $digits = preg_replace('/\D+/', '', $raw);
+    if ($digits === null || $digits === '') {
+        return 0;
+    }
+    return (int)$digits;
+}
+
 if ($all === '' && $bulan === '' && $tahun === '') {
     $currentMonth = new DateTime('first day of this month');
     $bulan = strtolower($currentMonth->format('F'));
@@ -343,6 +356,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'import_rows') {
+    if (is_kabupaten($user)) {
+        http_response_code(403);
+        echo 'Forbidden';
+        exit;
+    }
+    $bulan_req = isset($_POST['bulan']) ? trim((string)$_POST['bulan']) : '';
+    $tahun_req = isset($_POST['tahun']) ? trim((string)$_POST['tahun']) : '';
+    $payload = isset($_POST['payload']) ? (string)$_POST['payload'] : '';
+    $rows_import = json_decode($payload, true);
+    if ($bulan_req === '' || $tahun_req === '' || !ctype_digit($tahun_req) || !is_array($rows_import)) {
+        http_response_code(400);
+        echo 'Invalid request';
+        exit;
+    }
+
+    $bulan_norm = strtolower(trim($bulan_req));
+    $tahun_int = (int)$tahun_req;
+
+    $insertSql = '
+        INSERT INTO ekstrem (
+            subsektor, kab, kecamatan, komoditas, kualitas, satuan,
+            harga_bulan_ini, harga_bulan_lalu, perubahan_rata_rata,
+            konfirmasi_kab, bulan, tahun
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ';
+
+    $pdo->beginTransaction();
+    try {
+        $deleteStmt = $pdo->prepare('DELETE FROM ekstrem WHERE TRIM(LOWER(bulan)) = ? AND tahun = ?');
+        $deleteStmt->execute([$bulan_norm, $tahun_int]);
+
+        $insertStmt = $pdo->prepare($insertSql);
+        $inserted = 0;
+
+        foreach ($rows_import as $row_import) {
+            if (!is_array($row_import)) {
+                continue;
+            }
+            $cells = array_values($row_import);
+            $cells = array_pad($cells, 10, '');
+            $cells = array_slice($cells, 0, 10);
+
+            $hasContent = false;
+            foreach ($cells as $cell) {
+                if (trim((string)$cell) !== '') {
+                    $hasContent = true;
+                    break;
+                }
+            }
+            if (!$hasContent) {
+                continue;
+            }
+
+            $insertStmt->execute([
+                trim((string)$cells[0]),
+                parse_int_input($cells[1]),
+                parse_int_input($cells[2]),
+                trim((string)$cells[3]),
+                trim((string)$cells[4]),
+                trim((string)$cells[5]),
+                parse_decimal_input($cells[6]),
+                parse_decimal_input($cells[7]),
+                parse_decimal_input($cells[8]),
+                trim((string)$cells[9]),
+                $bulan_norm,
+                $tahun_int,
+            ]);
+            $inserted++;
+        }
+
+        $pdo->commit();
+        ensure_minimum_ekstrem_rows($pdo, $bulan_norm, (string)$tahun_int, null, 150);
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        http_response_code(500);
+        echo 'Import failed';
+        exit;
+    }
+
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['inserted' => $inserted], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_row') {
     if (is_kabupaten($user)) {
         http_response_code(403);
@@ -357,6 +455,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
     $stmt = $pdo->prepare('DELETE FROM ekstrem WHERE id = ?');
     $stmt->execute([$id]);
+    echo 'OK';
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_month_rows') {
+    if (is_kabupaten($user)) {
+        http_response_code(403);
+        echo 'Forbidden';
+        exit;
+    }
+    $bulan_req = isset($_POST['bulan']) ? trim((string)$_POST['bulan']) : '';
+    $tahun_req = isset($_POST['tahun']) ? trim((string)$_POST['tahun']) : '';
+    if ($bulan_req === '' || $tahun_req === '' || !ctype_digit($tahun_req)) {
+        http_response_code(400);
+        echo 'Invalid request';
+        exit;
+    }
+
+    $bulan_norm = strtolower(trim($bulan_req));
+    $tahun_int = (int)$tahun_req;
+
+    $stmt = $pdo->prepare('DELETE FROM ekstrem WHERE TRIM(LOWER(bulan)) = ? AND tahun = ?');
+    $stmt->execute([$bulan_norm, $tahun_int]);
+    ensure_minimum_ekstrem_rows($pdo, $bulan_norm, (string)$tahun_int, null, 150);
+
     echo 'OK';
     exit;
 }
@@ -418,6 +541,7 @@ $columns = [
     <link rel="stylesheet" href="assets/vendors/css/vendor.bundle.base.css">
     <link rel="stylesheet" href="assets/vendors/font-awesome/css/font-awesome.min.css">
     <link rel="shortcut icon" href="assets/images/rh-icon.png" />
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 
@@ -639,6 +763,7 @@ $columns = [
         background: rgba(65,179,138,0.12);
         border-color: rgba(65,179,138,0.35);
       }
+      .hidden-file-input { display: none; }
       .paste-modal-backdrop {
         position: fixed;
         inset: 0;
@@ -1059,9 +1184,12 @@ $columns = [
             </tbody></table></div></div>
           <?php if (!is_kabupaten($user)): ?>
             <div class="table-card" style="padding:14px 16px; display:flex; justify-content:flex-end; gap:10px; align-items:center;">
+              <input type="file" id="importFileInput" class="hidden-file-input" accept=".csv,.xlsx,.xls" />
+              <button type="button" id="uploadFileBtn" class="tab-btn" style="box-shadow:none;">Upload Excel/CSV</button>
               <button type="button" id="pasteRangeBtn" class="tab-btn" style="box-shadow:none;">Paste Range</button>
               <button type="button" id="add50" class="tab-btn" style="box-shadow:none;">Tambah 50 baris</button>
-              <div class="paste-status" id="add-status" style="display:none;">Menambah...</div>
+              <button type="button" id="clearMonthBtn" class="tab-btn" style="box-shadow:none;">Hapus Semua Bulan Ini</button>
+              <div class="paste-status" id="add-status" style="display:none;">Memproses...</div>
             </div>
           <?php endif; ?>
         <?php endif; ?>
@@ -1364,7 +1492,6 @@ $columns = [
           if (el.classList.contains('perubahan-input')) {
             updateTrend(el);
             updateRowHighlight(el);
-            updateAvgForCard(el.closest('.table-card'));
           }
           if (!options.skipSave) {
             saveCell(el);
@@ -1630,6 +1757,9 @@ $columns = [
         });
 
         var pasteRangeBtn = document.getElementById('pasteRangeBtn');
+        var uploadFileBtn = document.getElementById('uploadFileBtn');
+        var importFileInput = document.getElementById('importFileInput');
+        var clearMonthBtn = document.getElementById('clearMonthBtn');
         var pasteModal = document.getElementById('pasteModal');
         var pasteModalHtml = document.getElementById('pasteModalHtml');
         var pasteModalText = document.getElementById('pasteModalText');
@@ -1666,6 +1796,141 @@ $columns = [
                 pasteModalHtml.focus();
               }
             }
+          });
+        }
+        function setActionStatus(text, active) {
+          var status = document.getElementById('add-status');
+          if (!status) return;
+          status.textContent = text;
+          status.style.display = 'inline-flex';
+          status.classList.toggle('active', !!active);
+          if (!active) {
+            setTimeout(function () {
+              status.style.display = 'none';
+            }, 1600);
+          }
+        }
+        function looksLikeImportHeader(row) {
+          if (!row || !row.length) return false;
+          var joined = row.map(function (cell) {
+            return String(cell || '').trim().toLowerCase();
+          }).join('|');
+          return joined.indexOf('subsektor') !== -1
+            || joined.indexOf('komoditas') !== -1
+            || joined.indexOf('harga bulan ini') !== -1
+            || joined.indexOf('perubahan rata-rata') !== -1
+            || joined.indexOf('perubahan rata rata') !== -1;
+        }
+        function normalizeImportRows(rows) {
+          if (!Array.isArray(rows)) return [];
+          var cleaned = rows
+            .map(function (row) {
+              if (!Array.isArray(row)) return [];
+              return row.map(function (cell) {
+                return String(cell == null ? '' : cell).trim();
+              });
+            })
+            .filter(function (row) {
+              return row.some(function (cell) { return cell !== ''; });
+            });
+          if (cleaned.length && looksLikeImportHeader(cleaned[0])) {
+            cleaned.shift();
+          }
+          return cleaned.map(function (row) {
+            var normalized = row.slice(0, 10);
+            while (normalized.length < 10) normalized.push('');
+            return normalized;
+          });
+        }
+        function importRowsToServer(rows) {
+          if (!rows.length) {
+            alert('Tidak ada data yang bisa diimpor.');
+            return;
+          }
+          var fd = new FormData();
+          fd.append('action', 'import_rows');
+          fd.append('bulan', '<?php echo htmlspecialchars(strtolower(trim($bulan))); ?>');
+          fd.append('tahun', '<?php echo htmlspecialchars((string)$tahun); ?>');
+          fd.append('payload', JSON.stringify(rows));
+          setActionStatus('Mengimpor file...', true);
+          fetch('ekstrem.php', { method: 'POST', body: fd })
+            .then(function (r) {
+              if (!r.ok) throw new Error('Import gagal');
+              return r.json();
+            })
+            .then(function (data) {
+              var inserted = data && typeof data.inserted !== 'undefined' ? Number(data.inserted) : rows.length;
+              setActionStatus('Import selesai (' + inserted + ' baris)', false);
+              window.location.reload();
+            })
+            .catch(function () {
+              setActionStatus('Import gagal', false);
+              alert('Import file gagal. Pastikan format kolom file sudah sesuai.');
+            });
+        }
+        if (uploadFileBtn && importFileInput) {
+          uploadFileBtn.addEventListener('click', function () {
+            importFileInput.click();
+          });
+          importFileInput.addEventListener('change', function () {
+            var file = importFileInput.files && importFileInput.files[0] ? importFileInput.files[0] : null;
+            if (!file) return;
+            if (typeof XLSX === 'undefined') {
+              alert('Library pembaca Excel belum termuat. Coba refresh halaman lalu ulangi.');
+              importFileInput.value = '';
+              return;
+            }
+            var reader = new FileReader();
+            reader.onload = function (evt) {
+              try {
+                var data = evt.target && evt.target.result ? evt.target.result : null;
+                var workbook = XLSX.read(data, { type: 'array' });
+                var sheetName = workbook.SheetNames && workbook.SheetNames.length ? workbook.SheetNames[0] : null;
+                if (!sheetName) throw new Error('Sheet kosong');
+                var sheet = workbook.Sheets[sheetName];
+                var rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' });
+                var normalized = normalizeImportRows(rows);
+                if (!normalized.length) {
+                  alert('File tidak berisi data yang bisa diimpor.');
+                  return;
+                }
+                importRowsToServer(normalized);
+              } catch (err) {
+                alert('File tidak bisa dibaca. Gunakan file Excel/CSV yang valid.');
+              } finally {
+                importFileInput.value = '';
+              }
+            };
+            reader.onerror = function () {
+              importFileInput.value = '';
+              alert('File gagal dibaca.');
+            };
+            reader.readAsArrayBuffer(file);
+          });
+        }
+        if (clearMonthBtn) {
+          clearMonthBtn.addEventListener('click', function () {
+            if (!confirm('Hapus semua data pada bulan dan tahun filter saat ini? Baris kosong akan dibuat ulang setelah dihapus.')) {
+              return;
+            }
+            var fd = new FormData();
+            fd.append('action', 'delete_month_rows');
+            fd.append('bulan', '<?php echo htmlspecialchars(strtolower(trim($bulan))); ?>');
+            fd.append('tahun', '<?php echo htmlspecialchars((string)$tahun); ?>');
+            setActionStatus('Menghapus data bulan ini...', true);
+            fetch('ekstrem.php', { method: 'POST', body: fd })
+              .then(function (r) {
+                if (!r.ok) throw new Error('Delete gagal');
+                return r.text();
+              })
+              .then(function () {
+                setActionStatus('Semua data bulan ini terhapus', false);
+                window.location.reload();
+              })
+              .catch(function () {
+                setActionStatus('Gagal menghapus data', false);
+                alert('Gagal menghapus semua data pada bulan ini.');
+              });
           });
         }
         function updateModalMatrixFromHtml() {
