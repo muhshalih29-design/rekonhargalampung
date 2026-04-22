@@ -1342,12 +1342,32 @@ $columns = [
             .replace(/\r\n/g, '\n')
             .replace(/\r/g, '\n')
             .replace(/\u000b/g, '\n')
+            .replace(/\f/g, '\n')
             .replace(/\u2028/g, '\n')
             .replace(/\u2029/g, '\n');
-          if (s.indexOf('\t') === -1 && s.indexOf('\n') === -1) return null;
+          if (s.indexOf('\t') === -1 && s.indexOf('\n') === -1 && s.indexOf(';') === -1) return null;
           var lines = s.split('\n');
           if (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
-          return lines.map(function (line) { return line.split('\t'); });
+          var matrix = lines.map(function (line) {
+            if (line.indexOf('\t') !== -1) return line.split('\t');
+            if (line.indexOf(';') !== -1) return line.split(';');
+            return [line];
+          });
+
+          // Excel Desktop can occasionally collapse multi-row clipboard data into a
+          // single TSV row in some browser paths. If that happens and the source is
+          // clearly 9-column tabular data, recover rows by chunking every 9 values.
+          if (matrix.length === 1 && matrix[0] && matrix[0].length > 9) {
+            var single = matrix[0];
+            if (single.length % 9 === 0) {
+              var rebuilt = [];
+              for (var i = 0; i < single.length; i += 9) {
+                rebuilt.push(single.slice(i, i + 9));
+              }
+              matrix = rebuilt;
+            }
+          }
+          return matrix;
         }
 
         function applyMatrixToTarget(target, matrix) {
