@@ -1055,6 +1055,7 @@ $columns = [
         <textarea id="pasteModalText" placeholder="Paste data range dari Excel di sini..."></textarea>
         <div class="paste-modal-actions">
           <button type="button" class="paste-modal-btn" id="pasteModalCancel">Batal</button>
+          <button type="button" class="paste-modal-btn" id="pasteModalApplyVertical">Tempel Vertikal (1 Kolom)</button>
           <button type="button" class="paste-modal-btn primary" id="pasteModalApply">Tempel ke Tabel</button>
         </div>
       </div>
@@ -1610,6 +1611,7 @@ $columns = [
         var pasteModalText = document.getElementById('pasteModalText');
         var pasteModalCancel = document.getElementById('pasteModalCancel');
         var pasteModalApply = document.getElementById('pasteModalApply');
+        var pasteModalApplyVertical = document.getElementById('pasteModalApplyVertical');
         var modalClipboardMatrix = null;
         var lastFocusedEditableCell = null;
         document.addEventListener('focusin', function (ev) {
@@ -1672,6 +1674,38 @@ $columns = [
               return;
             }
             applyMatrixToTarget(target, matrix);
+            if (pasteModal) pasteModal.classList.remove('open');
+            modalClipboardMatrix = null;
+          });
+        }
+        if (pasteModalApplyVertical) {
+          pasteModalApplyVertical.addEventListener('click', function () {
+            var target = (document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('editable-cell'))
+              ? document.activeElement
+              : lastFocusedEditableCell;
+            if (!target || !target.classList || !target.classList.contains('editable-cell')) {
+              alert('Sel tujuan tidak ditemukan. Klik dulu sel tujuan di tabel.');
+              return;
+            }
+            var raw = pasteModalText ? pasteModalText.value : '';
+            var matrix = hasMultipleMatrix(modalClipboardMatrix) ? modalClipboardMatrix : parseMatrixFromRawText(raw);
+            if (!hasMultipleMatrix(matrix)) {
+              alert('Data range tidak valid untuk tempel vertikal.');
+              return;
+            }
+            var vertical = [];
+            if (matrix.length === 1 && matrix[0] && matrix[0].length > 1) {
+              matrix[0].forEach(function (v) { vertical.push([v]); });
+            } else {
+              matrix.forEach(function (row) {
+                if (row && row.length) vertical.push([row[0]]);
+              });
+            }
+            if (!hasMultipleMatrix(vertical)) {
+              alert('Data vertikal tidak valid.');
+              return;
+            }
+            applyMatrixToTarget(target, vertical);
             if (pasteModal) pasteModal.classList.remove('open');
             modalClipboardMatrix = null;
           });
