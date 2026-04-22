@@ -159,9 +159,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     } elseif ($type === 'int') {
         $raw = is_string($value) ? trim($value) : '';
         if ($raw === '') {
-            $sql = "UPDATE ekstrem SET {$field} = NULL WHERE id = ?";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([$id]);
+            // Keep NOT NULL integer fields safe.
+            if ($field === 'kab' || $field === 'kecamatan') {
+                $sql = "UPDATE ekstrem SET {$field} = 0 WHERE id = ?";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([$id]);
+            } else {
+                $sql = "UPDATE ekstrem SET {$field} = NULL WHERE id = ?";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([$id]);
+            }
         } else {
             if (!ctype_digit($raw)) {
                 http_response_code(400);
@@ -241,9 +248,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             } elseif ($type === 'int') {
                 $raw = is_string($value) ? trim($value) : '';
                 if ($raw === '') {
-                    $sql = "UPDATE ekstrem SET {$field} = NULL WHERE id = ?";
-                    $stmt = $pdo->prepare($sql);
-                    $stmt->execute([$id]);
+                    if ($field === 'kab' || $field === 'kecamatan') {
+                        $sql = "UPDATE ekstrem SET {$field} = 0 WHERE id = ?";
+                        $stmt = $pdo->prepare($sql);
+                        $stmt->execute([$id]);
+                    } else {
+                        $sql = "UPDATE ekstrem SET {$field} = NULL WHERE id = ?";
+                        $stmt = $pdo->prepare($sql);
+                        $stmt->execute([$id]);
+                    }
                 } else {
                     if (!ctype_digit($raw)) {
                         continue;
@@ -315,6 +328,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['ids' => array_map('intval', $ids)], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_row') {
+    if (is_kabupaten($user)) {
+        http_response_code(403);
+        echo 'Forbidden';
+        exit;
+    }
+    $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+    if ($id <= 0) {
+        http_response_code(400);
+        echo 'Invalid request';
+        exit;
+    }
+    $stmt = $pdo->prepare('DELETE FROM ekstrem WHERE id = ?');
+    $stmt->execute([$id]);
+    echo 'OK';
     exit;
 }
 
@@ -572,6 +603,10 @@ $columns = [
         max-width: 100%;
         -webkit-overflow-scrolling: touch;
       }
+      .table-card.table-scroll {
+        overflow: auto;
+        max-height: calc(100vh - 260px);
+      }
       .paste-status {
         display: inline-flex;
         align-items: center;
@@ -815,7 +850,7 @@ $columns = [
           </div>
         <?php else: ?>
           <?php $row_index = 0; ?>
-          <div class="table-card" style="margin-bottom:16px;">
+          <div class="table-card table-scroll" style="margin-bottom:16px;">
             <div class="komoditas-head">
               <div style="font-weight:700;">Tabel Ekstrem</div>
             </div>
@@ -832,6 +867,9 @@ $columns = [
                   echo '</th>';
                   $col_index++;
                 }
+                if (!is_kabupaten($user)) {
+                  echo '<th style="width:64px;"><span class="th-label">Hapus</span></th>';
+                }
               ?>
             </tr></thead><tbody>
           <?php foreach ($rows as $row): ?>
@@ -844,7 +882,11 @@ $columns = [
                   } else {
                     if (is_numeric($value)) {
                       if ($key === 'kab' || $key === 'kecamatan' || $key === 'tahun') {
-                          $value_display = number_format((float)$value, 0, ',', '.');
+                          if (($key === 'kab' || $key === 'kecamatan') && (int)$value === 0) {
+                            $value_display = '';
+                          } else {
+                            $value_display = number_format((float)$value, 0, ',', '.');
+                          }
                       } else {
                           $value_display = number_format((float)$value, 2, ',', '.');
                       }
@@ -910,6 +952,13 @@ $columns = [
                   <td><?php echo htmlspecialchars($value_display === '' ? '-' : $value_display); ?></td>
                 <?php endif; ?>
               <?php endforeach; ?>
+              <?php if (!is_kabupaten($user)): ?>
+                <td style="vertical-align:middle;">
+                  <button type="button" class="icon-btn row-del" title="Hapus baris" style="width:32px;height:32px;border-radius:10px;">
+                    <i class="mdi mdi-trash-can-outline"></i>
+                  </button>
+                </td>
+              <?php endif; ?>
             </tr>
             <?php $row_index++; ?>
           <?php endforeach; ?>
@@ -1269,7 +1318,10 @@ $columns = [
           if (!startRow) return;
           var card = target.closest('.table-card');
           if (!card) return;
-          var rowList = Array.prototype.slice.call(card.querySelectorAll('tbody tr'));
+          var rowList = Array.prototype.slice.call(card.querySelectorAll('tbody tr')).filter(function (tr) {
+            if (tr.style && tr.style.display === 'none') return false;
+            return tr.offsetParent !== null;
+          });
           var startRowIdx = rowList.indexOf(startRow);
           if (startRowIdx < 0) return;
           var startColIdx = Array.prototype.indexOf.call(startRow.querySelectorAll('.editable-cell'), target);
@@ -1383,6 +1435,30 @@ $columns = [
               });
           });
         }
+
+        document.addEventListener('click', function (e) {
+          var btn = e.target && e.target.closest ? e.target.closest('.row-del') : null;
+          if (!btn) return;
+          var row = btn.closest('tr');
+          if (!row) return;
+          var id = row.getAttribute('data-id');
+          if (!id) return;
+          if (!confirm('Hapus baris ini?')) return;
+          var fd = new FormData();
+          fd.append('action', 'delete_row');
+          fd.append('id', id);
+          fetch('ekstrem.php', { method: 'POST', body: fd })
+            .then(function (r) { return r.text(); })
+            .then(function (t) {
+              if (String(t || '').trim() !== 'OK') return;
+              row.remove();
+              var table = document.querySelector('.ekstrem-table');
+              var card = table ? table.closest('.table-card') : null;
+              if (card) buildHeaderFilters(card);
+              applyHeaderFilters();
+            })
+            .catch(function () {});
+        });
       })();
     </script>
   
