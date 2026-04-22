@@ -604,6 +604,9 @@ $columns = [
         -webkit-overflow-scrolling: touch;
       }
       .table-card.table-scroll {
+        overflow: visible;
+      }
+      .table-card.table-scroll .table-responsive {
         overflow: auto;
         max-height: calc(100vh - 260px);
       }
@@ -644,12 +647,12 @@ $columns = [
         left: 0;
         z-index: 2;
       }
-      .ekstrem-scroll thead th {
+      .table-card.table-scroll thead th {
         position: sticky;
         top: 0;
         z-index: 6;
       }
-      .ekstrem-scroll thead th:first-child { z-index: 7; }
+      .table-card.table-scroll thead th:first-child { z-index: 7; }
       thead th {
         background: #445468; color: #ffffff; padding: 10px 12px; font-size: 12px; font-weight: 700; white-space: normal; line-height: 1.1;
       }
@@ -1454,7 +1457,7 @@ $columns = [
           }
 
           var matrix = parseClipboardMatrix(e);
-          if (hasMultiple(matrix)) {
+          if (matrix && matrix.length > 1) {
             e.preventDefault();
             return applyMatrix(matrix);
           }
@@ -1462,11 +1465,15 @@ $columns = [
           // If clipboard indicates richer types, try async items extraction.
           var dt = (e.clipboardData || window.clipboardData);
           var types = dt && dt.types ? Array.prototype.slice.call(dt.types) : [];
-          var shouldTryAsync = types.indexOf('text/html') !== -1 || types.indexOf('text/rtf') !== -1;
+          var looksOneRowFromSync = !!(matrix && matrix.length === 1 && matrix[0] && matrix[0].length > 1);
+          var shouldTryAsync = looksOneRowFromSync || types.indexOf('text/html') !== -1 || types.indexOf('text/rtf') !== -1;
           if (!shouldTryAsync) return; // let normal paste happen
 
           e.preventDefault();
-          Promise.all([getClipboardStringAsync('text/html'), getClipboardStringAsync('text/plain'), getClipboardStringAsync('text/rtf')])
+          var navTextPromise = (navigator.clipboard && navigator.clipboard.readText)
+            ? navigator.clipboard.readText().catch(function () { return ''; })
+            : Promise.resolve('');
+          Promise.all([getClipboardStringAsync('text/html'), getClipboardStringAsync('text/plain'), getClipboardStringAsync('text/rtf'), navTextPromise])
             .then(function (vals) {
               var htmlM = parseMatrixFromHtml(vals[0] || '');
               if (htmlM && htmlM.length > 1) return applyMatrix(htmlM);
@@ -1474,6 +1481,8 @@ $columns = [
               if (plainM && plainM.length > 1) return applyMatrix(plainM);
               var rtfM = parseMatrixFromText((vals[2] || '').replace(/\\tab/g, '\t').replace(/\\row|\\par/g, '\n'));
               if (rtfM && rtfM.length > 1) return applyMatrix(rtfM);
+              var navM = parseMatrixFromText(vals[3] || '');
+              if (navM && navM.length > 1) return applyMatrix(navM);
               // fallback to whatever sync we had (might be single-row)
               applyMatrix(matrix);
             })
