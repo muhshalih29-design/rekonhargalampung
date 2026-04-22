@@ -60,6 +60,24 @@ function ensure_minimum_ekstrem_rows(PDO $pdo, string $bulan, string $tahun, ?st
     }
 }
 
+function parse_decimal_input($value): ?float
+{
+    $raw = is_string($value) ? trim($value) : '';
+    if ($raw === '') {
+        return null;
+    }
+    // Normalize common clipboard variants from spreadsheet apps.
+    $raw = str_replace(["\u{00A0}", "\u{202F}", ' '], '', $raw);
+    $raw = str_replace(["\u{2212}", "\u{2013}", "\u{2014}"], '-', $raw);
+    $raw = str_replace('%', '', $raw);
+    $raw = str_replace('.', '', $raw);
+    $raw = str_replace(',', '.', $raw);
+    if ($raw === '' || $raw === '-' || !is_numeric($raw)) {
+        return null;
+    }
+    return (float)$raw;
+}
+
 if ($all === '' && $bulan === '' && $tahun === '') {
     $currentMonth = new DateTime('first day of this month');
     $bulan = strtolower($currentMonth->format('F'));
@@ -138,15 +156,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $type = $allowed[$field];
 
     if ($type === 'decimal') {
-        $raw = is_string($value) ? trim($value) : '';
-        if ($raw === '') {
+        $num = parse_decimal_input($value);
+        if ($num === null && trim((string)$value) === '') {
             $sql = "UPDATE ekstrem SET {$field} = NULL WHERE id = ?";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$id]);
         } else {
-            $normalized = str_replace('.', '', $raw);
-            $normalized = str_replace(',', '.', $normalized);
-            $num = is_numeric($normalized) ? (float)$normalized : null;
             if ($num === null) {
                 http_response_code(400);
                 echo 'Invalid number';
@@ -229,15 +244,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             }
             $type = $allowed[$field];
             if ($type === 'decimal') {
-                $raw = is_string($value) ? trim($value) : '';
-                if ($raw === '') {
+                $num = parse_decimal_input($value);
+                if ($num === null && trim((string)$value) === '') {
                     $sql = "UPDATE ekstrem SET {$field} = NULL WHERE id = ?";
                     $stmt = $pdo->prepare($sql);
                     $stmt->execute([$id]);
                 } else {
-                    $normalized = str_replace('.', '', $raw);
-                    $normalized = str_replace(',', '.', $normalized);
-                    $num = is_numeric($normalized) ? (float)$normalized : null;
                     if ($num === null) {
                         continue;
                     }
@@ -1064,7 +1076,12 @@ $columns = [
 
         function formatIdNumber(raw) {
           if (!raw) return '';
-          var s = String(raw).replace(/\./g, '').replace(/,/g, '.').replace(/\s+/g, '');
+          var s = String(raw)
+            .replace(/[\u00A0\u202F\s]/g, '')
+            .replace(/[\u2212\u2013\u2014]/g, '-')
+            .replace(/%/g, '')
+            .replace(/\./g, '')
+            .replace(/,/g, '.');
           var num = parseFloat(s);
           if (isNaN(num)) return raw;
           return new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
@@ -1085,7 +1102,12 @@ $columns = [
 
         function parseIdNumber(raw) {
           if (!raw) return null;
-          var s = String(raw).replace(/\./g, '').replace(/,/g, '.').replace(/\s+/g, '');
+          var s = String(raw)
+            .replace(/[\u00A0\u202F\s]/g, '')
+            .replace(/[\u2212\u2013\u2014]/g, '-')
+            .replace(/%/g, '')
+            .replace(/\./g, '')
+            .replace(/,/g, '.');
           var num = parseFloat(s);
           return isNaN(num) ? null : num;
         }
