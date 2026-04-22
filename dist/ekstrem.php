@@ -968,6 +968,7 @@ $columns = [
             </tbody></table></div></div>
           <?php if (!is_kabupaten($user)): ?>
             <div class="table-card" style="padding:14px 16px; display:flex; justify-content:flex-end; gap:10px; align-items:center;">
+              <button type="button" id="pasteRangeBtn" class="tab-btn" style="box-shadow:none;">Paste Range</button>
               <button type="button" id="add50" class="tab-btn" style="box-shadow:none;">Tambah 50 baris</button>
               <div class="paste-status" id="add-status" style="display:none;">Menambah...</div>
             </div>
@@ -1260,6 +1261,92 @@ $columns = [
           pasteStatusEl.classList.toggle('active', !!active);
         }
 
+        function hasMultipleMatrix(matrix) {
+          return !!(matrix && matrix.length && (matrix.length > 1 || (matrix[0] && matrix[0].length > 1)));
+        }
+
+        function parseMatrixFromRawText(raw) {
+          if (!raw) return null;
+          var s = String(raw)
+            .replace(/\r\n/g, '\n')
+            .replace(/\r/g, '\n')
+            .replace(/\u000b/g, '\n')
+            .replace(/\u2028/g, '\n')
+            .replace(/\u2029/g, '\n');
+          if (s.indexOf('\t') === -1 && s.indexOf('\n') === -1) return null;
+          var lines = s.split('\n');
+          if (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
+          return lines.map(function (line) { return line.split('\t'); });
+        }
+
+        function applyMatrixToTarget(target, matrix) {
+          if (!target || !target.classList || !target.classList.contains('editable-cell')) return false;
+          if (!hasMultipleMatrix(matrix)) return false;
+          var startRow = target.closest('tr');
+          if (!startRow) return false;
+          var card = target.closest('.table-card');
+          if (!card) return false;
+          var rowList = Array.prototype.slice.call(card.querySelectorAll('tbody tr')).filter(function (tr) {
+            if (tr.style && tr.style.display === 'none') return false;
+            return tr.offsetParent !== null;
+          });
+          var startRowIdx = rowList.indexOf(startRow);
+          if (startRowIdx < 0) return false;
+          var startColIdx = Array.prototype.indexOf.call(startRow.querySelectorAll('.editable-cell'), target);
+          if (startColIdx < 0) return false;
+
+          var total = 0;
+          matrix.forEach(function (r) { total += r.length; });
+          var done = 0;
+          setPasteStatus('Menempel 0/' + total, true);
+
+          var batch = [];
+          matrix.forEach(function (cols, rIdx) {
+            var rowEl = rowList[startRowIdx + rIdx];
+            if (!rowEl) return;
+            var editables = rowEl.querySelectorAll('.editable-cell');
+            cols.forEach(function (cellText, cIdx) {
+              var el = editables[startColIdx + cIdx];
+              if (!el) return;
+              var val = (cellText == null ? '' : String(cellText)).trim();
+              setEditableValue(el, val);
+              var rowId = rowEl.getAttribute('data-id');
+              var field = el.getAttribute('data-field');
+              if (rowId && field) batch.push({ id: rowId, field: field, value: val });
+              done += 1;
+              setPasteStatus('Menempel ' + done + '/' + total, true);
+            });
+          });
+
+          if (batch.length && !IS_KABUPATEN) {
+            var fd = new FormData();
+            fd.append('action', 'batch_update');
+            fd.append('payload', JSON.stringify(batch));
+            fetch('ekstrem.php', { method: 'POST', body: fd })
+              .then(function () { setPasteStatus('Selesai', false); })
+              .catch(function () { setPasteStatus('Gagal', false); });
+          } else if (batch.length && IS_KABUPATEN) {
+            var idx = 0;
+            function next() {
+              if (idx >= batch.length) {
+                setPasteStatus('Selesai', false);
+                return;
+              }
+              var item = batch[idx++];
+              var rowEl = card.querySelector('tr[data-id=\"' + item.id + '\"]');
+              if (!rowEl) return next();
+              var el = rowEl.querySelector('.editable-cell[data-field=\"' + item.field + '\"]');
+              if (!el) return next();
+              saveCell(el).finally(next);
+            }
+            next();
+          }
+          if (card) buildHeaderFilters(card);
+          applyHeaderFilters();
+          if (!batch.length) setTimeout(function () { setPasteStatus('Selesai', false); }, 400);
+          return true;
+        }
+
         function parseClipboardMatrix(e) {
           var dt = (e.clipboardData || window.clipboardData);
           if (!dt) return null;
@@ -1270,12 +1357,7 @@ $columns = [
             if (!textPlain) {
               try { textPlain = dt.getData('text') || ''; } catch (_) {}
             }
-            var raw = (textPlain || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-            if (!raw) return null;
-            if (raw.indexOf('\t') === -1 && raw.indexOf('\n') === -1) return null;
-            var lines = raw.split('\n');
-            if (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
-            return lines.map(function (line) { return line.split('\t'); });
+            return parseMatrixFromRawText(textPlain || '');
           }
 
           function parseHtmlMatrix() {
@@ -1345,10 +1427,6 @@ $columns = [
         document.addEventListener('paste', function (e) {
           var target = e.target;
           if (!target || !target.classList || !target.classList.contains('editable-cell')) return;
-          function hasMultiple(matrix) {
-            return !!(matrix && matrix.length && (matrix.length > 1 || (matrix[0] && matrix[0].length > 1)));
-          }
-
           function getClipboardStringAsync(wantedType) {
             return new Promise(function (resolve) {
               var dt = (e.clipboardData || window.clipboardData);
@@ -1361,12 +1439,7 @@ $columns = [
           }
 
           function parseMatrixFromText(raw) {
-            if (!raw) return null;
-            var s = String(raw).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-            if (s.indexOf('\t') === -1 && s.indexOf('\n') === -1) return null;
-            var lines = s.split('\n');
-            if (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
-            return lines.map(function (line) { return line.split('\t'); });
+            return parseMatrixFromRawText(raw);
           }
 
           function parseMatrixFromHtml(html) {
@@ -1386,80 +1459,10 @@ $columns = [
             return out.length ? out : null;
           }
 
-          function applyMatrix(matrix) {
-            if (!hasMultiple(matrix)) return;
-
-            var startRow = target.closest('tr');
-            if (!startRow) return;
-            var card = target.closest('.table-card');
-            if (!card) return;
-            var rowList = Array.prototype.slice.call(card.querySelectorAll('tbody tr')).filter(function (tr) {
-              if (tr.style && tr.style.display === 'none') return false;
-              return tr.offsetParent !== null;
-            });
-            var startRowIdx = rowList.indexOf(startRow);
-            if (startRowIdx < 0) return;
-            var startColIdx = Array.prototype.indexOf.call(startRow.querySelectorAll('.editable-cell'), target);
-            if (startColIdx < 0) return;
-
-            var total = 0;
-            matrix.forEach(function (r) { total += r.length; });
-            var done = 0;
-            setPasteStatus('Menempel 0/' + total, true);
-
-            var batch = [];
-            matrix.forEach(function (cols, rIdx) {
-              var rowEl = rowList[startRowIdx + rIdx];
-              if (!rowEl) return;
-              var editables = rowEl.querySelectorAll('.editable-cell');
-              cols.forEach(function (cellText, cIdx) {
-                var el = editables[startColIdx + cIdx];
-                if (!el) return;
-                var val = (cellText == null ? '' : String(cellText)).trim();
-                setEditableValue(el, val);
-                var rowId = rowEl.getAttribute('data-id');
-                var field = el.getAttribute('data-field');
-                if (rowId && field) {
-                  batch.push({ id: rowId, field: field, value: val });
-                }
-                done += 1;
-                setPasteStatus('Menempel ' + done + '/' + total, true);
-              });
-            });
-            if (batch.length && !IS_KABUPATEN) {
-              var fd = new FormData();
-              fd.append('action', 'batch_update');
-              fd.append('payload', JSON.stringify(batch));
-              fetch('ekstrem.php', { method: 'POST', body: fd })
-                .then(function () { setPasteStatus('Selesai', false); })
-                .catch(function () { setPasteStatus('Gagal', false); });
-            } else if (batch.length && IS_KABUPATEN) {
-              var idx = 0;
-              function next() {
-                if (idx >= batch.length) {
-                  setPasteStatus('Selesai', false);
-                  return;
-                }
-                var item = batch[idx++];
-                var rowEl = card.querySelector('tr[data-id=\"' + item.id + '\"]');
-                if (!rowEl) return next();
-                var el = rowEl.querySelector('.editable-cell[data-field=\"' + item.field + '\"]');
-                if (!el) return next();
-                saveCell(el).finally(next);
-              }
-              next();
-            }
-            if (card) buildHeaderFilters(card);
-            applyHeaderFilters();
-            if (!batch.length) {
-              setTimeout(function () { setPasteStatus('Selesai', false); }, 400);
-            }
-          }
-
           var matrix = parseClipboardMatrix(e);
           if (matrix && matrix.length > 1) {
             e.preventDefault();
-            return applyMatrix(matrix);
+            return applyMatrixToTarget(target, matrix);
           }
 
           // If clipboard indicates richer types, try async items extraction.
@@ -1476,18 +1479,50 @@ $columns = [
           Promise.all([getClipboardStringAsync('text/html'), getClipboardStringAsync('text/plain'), getClipboardStringAsync('text/rtf'), navTextPromise])
             .then(function (vals) {
               var htmlM = parseMatrixFromHtml(vals[0] || '');
-              if (htmlM && htmlM.length > 1) return applyMatrix(htmlM);
+              if (htmlM && htmlM.length > 1) return applyMatrixToTarget(target, htmlM);
               var plainM = parseMatrixFromText(vals[1] || '');
-              if (plainM && plainM.length > 1) return applyMatrix(plainM);
+              if (plainM && plainM.length > 1) return applyMatrixToTarget(target, plainM);
               var rtfM = parseMatrixFromText((vals[2] || '').replace(/\\tab/g, '\t').replace(/\\row|\\par/g, '\n'));
-              if (rtfM && rtfM.length > 1) return applyMatrix(rtfM);
+              if (rtfM && rtfM.length > 1) return applyMatrixToTarget(target, rtfM);
               var navM = parseMatrixFromText(vals[3] || '');
-              if (navM && navM.length > 1) return applyMatrix(navM);
+              if (navM && navM.length > 1) return applyMatrixToTarget(target, navM);
               // fallback to whatever sync we had (might be single-row)
-              applyMatrix(matrix);
+              applyMatrixToTarget(target, matrix);
             })
-            .catch(function () { applyMatrix(matrix); });
+            .catch(function () { applyMatrixToTarget(target, matrix); });
         });
+
+        var pasteRangeBtn = document.getElementById('pasteRangeBtn');
+        if (pasteRangeBtn) {
+          pasteRangeBtn.addEventListener('click', function () {
+            var target = document.activeElement;
+            if (!target || !target.classList || !target.classList.contains('editable-cell')) {
+              alert('Klik dulu sel awal tujuan paste.');
+              return;
+            }
+            if (!navigator.clipboard || !navigator.clipboard.readText) {
+              alert('Browser tidak mendukung baca clipboard otomatis.');
+              return;
+            }
+            pasteRangeBtn.disabled = true;
+            setPasteStatus('Membaca clipboard...', true);
+            navigator.clipboard.readText()
+              .then(function (txt) {
+                var matrix = parseMatrixFromRawText(txt);
+                if (!hasMultipleMatrix(matrix)) {
+                  setPasteStatus('Clipboard bukan range tabel', false);
+                  return;
+                }
+                applyMatrixToTarget(target, matrix);
+              })
+              .catch(function () {
+                setPasteStatus('Izin clipboard ditolak', false);
+              })
+              .finally(function () {
+                pasteRangeBtn.disabled = false;
+              });
+          });
+        }
 
         var addBtn = document.getElementById('add50');
         if (addBtn) {
