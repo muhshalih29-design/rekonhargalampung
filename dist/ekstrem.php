@@ -1207,35 +1207,48 @@ $columns = [
           var dt = (e.clipboardData || window.clipboardData);
           if (!dt) return null;
 
-          var textPlain = '';
-          try { textPlain = dt.getData('text/plain') || ''; } catch (_) {}
-          if (!textPlain) {
-            try { textPlain = dt.getData('text') || ''; } catch (_) {}
-          }
-
-          var raw = (textPlain || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-          if (raw && (raw.indexOf('\t') !== -1 || raw.indexOf('\n') !== -1)) {
+          function parsePlainMatrix() {
+            var textPlain = '';
+            try { textPlain = dt.getData('text/plain') || ''; } catch (_) {}
+            if (!textPlain) {
+              try { textPlain = dt.getData('text') || ''; } catch (_) {}
+            }
+            var raw = (textPlain || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+            if (!raw) return null;
+            if (raw.indexOf('\t') === -1 && raw.indexOf('\n') === -1) return null;
             var lines = raw.split('\n');
             if (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
             return lines.map(function (line) { return line.split('\t'); });
           }
 
-          var html = '';
-          try { html = dt.getData('text/html') || ''; } catch (_) {}
-          if (!html) return null;
-          var tmp = document.createElement('div');
-          tmp.innerHTML = html;
-          var tr = tmp.querySelectorAll('tr');
-          if (!tr || !tr.length) return null;
-          var out = [];
-          tr.forEach(function (row) {
-            var cells = row.querySelectorAll('th,td');
-            if (!cells || !cells.length) return;
-            var cols = [];
-            cells.forEach(function (c) { cols.push((c.textContent || '').trim()); });
-            out.push(cols);
-          });
-          return out.length ? out : null;
+          function parseHtmlMatrix() {
+            var html = '';
+            try { html = dt.getData('text/html') || ''; } catch (_) {}
+            if (!html) return null;
+            var tmp = document.createElement('div');
+            tmp.innerHTML = html;
+            var tr = tmp.querySelectorAll('tr');
+            if (!tr || !tr.length) return null;
+            var out = [];
+            tr.forEach(function (row) {
+              var cells = row.querySelectorAll('th,td');
+              if (!cells || !cells.length) return;
+              var cols = [];
+              cells.forEach(function (c) { cols.push((c.textContent || '').trim()); });
+              out.push(cols);
+            });
+            return out.length ? out : null;
+          }
+
+          // Some clipboard implementations (notably Excel on some browsers) put only
+          // the first row into text/plain, but provide full range via text/html.
+          var plain = parsePlainMatrix();
+          var htmlM = parseHtmlMatrix();
+          var plainMultiRow = !!(plain && plain.length > 1);
+          var htmlMultiRow = !!(htmlM && htmlM.length > 1);
+          if (plainMultiRow) return plain;
+          if (htmlMultiRow) return htmlM;
+          return plain || htmlM;
         }
 
         document.addEventListener('paste', function (e) {
