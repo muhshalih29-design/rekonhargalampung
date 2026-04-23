@@ -71,51 +71,73 @@ function ensure_hpb_kabupaten_coverage(PDO $pdo, array $kabupatenTargets, array 
         return;
     }
 
-    $insertStmt = $pdo->prepare("
-        INSERT INTO hpb (kode_kabupaten, nama_kabupaten, bulan, tahun, komoditas, time_stamp)
-        SELECT ?, ?, ?, ?, ?, NOW()
-        WHERE NOT EXISTS (
-            SELECT 1
-            FROM hpb
-            WHERE kode_kabupaten = ?
-              AND TRIM(LOWER(nama_kabupaten)) = TRIM(LOWER(?))
-              AND TRIM(LOWER(bulan)) = ?
-              AND tahun = ?
-              AND TRIM(LOWER(komoditas)) = TRIM(LOWER(?))
-        )
-    ");
-
     try {
-        $pdo->beginTransaction();
-        foreach ($commodities as $commodity) {
-            foreach ($bulanList as $targetMonth) {
-                foreach ($kabupatenTargets as $kabupaten) {
-                    $kode = trim((string)$kabupaten['kode']);
-                    $nama = trim((string)$kabupaten['nama']);
-                    $insertStmt->execute([
-                        $kode,
-                        $nama,
-                        $targetMonth,
-                        (int)$tahun,
-                        $commodity,
-                        $kode,
-                        $nama,
-                        strtolower($targetMonth),
-                        (int)$tahun,
-                        $commodity,
-                    ]);
-                }
+        $targetValues = [];
+        foreach ($kabupatenTargets as $kabupaten) {
+            $kode = trim((string)($kabupaten['kode'] ?? ''));
+            $nama = trim((string)($kabupaten['nama'] ?? ''));
+            if ($kode === '' || $nama === '') {
+                continue;
             }
+            $targetValues[] = '(' . $pdo->quote($kode) . ', ' . $pdo->quote($nama) . ')';
         }
-        $pdo->commit();
+
+        $monthValues = [];
+        foreach ($bulanList as $targetMonth) {
+            $monthNorm = strtolower(trim((string)$targetMonth));
+            if ($monthNorm === '') {
+                continue;
+            }
+            $monthValues[] = '(' . $pdo->quote($monthNorm) . ')';
+        }
+
+        if (empty($targetValues) || empty($monthValues)) {
+            return;
+        }
+
+        $tahunInt = (int)$tahun;
+        $sql = "
+            WITH targets(kode_kabupaten, nama_kabupaten) AS (
+                VALUES " . implode(', ', $targetValues) . "
+            ),
+            months(bulan) AS (
+                VALUES " . implode(', ', $monthValues) . "
+            ),
+            commodities(komoditas) AS (
+                SELECT DISTINCT TRIM(komoditas) AS komoditas
+                FROM hpb
+                WHERE TRIM(COALESCE(komoditas, '')) <> ''
+            ),
+            needed AS (
+                SELECT
+                    t.kode_kabupaten,
+                    t.nama_kabupaten,
+                    m.bulan,
+                    {$tahunInt}::INT AS tahun,
+                    c.komoditas
+                FROM targets t
+                CROSS JOIN months m
+                CROSS JOIN commodities c
+            )
+            INSERT INTO hpb (kode_kabupaten, nama_kabupaten, bulan, tahun, komoditas, time_stamp)
+            SELECT n.kode_kabupaten, n.nama_kabupaten, n.bulan, n.tahun, n.komoditas, NOW()
+            FROM needed n
+            LEFT JOIN hpb h
+              ON h.kode_kabupaten = n.kode_kabupaten
+             AND TRIM(LOWER(h.nama_kabupaten)) = TRIM(LOWER(n.nama_kabupaten))
+             AND TRIM(LOWER(h.bulan)) = TRIM(LOWER(n.bulan))
+             AND h.tahun = n.tahun
+             AND TRIM(LOWER(h.komoditas)) = TRIM(LOWER(n.komoditas))
+            WHERE h.id IS NULL
+        ";
+        $pdo->exec($sql);
     } catch (Throwable $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
+        // Keep page usable even when sync fails.
     }
 }
-
-ensure_hpb_kabupaten_coverage($pdo, $target_kabupaten_hpb, $bulan_list, $tahun);
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    ensure_hpb_kabupaten_coverage($pdo, $target_kabupaten_hpb, $bulan_list, $tahun);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_commodity') {
     if (!is_provinsi($user)) {
