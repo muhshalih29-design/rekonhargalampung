@@ -80,7 +80,8 @@ foreach ($existingTables as $label => $tableName) {
     }
 }
 
-$mixedRows = [];
+$allRows = [];
+$mixedCount = 0;
 foreach ($commodityMap as $item) {
     $nonZero = [];
     foreach (['HK', 'HPB', 'HD', 'HKD'] as $label) {
@@ -90,9 +91,7 @@ foreach ($commodityMap as $item) {
         }
         $nonZero[] = (float)$value;
     }
-    if (count($nonZero) < 2) {
-        continue;
-    }
+
     $hasPos = false;
     $hasNeg = false;
     $maxAbs = 0.0;
@@ -105,15 +104,35 @@ foreach ($commodityMap as $item) {
         }
         $maxAbs = max($maxAbs, abs($value));
     }
-    if (!($hasPos && $hasNeg)) {
-        continue;
+
+    $statusKey = 'empty';
+    $statusLabel = 'Tidak ada data';
+    if ($hasPos && $hasNeg) {
+        $statusKey = 'mixed';
+        $statusLabel = 'Tidak searah';
+        $mixedCount++;
+    } elseif (count($nonZero) >= 2) {
+        $statusKey = 'aligned';
+        $statusLabel = 'Searah';
+    } elseif (count($nonZero) === 1) {
+        $statusKey = 'partial';
+        $statusLabel = 'Data parsial';
     }
+
     $item['active_count'] = count($nonZero);
     $item['intensity'] = $maxAbs;
-    $mixedRows[] = $item;
+    $item['status_key'] = $statusKey;
+    $item['status_label'] = $statusLabel;
+    $allRows[] = $item;
 }
 
-usort($mixedRows, static function (array $a, array $b): int {
+usort($allRows, static function (array $a, array $b): int {
+    $statusRank = ['mixed' => 1, 'aligned' => 2, 'partial' => 3, 'empty' => 4];
+    $ra = $statusRank[$a['status_key']] ?? 9;
+    $rb = $statusRank[$b['status_key']] ?? 9;
+    if ($ra !== $rb) {
+        return $ra <=> $rb;
+    }
     if ((int)$a['active_count'] === (int)$b['active_count']) {
         if ((float)$a['intensity'] === (float)$b['intensity']) {
             return strcasecmp((string)$a['name'], (string)$b['name']);
@@ -307,6 +326,21 @@ function trend_class($val): string
         background: #fff5f5;
         color: #b54545;
       }
+      .trend-badge.aligned {
+        border-color: #cce8d7;
+        background: #f4fcf7;
+        color: #237a45;
+      }
+      .trend-badge.partial {
+        border-color: #d9e1ef;
+        background: #f8fafc;
+        color: #61738a;
+      }
+      .trend-badge.empty {
+        border-color: #e5e7eb;
+        background: #f9fafb;
+        color: #6b7280;
+      }
       .empty {
         padding: 18px;
         border-radius: 14px;
@@ -374,10 +408,10 @@ function trend_class($val): string
         <div class="card">
           <div class="meta">
             <div class="meta-chip">Bulan: <?php echo htmlspecialchars(ucfirst($bulan)); ?> · Tahun: <?php echo htmlspecialchars((string)$tahun); ?></div>
-            <div class="count-chip"><?php echo count($mixedRows); ?> komoditas arah berbeda</div>
+            <div class="count-chip"><?php echo $mixedCount; ?> komoditas arah berbeda · <?php echo count($allRows); ?> total komoditas</div>
           </div>
-          <?php if (empty($mixedRows)): ?>
-            <div class="empty">Tidak ada komoditas dengan arah perubahan yang berlawanan pada filter ini.</div>
+          <?php if (empty($allRows)): ?>
+            <div class="empty">Belum ada data komoditas pada filter ini.</div>
           <?php else: ?>
             <div style="overflow:auto;">
               <table>
@@ -393,7 +427,7 @@ function trend_class($val): string
                   </tr>
                 </thead>
                 <tbody>
-                  <?php foreach ($mixedRows as $i => $row): ?>
+                  <?php foreach ($allRows as $i => $row): ?>
                     <tr>
                       <td><?php echo $i + 1; ?></td>
                       <td style="font-weight:700;"><?php echo htmlspecialchars((string)$row['name']); ?></td>
@@ -401,7 +435,12 @@ function trend_class($val): string
                         <?php $v = $row[$label]; ?>
                         <td><span class="value <?php echo trend_class($v); ?>"><?php echo htmlspecialchars(fmt_change($v)); ?></span></td>
                       <?php endforeach; ?>
-                      <td><span class="trend-badge"><i class="mdi mdi-alert-circle-outline"></i> Tidak searah</span></td>
+                      <td>
+                        <span class="trend-badge <?php echo htmlspecialchars((string)$row['status_key']); ?>">
+                          <i class="mdi <?php echo ($row['status_key'] === 'mixed') ? 'mdi-alert-circle-outline' : (($row['status_key'] === 'aligned') ? 'mdi-check-circle-outline' : 'mdi-information-outline'); ?>"></i>
+                          <?php echo htmlspecialchars((string)$row['status_label']); ?>
+                        </span>
+                      </td>
                     </tr>
                   <?php endforeach; ?>
                 </tbody>
