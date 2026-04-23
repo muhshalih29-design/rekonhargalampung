@@ -282,7 +282,17 @@ $sql = 'SELECT * FROM shk';
 if ($where) {
     $sql .= ' WHERE ' . implode(' AND ', $where);
 }
-$sql .= ' ORDER BY komoditas ASC, nama_kabupaten ASC, id DESC';
+$sql .= " ORDER BY
+    komoditas ASC,
+    CASE TRIM(LOWER(nama_kabupaten))
+        WHEN 'lampung timur' THEN 1
+        WHEN 'mesuji' THEN 2
+        WHEN 'metro' THEN 3
+        WHEN 'bandar lampung' THEN 4
+        ELSE 5
+    END ASC,
+    nama_kabupaten ASC,
+    id DESC";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
