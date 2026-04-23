@@ -223,8 +223,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
     $months_to_create = array_slice($bulan_list, $start_index);
 
-    $stmt_kab = $pdo->query("SELECT DISTINCT kode_kabupaten, nama_kabupaten FROM hpb WHERE TRIM(COALESCE(kode_kabupaten, '')) <> '' AND TRIM(COALESCE(nama_kabupaten, '')) <> '' ORDER BY CAST(kode_kabupaten AS INTEGER) ASC, nama_kabupaten ASC");
-    $kabupaten_rows = $stmt_kab->fetchAll();
+    $kabupaten_rows = array_map(static function (array $item): array {
+        return [
+            'kode_kabupaten' => trim((string)($item['kode'] ?? '')),
+            'nama_kabupaten' => trim((string)($item['nama'] ?? '')),
+        ];
+    }, $target_kabupaten_hpb);
+    $kabupaten_rows = array_values(array_filter($kabupaten_rows, static function (array $item): bool {
+        return $item['kode_kabupaten'] !== '' && $item['nama_kabupaten'] !== '';
+    }));
+
     if (empty($kabupaten_rows) || empty($months_to_create)) {
         header('Location: hpb.php?notice_type=error&notice=' . urlencode('Data kabupaten/kota dasar belum tersedia.'));
         exit;
@@ -271,7 +279,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        header('Location: hpb.php?notice_type=error&notice=' . urlencode('Gagal menambahkan komoditas baru.'));
+        $err = substr(trim((string)$e->getMessage()), 0, 180);
+        if ($err === '') {
+            $err = 'Gagal menambahkan komoditas baru.';
+        }
+        header('Location: hpb.php?notice_type=error&notice=' . urlencode($err));
         exit;
     }
 
