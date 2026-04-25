@@ -281,15 +281,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         exit;
     }
 
+    $isAjaxUpload = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
+    $respondUpload = static function (string $type, string $message, string $redirect = '') use ($isAjaxUpload): void {
+        if ($isAjaxUpload) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'ok' => $type === 'success',
+                'notice_type' => $type,
+                'notice' => $message,
+                'redirect' => $redirect,
+            ]);
+            exit;
+        }
+        if ($redirect !== '') {
+            header('Location: ' . $redirect);
+        } else {
+            header('Location: hd.php?notice_type=' . urlencode($type) . '&notice=' . urlencode($message));
+        }
+        exit;
+    };
+
     $filterBulan = strtolower(trim((string)($_POST['filter_bulan'] ?? $bulan)));
     $filterTahun = trim((string)($_POST['filter_tahun'] ?? $tahun));
     if ($filterBulan === '' || $filterTahun === '' || !ctype_digit($filterTahun)) {
-        header('Location: hd.php?notice_type=error&notice=' . urlencode('Pilih bulan dan tahun yang valid sebelum upload.'));
-        exit;
+        $respondUpload('error', 'Pilih bulan dan tahun yang valid sebelum upload.', 'hd.php?notice_type=error&notice=' . urlencode('Pilih bulan dan tahun yang valid sebelum upload.'));
     }
     if (!isset($_FILES['hd_upload_file']) || !is_array($_FILES['hd_upload_file']) || (int)($_FILES['hd_upload_file']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-        header('Location: hd.php?notice_type=error&notice=' . urlencode('File upload tidak valid.'));
-        exit;
+        $respondUpload('error', 'File upload tidak valid.', 'hd.php?notice_type=error&notice=' . urlencode('File upload tidak valid.'));
     }
 
     $tmpPath = (string)$_FILES['hd_upload_file']['tmp_name'];
@@ -342,8 +360,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $pdo->commit();
 
         $noticeMsg = 'Upload berhasil: ' . $updated . ' baris diperbarui, ' . $inserted . ' baris ditambahkan.';
-        header('Location: hd.php?bulan=' . urlencode($filterBulan) . '&tahun=' . urlencode($filterTahun) . '&notice_type=success&notice=' . urlencode($noticeMsg));
-        exit;
+        $redirect = 'hd.php?bulan=' . urlencode($filterBulan) . '&tahun=' . urlencode($filterTahun) . '&notice_type=success&notice=' . urlencode($noticeMsg);
+        $respondUpload('success', $noticeMsg, $redirect);
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
@@ -352,8 +370,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         if ($msg === '') {
             $msg = 'Upload data gagal.';
         }
-        header('Location: hd.php?bulan=' . urlencode($filterBulan) . '&tahun=' . urlencode($filterTahun) . '&notice_type=error&notice=' . urlencode($msg));
-        exit;
+        $redirect = 'hd.php?bulan=' . urlencode($filterBulan) . '&tahun=' . urlencode($filterTahun) . '&notice_type=error&notice=' . urlencode($msg);
+        $respondUpload('error', $msg, $redirect);
     }
 }
 
@@ -1023,6 +1041,28 @@ $columns = [
         gap: 8px;
       }
       .upload-kitchen-tip { margin-top: 8px; font-size: 11px; color: var(--muted); }
+      .upload-progress-wrap { margin-top: 10px; display: none; }
+      .upload-progress-wrap.active { display: block; }
+      .upload-progress-text {
+        font-size: 12px;
+        color: var(--ink);
+        margin-bottom: 6px;
+        font-weight: 600;
+      }
+      .upload-progress-track {
+        width: 100%;
+        height: 10px;
+        border-radius: 999px;
+        background: #edf1f7;
+        overflow: hidden;
+      }
+      .upload-progress-fill {
+        width: 0%;
+        height: 100%;
+        border-radius: 999px;
+        background: var(--rh-gradient);
+        transition: width .2s ease;
+      }
       .delete-modal {
         position: fixed;
         inset: 0;
@@ -1399,7 +1439,7 @@ $columns = [
               <div class="upload-kitchen-title"><i class="mdi mdi-database-import-outline"></i>Dapur Olah Data HD</div>
               <div class="upload-kitchen-note">Upload file export (`.xls` / `.csv`) untuk update massal nilai HD pada bulan & tahun terfilter.</div>
             </div>
-            <form class="upload-kitchen-form" method="post" action="hd.php" enctype="multipart/form-data">
+            <form class="upload-kitchen-form" id="upload-kitchen-form" method="post" action="hd.php" enctype="multipart/form-data">
               <input type="hidden" name="action" value="upload_hd_data">
               <input type="hidden" name="filter_bulan" value="<?php echo htmlspecialchars($bulan); ?>">
               <input type="hidden" name="filter_tahun" value="<?php echo htmlspecialchars($tahun); ?>">
@@ -1418,6 +1458,12 @@ $columns = [
               <?php if ($bulan === '' || $tahun === '' || !ctype_digit((string)$tahun)): ?>
                 Pilih filter bulan+tahun agar tombol hapus data aktif.
               <?php endif; ?>
+            </div>
+            <div class="upload-progress-wrap" id="upload-progress-wrap">
+              <div class="upload-progress-text" id="upload-progress-text">Menyiapkan upload...</div>
+              <div class="upload-progress-track">
+                <div class="upload-progress-fill" id="upload-progress-fill"></div>
+              </div>
             </div>
           </div>
           <div class="delete-modal" id="delete-month-data-modal" aria-hidden="true">
@@ -1769,6 +1815,17 @@ $columns = [
         var deleteMonthButton = document.getElementById('open-delete-month-data');
         var deleteMonthModal = document.getElementById('delete-month-data-modal');
         var closeDeleteMonthButton = document.getElementById('close-delete-month-data');
+        var uploadKitchenForm = document.getElementById('upload-kitchen-form');
+        var uploadProgressWrap = document.getElementById('upload-progress-wrap');
+        var uploadProgressFill = document.getElementById('upload-progress-fill');
+        var uploadProgressText = document.getElementById('upload-progress-text');
+
+        function setUploadProgress(percent, message) {
+          if (!uploadProgressWrap || !uploadProgressFill || !uploadProgressText) return;
+          uploadProgressWrap.classList.add('active');
+          uploadProgressFill.style.width = Math.max(0, Math.min(100, percent)) + '%';
+          uploadProgressText.textContent = message || ('Upload ' + Math.round(percent) + '%');
+        }
 
         function syncDeleteUi(name) {
           selectedKomoditas = name || '';
@@ -1872,6 +1929,53 @@ $columns = [
               e.preventDefault();
               closeDeleteModal();
             }
+          });
+        }
+
+        if (uploadKitchenForm) {
+          uploadKitchenForm.addEventListener('submit', function (e) {
+            var fileInput = uploadKitchenForm.querySelector('input[name="hd_upload_file"]');
+            if (!fileInput || !fileInput.files || !fileInput.files.length) return;
+            e.preventDefault();
+
+            var submitBtn = uploadKitchenForm.querySelector('.upload-kitchen-btn');
+            if (submitBtn) {
+              submitBtn.disabled = true;
+              submitBtn.textContent = 'Mengupload...';
+            }
+            setUploadProgress(0, 'Mulai upload file...');
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', uploadKitchenForm.getAttribute('action') || 'hd.php', true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.upload.onprogress = function (evt) {
+              if (!evt.lengthComputable) return;
+              var p = (evt.loaded / evt.total) * 100;
+              setUploadProgress(p, 'Upload file: ' + Math.round(p) + '%');
+            };
+            xhr.onload = function () {
+              var resp = null;
+              try { resp = JSON.parse(xhr.responseText || '{}'); } catch (err) { resp = null; }
+              if (xhr.status >= 200 && xhr.status < 300 && resp && typeof resp === 'object') {
+                setUploadProgress(100, resp.ok ? 'Upload selesai, memuat ulang...' : (resp.notice || 'Upload selesai.'));
+                if (resp.redirect) {
+                  window.location.href = resp.redirect;
+                  return;
+                }
+                window.location.reload();
+                return;
+              }
+              setUploadProgress(100, 'Upload selesai, memuat halaman...');
+              window.location.reload();
+            };
+            xhr.onerror = function () {
+              setUploadProgress(100, 'Gagal upload. Coba lagi.');
+              if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="mdi mdi-upload-outline"></i>Upload & Isi Data HD';
+              }
+            };
+            xhr.send(new FormData(uploadKitchenForm));
           });
         }
 
