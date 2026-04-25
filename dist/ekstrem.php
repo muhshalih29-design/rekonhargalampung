@@ -1150,8 +1150,7 @@ $columns = [
               <input type="file" id="importFileInput" class="hidden-file-input" accept=".csv,.xlsx,.xls" />
               <button type="button" id="downloadTemplateBtn" class="tab-btn" style="box-shadow:none;">Download Template</button>
               <button type="button" id="uploadFileBtn" class="tab-btn" style="box-shadow:none;">Upload Excel/CSV</button>
-              <button type="button" id="pasteRangeBtn" class="tab-btn" style="box-shadow:none;">Paste Range</button>
-              <button type="button" id="add50" class="tab-btn" style="box-shadow:none;">Tambah 50 baris</button>
+              <button type="button" id="downloadTableBtn" class="tab-btn" style="box-shadow:none;">Download Tabel XLS</button>
               <button type="button" id="clearMonthBtn" class="tab-btn" style="box-shadow:none;">Hapus Semua Bulan Ini</button>
               <div class="paste-status" id="add-status" style="display:none;">Memproses...</div>
             </div>
@@ -1873,6 +1872,7 @@ $columns = [
 
         var pasteRangeBtn = document.getElementById('pasteRangeBtn');
         var downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
+        var downloadTableBtn = document.getElementById('downloadTableBtn');
         var uploadFileBtn = document.getElementById('uploadFileBtn');
         var importFileInput = document.getElementById('importFileInput');
         var clearMonthBtn = document.getElementById('clearMonthBtn');
@@ -2070,6 +2070,62 @@ $columns = [
             var ws = XLSX.utils.aoa_to_sheet(templateRows);
             XLSX.utils.book_append_sheet(wb, ws, 'Ekstrem');
             XLSX.writeFile(wb, 'template-ekstrem.xlsx');
+          });
+        }
+        if (downloadTableBtn) {
+          downloadTableBtn.addEventListener('click', function () {
+            var table = document.querySelector('.ekstrem-table');
+            if (!table) {
+              alert('Tabel tidak ditemukan.');
+              return;
+            }
+            var clone = table.cloneNode(true);
+            var headerRows = clone.querySelectorAll('thead tr');
+            if (headerRows.length) {
+              var lastHead = headerRows[0].lastElementChild;
+              if (lastHead && String(lastHead.textContent || '').toLowerCase().indexOf('hapus') !== -1) {
+                lastHead.remove();
+              }
+            }
+            clone.querySelectorAll('tbody tr').forEach(function (tr) {
+              if (tr.style && tr.style.display === 'none') {
+                tr.remove();
+                return;
+              }
+              var cells = tr.querySelectorAll('td');
+              if (cells.length && !IS_KABUPATEN) {
+                var lastCell = cells[cells.length - 1];
+                if (lastCell && lastCell.querySelector('.row-del')) {
+                  lastCell.remove();
+                }
+              }
+              tr.querySelectorAll('input, textarea, select').forEach(function (el) {
+                var parent = el.parentNode;
+                var text = '';
+                if (el.tagName.toLowerCase() === 'select') {
+                  text = el.options[el.selectedIndex] ? el.options[el.selectedIndex].textContent : '';
+                } else {
+                  text = el.value || '';
+                }
+                if (el.classList.contains('perubahan-input') || el.classList.contains('harga-input')) {
+                  text = formatIdNumber(text);
+                }
+                var span = document.createElement('span');
+                span.textContent = text;
+                parent.replaceChild(span, el);
+              });
+            });
+
+            var html = '<html><head><meta charset="UTF-8"></head><body>' + clone.outerHTML + '</body></html>';
+            var blob = new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'ekstrem-<?php echo htmlspecialchars(strtolower(trim($bulan))); ?>-<?php echo htmlspecialchars((string)$tahun); ?>.xls';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(function () { URL.revokeObjectURL(url); }, 500);
           });
         }
         if (uploadFileBtn && importFileInput) {
