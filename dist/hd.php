@@ -37,6 +37,266 @@ if ($all === '' && $bulan === '' && $tahun === '') {
     $tahun = $currentMonth->format('Y');
 }
 
+function parse_hd_decimal($value): ?float
+{
+    $raw = is_string($value) ? trim($value) : '';
+    if ($raw === '' || $raw === '-') {
+        return null;
+    }
+    $raw = str_replace(["\xC2\xA0", ' '], '', $raw);
+    $raw = str_replace(['−', '–', '—'], '-', $raw);
+    $raw = str_replace('%', '', $raw);
+    $raw = preg_replace('/[^0-9,\.\-]/u', '', $raw) ?? $raw;
+    $hasComma = strpos($raw, ',') !== false;
+    $hasDot = strpos($raw, '.') !== false;
+    if ($hasComma && $hasDot) {
+        $raw = str_replace('.', '', $raw);
+        $raw = str_replace(',', '.', $raw);
+    } elseif ($hasComma) {
+        $parts = explode(',', $raw);
+        $last = end($parts);
+        if ($last !== false && strlen((string)$last) <= 2) {
+            $raw = str_replace(',', '.', $raw);
+        } else {
+            $raw = str_replace(',', '', $raw);
+        }
+    } elseif ($hasDot) {
+        $parts = explode('.', $raw);
+        $last = end($parts);
+        if (!($last !== false && strlen((string)$last) <= 2)) {
+            $raw = str_replace('.', '', $raw);
+        }
+    }
+    if ($raw === '' || $raw === '-' || !is_numeric($raw)) {
+        return null;
+    }
+    return (float)$raw;
+}
+
+function normalize_hd_header(string $value): string
+{
+    $value = strtolower(trim($value));
+    $value = preg_replace('/\s+/', ' ', $value) ?? $value;
+    $value = str_replace(['(', ')', '%', '-', '_'], ' ', $value);
+    $value = preg_replace('/\s+/', ' ', $value) ?? $value;
+    return trim($value);
+}
+
+function parse_hd_upload_rows(string $tmpPath, string $filename): array
+{
+    $content = @file_get_contents($tmpPath);
+    if ($content === false || trim($content) === '') {
+        throw new RuntimeException('File tidak dapat dibaca.');
+    }
+
+    $isHtml = stripos($content, '<table') !== false || stripos($filename, '.xls') !== false;
+    $rows = [];
+    if ($isHtml) {
+        libxml_use_internal_errors(true);
+        $dom = new DOMDocument();
+        $loaded = $dom->loadHTML($content);
+        libxml_clear_errors();
+        if (!$loaded) {
+            throw new RuntimeException('Format HTML XLS tidak valid.');
+        }
+        $xpath = new DOMXPath($dom);
+        $trNodes = $xpath->query('//table[1]//tr');
+        if (!$trNodes || $trNodes->length === 0) {
+            throw new RuntimeException('Tabel pada file tidak ditemukan.');
+        }
+        foreach ($trNodes as $tr) {
+            $cells = [];
+            foreach ($tr->childNodes as $cell) {
+                if (!($cell instanceof DOMElement)) {
+                    continue;
+                }
+                $tag = strtolower($cell->tagName);
+                if ($tag !== 'th' && $tag !== 'td') {
+                    continue;
+                }
+                $text = trim(preg_replace('/\s+/', ' ', (string)$cell->textContent) ?? '');
+                $cells[] = $text;
+            }
+            if (!empty($cells)) {
+                $rows[] = $cells;
+            }
+        }
+    } else {
+        $lines = preg_split('/\r\n|\r|\n/', $content) ?: [];
+        foreach ($lines as $line) {
+            if (trim($line) === '') {
+                continue;
+            }
+            $rows[] = str_getcsv($line);
+        }
+    }
+
+    if (empty($rows)) {
+        throw new RuntimeException('Data pada file kosong.');
+    }
+
+    $headerIndex = -1;
+    $header = [];
+    foreach ($rows as $idx => $row) {
+        $joined = normalize_hd_header(implode(' ', $row));
+        if (strpos($joined, 'nama komoditas') !== false && strpos($joined, 'kabupaten') !== false) {
+            $headerIndex = $idx;
+            $header = $row;
+            break;
+        }
+    }
+    if ($headerIndex === -1) {
+        throw new RuntimeException('Header tidak cocok. Pastikan file dari export tabel yang benar.');
+    }
+
+    $map = [
+        'kabupaten' => null,
+        'nama_komoditas' => null,
+        'nama_kualitas' => null,
+        'perubahan_rata_rata' => null,
+    ];
+    foreach ($header as $i => $cell) {
+        $h = normalize_hd_header((string)$cell);
+        if ($h === 'kabupaten') {
+            $map['kabupaten'] = $i;
+        } elseif ($h === 'nama komoditas') {
+            $map['nama_komoditas'] = $i;
+        } elseif ($h === 'nama kualitas') {
+            $map['nama_kualitas'] = $i;
+        } elseif ($h === 'perubahan rata rata') {
+            $map['perubahan_rata_rata'] = $i;
+        }
+    }
+    if ($map['kabupaten'] === null || $map['nama_komoditas'] === null || $map['perubahan_rata_rata'] === null) {
+        throw new RuntimeException('Kolom wajib tidak ditemukan di file (Kabupaten, Nama Komoditas, Perubahan Rata-rata).');
+    }
+
+    $grouped = [];
+    for ($r = $headerIndex + 1; $r < count($rows); $r++) {
+        $row = $rows[$r];
+        $kabRaw = trim((string)($row[$map['kabupaten']] ?? ''));
+        $komoditas = trim((string)($row[$map['nama_komoditas']] ?? ''));
+        $kualitas = trim((string)($row[$map['nama_kualitas']] ?? ''));
+        $perubahanRaw = (string)($row[$map['perubahan_rata_rata']] ?? '');
+        if ($kabRaw === '' || $komoditas === '') {
+            continue;
+        }
+        $perubahan = parse_hd_decimal($perubahanRaw);
+        if ($perubahan === null) {
+            continue;
+        }
+        $kabDigits = preg_replace('/\D+/', '', $kabRaw) ?? '';
+        if ($kabDigits === '') {
+            continue;
+        }
+        $kabShort = str_pad(substr($kabDigits, -2), 2, '0', STR_PAD_LEFT);
+        $kodeKabupaten = '18' . $kabShort;
+        $key = strtolower($kodeKabupaten . '|' . $komoditas);
+        if (!isset($grouped[$key])) {
+            $grouped[$key] = [
+                'kode_kabupaten' => $kodeKabupaten,
+                'komoditas' => $komoditas,
+                'sum' => 0.0,
+                'count' => 0,
+                'catatan' => $kualitas,
+            ];
+        }
+        $grouped[$key]['sum'] += (float)$perubahan;
+        $grouped[$key]['count'] += 1;
+        if ($grouped[$key]['catatan'] === '' && $kualitas !== '') {
+            $grouped[$key]['catatan'] = $kualitas;
+        }
+    }
+
+    if (empty($grouped)) {
+        throw new RuntimeException('Tidak ada baris valid yang bisa diimpor.');
+    }
+    return array_values($grouped);
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'upload_hd_data') {
+    if (!is_provinsi($user)) {
+        http_response_code(403);
+        echo 'Forbidden';
+        exit;
+    }
+
+    $filterBulan = strtolower(trim((string)($_POST['filter_bulan'] ?? $bulan)));
+    $filterTahun = trim((string)($_POST['filter_tahun'] ?? $tahun));
+    if ($filterBulan === '' || $filterTahun === '' || !ctype_digit($filterTahun)) {
+        header('Location: hd.php?notice_type=error&notice=' . urlencode('Pilih bulan dan tahun yang valid sebelum upload.'));
+        exit;
+    }
+    if (!isset($_FILES['hd_upload_file']) || !is_array($_FILES['hd_upload_file']) || (int)($_FILES['hd_upload_file']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        header('Location: hd.php?notice_type=error&notice=' . urlencode('File upload tidak valid.'));
+        exit;
+    }
+
+    $tmpPath = (string)$_FILES['hd_upload_file']['tmp_name'];
+    $fileName = (string)($_FILES['hd_upload_file']['name'] ?? 'upload.xls');
+    try {
+        $groupedRows = parse_hd_upload_rows($tmpPath, $fileName);
+
+        $stmtKabMap = $pdo->query("SELECT DISTINCT kode_kabupaten, nama_kabupaten FROM hd WHERE TRIM(COALESCE(kode_kabupaten, '')) <> '' AND TRIM(COALESCE(nama_kabupaten, '')) <> ''");
+        $kabupatenNameMap = [];
+        foreach ($stmtKabMap as $kabRow) {
+            $kabupatenNameMap[(string)$kabRow['kode_kabupaten']] = (string)$kabRow['nama_kabupaten'];
+        }
+
+        $selectStmt = $pdo->prepare("
+            SELECT id
+            FROM hd
+            WHERE kode_kabupaten = ?
+              AND TRIM(LOWER(komoditas)) = TRIM(LOWER(?))
+              AND TRIM(LOWER(bulan)) = ?
+              AND tahun = ?
+            ORDER BY id DESC
+            LIMIT 1
+        ");
+        $updateStmt = $pdo->prepare("UPDATE hd SET perubahan = ?, catatan = ? WHERE id = ?");
+        $insertStmt = $pdo->prepare("
+            INSERT INTO hd (kode_kabupaten, nama_kabupaten, bulan, tahun, komoditas, perubahan, catatan, penjelasan, time_stamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?, '', NOW())
+        ");
+
+        $updated = 0;
+        $inserted = 0;
+        $pdo->beginTransaction();
+        foreach ($groupedRows as $item) {
+            $kodeKab = (string)$item['kode_kabupaten'];
+            $komoditasVal = (string)$item['komoditas'];
+            $avgPerubahan = ((float)$item['sum']) / max(1, (int)$item['count']);
+            $catatanVal = trim((string)$item['catatan']);
+
+            $selectStmt->execute([$kodeKab, $komoditasVal, $filterBulan, (int)$filterTahun]);
+            $existing = $selectStmt->fetch();
+            if ($existing) {
+                $updateStmt->execute([$avgPerubahan, $catatanVal, (int)$existing['id']]);
+                $updated++;
+            } else {
+                $namaKabupaten = $kabupatenNameMap[$kodeKab] ?? $kodeKab;
+                $insertStmt->execute([$kodeKab, $namaKabupaten, $filterBulan, (int)$filterTahun, $komoditasVal, $avgPerubahan, $catatanVal]);
+                $inserted++;
+            }
+        }
+        $pdo->commit();
+
+        $noticeMsg = 'Upload berhasil: ' . $updated . ' baris diperbarui, ' . $inserted . ' baris ditambahkan.';
+        header('Location: hd.php?bulan=' . urlencode($filterBulan) . '&tahun=' . urlencode($filterTahun) . '&notice_type=success&notice=' . urlencode($noticeMsg));
+        exit;
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        $msg = trim((string)$e->getMessage());
+        if ($msg === '') {
+            $msg = 'Upload data gagal.';
+        }
+        header('Location: hd.php?bulan=' . urlencode($filterBulan) . '&tahun=' . urlencode($filterTahun) . '&notice_type=error&notice=' . urlencode($msg));
+        exit;
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_commodity') {
     if (!is_provinsi($user)) {
         http_response_code(403);
@@ -607,6 +867,58 @@ $columns = [
       }
       .commodity-delete-btn:disabled { opacity: 0.5; cursor: not-allowed; }
       .delete-help { width: 100%; font-size: 11px; color: var(--muted); text-align: right; }
+      .upload-kitchen-card {
+        background: #ffffff;
+        border: 1px solid #eceff5;
+        border-radius: 22px;
+        padding: 14px 16px;
+        box-shadow: 0 10px 22px rgba(56, 65, 80, 0.06);
+        margin: -2px 0 16px;
+      }
+      .upload-kitchen-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .upload-kitchen-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--ink);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .upload-kitchen-title i { color: #f08a3a; }
+      .upload-kitchen-note { font-size: 12px; color: var(--muted); }
+      .upload-kitchen-form { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+      .upload-kitchen-input {
+        min-width: 260px;
+        max-width: 420px;
+        width: 100%;
+        height: 40px;
+        border: 1px solid #e4e8f1;
+        border-radius: 12px;
+        padding: 8px 10px;
+        background: #f8fafc;
+        color: var(--ink);
+        font-size: 12px;
+      }
+      .upload-kitchen-btn {
+        height: 40px;
+        padding: 0 14px;
+        border-radius: 12px;
+        border: none;
+        background: var(--rh-gradient);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .upload-kitchen-tip { margin-top: 8px; font-size: 11px; color: var(--muted); }
       .delete-modal {
         position: fixed;
         inset: 0;
@@ -795,6 +1107,9 @@ $columns = [
         .commodity-add-input,
         .commodity-add-btn,
         .commodity-delete-btn { width: 100%; }
+        .upload-kitchen-head { flex-direction: column; align-items: flex-start; }
+        .upload-kitchen-input,
+        .upload-kitchen-btn { width: 100%; max-width: none; }
         .delete-help { text-align: left; }
         .delete-actions { flex-direction: column-reverse; }
         .delete-cancel-btn,
@@ -974,6 +1289,23 @@ $columns = [
               </button>
               <div class="delete-help" id="delete-help">Pilih tab komoditas yang ingin dihapus terlebih dahulu.</div>
             </form>
+          </div>
+          <div class="upload-kitchen-card">
+            <div class="upload-kitchen-head">
+              <div class="upload-kitchen-title"><i class="mdi mdi-database-import-outline"></i>Dapur Olah Data HD</div>
+              <div class="upload-kitchen-note">Upload file export (`.xls` / `.csv`) untuk update massal nilai HD pada bulan & tahun terfilter.</div>
+            </div>
+            <form class="upload-kitchen-form" method="post" action="hd.php" enctype="multipart/form-data">
+              <input type="hidden" name="action" value="upload_hd_data">
+              <input type="hidden" name="filter_bulan" value="<?php echo htmlspecialchars($bulan); ?>">
+              <input type="hidden" name="filter_tahun" value="<?php echo htmlspecialchars($tahun); ?>">
+              <input type="file" name="hd_upload_file" class="upload-kitchen-input" accept=".xls,.csv,.html,.htm" required>
+              <button type="submit" class="upload-kitchen-btn">
+                <i class="mdi mdi-upload-outline"></i>
+                Upload & Isi Data HD
+              </button>
+            </form>
+            <div class="upload-kitchen-tip">Kolom yang dibaca: <strong>Kabupaten</strong>, <strong>Nama Komoditas</strong>, <strong>Nama Kualitas</strong>, <strong>Perubahan Rata-rata (%)</strong>.</div>
           </div>
           <div class="delete-modal" id="delete-commodity-modal" aria-hidden="true">
             <div class="delete-panel" role="dialog" aria-modal="true" aria-labelledby="delete-commodity-title">
