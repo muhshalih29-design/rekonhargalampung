@@ -95,12 +95,6 @@ function normalize_hd_header(string $value): string
 
 function ensure_hd_visible_seed(PDO $pdo, ?int $preferredYear = null): void
 {
-    $countStmt = $pdo->query("SELECT COUNT(*)::int AS c FROM hd_visible_commodities");
-    $visibleCount = (int)($countStmt ? $countStmt->fetchColumn() : 0);
-    if ($visibleCount > 0) {
-        return;
-    }
-
     $yearsToTry = [];
     if ($preferredYear !== null) {
         $yearsToTry[] = $preferredYear;
@@ -121,25 +115,20 @@ function ensure_hd_visible_seed(PDO $pdo, ?int $preferredYear = null): void
             ON CONFLICT (komoditas) DO NOTHING
         ");
         $seedStmt->execute([$year]);
-        if ($seedStmt->rowCount() > 0) {
-            $insertedAny = true;
-            break;
-        }
+        if ($seedStmt->rowCount() > 0) { $insertedAny = true; }
     }
 
-    if ($insertedAny) {
-        return;
+    if (!$insertedAny) {
+        $fallbackStmt = $pdo->prepare("
+            INSERT INTO hd_visible_commodities (komoditas, source)
+            SELECT DISTINCT TRIM(komoditas), 'april_default'
+            FROM hd
+            WHERE TRIM(COALESCE(komoditas, '')) <> ''
+              AND TRIM(LOWER(bulan)) = 'april'
+            ON CONFLICT (komoditas) DO NOTHING
+        ");
+        $fallbackStmt->execute();
     }
-
-    $fallbackStmt = $pdo->prepare("
-        INSERT INTO hd_visible_commodities (komoditas, source)
-        SELECT DISTINCT TRIM(komoditas), 'april_default'
-        FROM hd
-        WHERE TRIM(COALESCE(komoditas, '')) <> ''
-          AND TRIM(LOWER(bulan)) = 'april'
-        ON CONFLICT (komoditas) DO NOTHING
-    ");
-    $fallbackStmt->execute();
 }
 
 function parse_hd_upload_rows(string $tmpPath, string $filename): array
@@ -212,7 +201,6 @@ function parse_hd_upload_rows(string $tmpPath, string $filename): array
     $map = [
         'kabupaten' => null,
         'nama_komoditas' => null,
-        'nama_kualitas' => null,
         'perubahan_rata_rata' => null,
     ];
     foreach ($header as $i => $cell) {
@@ -221,8 +209,6 @@ function parse_hd_upload_rows(string $tmpPath, string $filename): array
             $map['kabupaten'] = $i;
         } elseif ($h === 'nama komoditas') {
             $map['nama_komoditas'] = $i;
-        } elseif ($h === 'nama kualitas') {
-            $map['nama_kualitas'] = $i;
         } elseif ($h === 'perubahan rata rata') {
             $map['perubahan_rata_rata'] = $i;
         }
@@ -236,7 +222,6 @@ function parse_hd_upload_rows(string $tmpPath, string $filename): array
         $row = $rows[$r];
         $kabRaw = trim((string)($row[$map['kabupaten']] ?? ''));
         $komoditas = trim((string)($row[$map['nama_komoditas']] ?? ''));
-        $kualitas = trim((string)($row[$map['nama_kualitas']] ?? ''));
         $perubahanRaw = (string)($row[$map['perubahan_rata_rata']] ?? '');
         if ($kabRaw === '' || $komoditas === '') {
             continue;
@@ -258,14 +243,10 @@ function parse_hd_upload_rows(string $tmpPath, string $filename): array
                 'komoditas' => $komoditas,
                 'sum' => 0.0,
                 'count' => 0,
-                'catatan' => $kualitas,
             ];
         }
         $grouped[$key]['sum'] += (float)$perubahan;
         $grouped[$key]['count'] += 1;
-        if ($grouped[$key]['catatan'] === '' && $kualitas !== '') {
-            $grouped[$key]['catatan'] = $kualitas;
-        }
     }
 
     if (empty($grouped)) {
@@ -331,10 +312,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             ORDER BY id DESC
             LIMIT 1
         ");
-        $updateStmt = $pdo->prepare("UPDATE hd SET perubahan = ?, catatan = ? WHERE id = ?");
+        $updateStmt = $pdo->prepare("UPDATE hd SET perubahan = ?, catatan = '' WHERE id = ?");
         $insertStmt = $pdo->prepare("
             INSERT INTO hd (kode_kabupaten, nama_kabupaten, bulan, tahun, komoditas, perubahan, catatan, penjelasan, time_stamp)
-            VALUES (?, ?, ?, ?, ?, ?, ?, '', NOW())
+            VALUES (?, ?, ?, ?, ?, ?, '', '', NOW())
         ");
 
         $updated = 0;
@@ -344,16 +325,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $kodeKab = (string)$item['kode_kabupaten'];
             $komoditasVal = (string)$item['komoditas'];
             $avgPerubahan = ((float)$item['sum']) / max(1, (int)$item['count']);
-            $catatanVal = trim((string)$item['catatan']);
-
             $selectStmt->execute([$kodeKab, $komoditasVal, $filterBulan, (int)$filterTahun]);
             $existing = $selectStmt->fetch();
             if ($existing) {
-                $updateStmt->execute([$avgPerubahan, $catatanVal, (int)$existing['id']]);
+                $updateStmt->execute([$avgPerubahan, (int)$existing['id']]);
                 $updated++;
             } else {
                 $namaKabupaten = $kabupatenNameMap[$kodeKab] ?? $kodeKab;
-                $insertStmt->execute([$kodeKab, $namaKabupaten, $filterBulan, (int)$filterTahun, $komoditasVal, $avgPerubahan, $catatanVal]);
+                $insertStmt->execute([$kodeKab, $namaKabupaten, $filterBulan, (int)$filterTahun, $komoditasVal, $avgPerubahan]);
                 $inserted++;
             }
         }
@@ -1454,7 +1433,7 @@ $columns = [
               </button>
             </form>
             <div class="upload-kitchen-tip">
-              Kolom yang dibaca: <strong>Kabupaten</strong>, <strong>Nama Komoditas</strong>, <strong>Nama Kualitas</strong>, <strong>Perubahan Rata-rata (%)</strong>.
+              Kolom yang dibaca: <strong>Kabupaten</strong>, <strong>Nama Komoditas</strong>, <strong>Perubahan Rata-rata (%)</strong>. Kolom catatan akan dikosongkan.
               <?php if ($bulan === '' || $tahun === '' || !ctype_digit((string)$tahun)): ?>
                 Pilih filter bulan+tahun agar tombol hapus data aktif.
               <?php endif; ?>
