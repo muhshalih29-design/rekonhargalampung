@@ -8,6 +8,15 @@ require_once __DIR__ . '/auth.php';
 $user = require_auth();
 $pdo = db();
 
+// Keep visible HD commodities controlled: default seeded from April, extras appear only when added by admin.
+$pdo->exec("
+    CREATE TABLE IF NOT EXISTS hd_visible_commodities (
+        komoditas TEXT PRIMARY KEY,
+        source TEXT NOT NULL DEFAULT 'april_default',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+");
+
 $bulan_map = [
     'january' => 'januari',
     'february' => 'februari',
@@ -36,6 +45,8 @@ if ($all === '' && $bulan === '' && $tahun === '') {
     $bulan = $bulan_map[$bulan] ?? $bulan;
     $tahun = $currentMonth->format('Y');
 }
+
+ensure_hd_visible_seed($pdo, ctype_digit((string)$tahun) ? (int)$tahun : null);
 
 function parse_hd_decimal($value): ?float
 {
@@ -80,6 +91,55 @@ function normalize_hd_header(string $value): string
     $value = str_replace(['(', ')', '%', '-', '_'], ' ', $value);
     $value = preg_replace('/\s+/', ' ', $value) ?? $value;
     return trim($value);
+}
+
+function ensure_hd_visible_seed(PDO $pdo, ?int $preferredYear = null): void
+{
+    $countStmt = $pdo->query("SELECT COUNT(*)::int AS c FROM hd_visible_commodities");
+    $visibleCount = (int)($countStmt ? $countStmt->fetchColumn() : 0);
+    if ($visibleCount > 0) {
+        return;
+    }
+
+    $yearsToTry = [];
+    if ($preferredYear !== null) {
+        $yearsToTry[] = $preferredYear;
+    }
+    if (!in_array(2026, $yearsToTry, true)) {
+        $yearsToTry[] = 2026;
+    }
+
+    $insertedAny = false;
+    foreach ($yearsToTry as $year) {
+        $seedStmt = $pdo->prepare("
+            INSERT INTO hd_visible_commodities (komoditas, source)
+            SELECT DISTINCT TRIM(komoditas), 'april_default'
+            FROM hd
+            WHERE TRIM(COALESCE(komoditas, '')) <> ''
+              AND TRIM(LOWER(bulan)) = 'april'
+              AND tahun = ?
+            ON CONFLICT (komoditas) DO NOTHING
+        ");
+        $seedStmt->execute([$year]);
+        if ($seedStmt->rowCount() > 0) {
+            $insertedAny = true;
+            break;
+        }
+    }
+
+    if ($insertedAny) {
+        return;
+    }
+
+    $fallbackStmt = $pdo->prepare("
+        INSERT INTO hd_visible_commodities (komoditas, source)
+        SELECT DISTINCT TRIM(komoditas), 'april_default'
+        FROM hd
+        WHERE TRIM(COALESCE(komoditas, '')) <> ''
+          AND TRIM(LOWER(bulan)) = 'april'
+        ON CONFLICT (komoditas) DO NOTHING
+    ");
+    $fallbackStmt->execute();
 }
 
 function parse_hd_upload_rows(string $tmpPath, string $filename): array
@@ -462,6 +522,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $inserted += $insert_stmt->rowCount();
             }
         }
+        $visible_stmt = $pdo->prepare("INSERT INTO hd_visible_commodities (komoditas, source) VALUES (?, 'manual_add') ON CONFLICT (komoditas) DO NOTHING");
+        $visible_stmt->execute([$commodity_name]);
         $pdo->commit();
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
@@ -549,34 +611,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 $where = [];
 $types = '';
 $params = [];
+$visible_join_condition = "EXISTS (SELECT 1 FROM hd_visible_commodities v WHERE TRIM(LOWER(v.komoditas)) = TRIM(LOWER(h.komoditas)))";
 
 if ($bulan !== '') {
-    $where[] = 'TRIM(LOWER(bulan)) = ?';
+    $where[] = 'TRIM(LOWER(h.bulan)) = ?';
     $types .= 's';
     $params[] = strtolower(trim($bulan));
 }
 if ($tahun !== '' && ctype_digit($tahun)) {
-    $where[] = 'tahun = ?';
+    $where[] = 'h.tahun = ?';
     $types .= 'i';
     $params[] = (int)$tahun;
 }
 
-$sql = 'SELECT * FROM hd';
-if ($where) {
-    $sql .= ' WHERE ' . implode(' AND ', $where);
+$sql = 'SELECT h.* FROM hd h';
+$where_with_visible = $where;
+$where_with_visible[] = $visible_join_condition;
+if ($where_with_visible) {
+    $sql .= ' WHERE ' . implode(' AND ', $where_with_visible);
 }
-$sql .= ' ORDER BY komoditas ASC, CAST(kode_kabupaten AS INTEGER) ASC';
+$sql .= ' ORDER BY h.komoditas ASC, CAST(h.kode_kabupaten AS INTEGER) ASC';
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $rows = $stmt->fetchAll();
 
 $avg_map = [];
-$avg_sql = 'SELECT komoditas, AVG(NULLIF(perubahan,0)) AS avg_perubahan FROM hd';
-if ($where) {
-    $avg_sql .= ' WHERE ' . implode(' AND ', $where);
+$avg_sql = 'SELECT h.komoditas, AVG(NULLIF(h.perubahan,0)) AS avg_perubahan FROM hd h';
+if ($where_with_visible) {
+    $avg_sql .= ' WHERE ' . implode(' AND ', $where_with_visible);
 }
-$avg_sql .= ' GROUP BY komoditas';
+$avg_sql .= ' GROUP BY h.komoditas';
 $stmt_avg = $pdo->prepare($avg_sql);
 $stmt_avg->execute($params);
 foreach ($stmt_avg as $avg_row) {
@@ -585,11 +650,11 @@ foreach ($stmt_avg as $avg_row) {
 }
 
 $komoditas_tabs = [];
-$tab_sql = 'SELECT DISTINCT komoditas FROM hd';
-if ($where) {
-    $tab_sql .= ' WHERE ' . implode(' AND ', $where);
+$tab_sql = 'SELECT DISTINCT h.komoditas FROM hd h';
+if ($where_with_visible) {
+    $tab_sql .= ' WHERE ' . implode(' AND ', $where_with_visible);
 }
-$tab_sql .= ' ORDER BY komoditas ASC';
+$tab_sql .= ' ORDER BY h.komoditas ASC';
 $stmt_tabs = $pdo->prepare($tab_sql);
 $stmt_tabs->execute($params);
 foreach ($stmt_tabs as $row) {
@@ -599,19 +664,20 @@ foreach ($stmt_tabs as $row) {
     }
 }
 $komoditas_pending_map = [];
-$pending_sql = "SELECT komoditas,
+$pending_sql = "SELECT h.komoditas,
     SUM(CASE WHEN perubahan IS NOT NULL AND perubahan <> 0 AND (penjelasan IS NULL OR TRIM(penjelasan) = '') THEN 1 ELSE 0 END) AS pending_count
-    FROM hd";
+    FROM hd h";
 $pending_where = $where;
 $pending_params = $params;
+$pending_where[] = $visible_join_condition;
 if (is_kabupaten($user) && !empty($user['kab_kode'])) {
-    $pending_where[] = 'kode_kabupaten = ?';
+    $pending_where[] = 'h.kode_kabupaten = ?';
     $pending_params[] = (string)$user['kab_kode'];
 }
 if ($pending_where) {
     $pending_sql .= ' WHERE ' . implode(' AND ', $pending_where);
 }
-$pending_sql .= ' GROUP BY komoditas';
+$pending_sql .= ' GROUP BY h.komoditas';
 $stmt_pending = $pdo->prepare($pending_sql);
 $stmt_pending->execute($pending_params);
 foreach ($stmt_pending as $pending_row) {
