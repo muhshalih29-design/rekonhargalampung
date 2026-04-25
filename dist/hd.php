@@ -357,6 +357,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_filtered_month_data') {
+    if (!is_provinsi($user)) {
+        http_response_code(403);
+        echo 'Forbidden';
+        exit;
+    }
+
+    $filter_bulan = strtolower(trim((string)($_POST['filter_bulan'] ?? '')));
+    $filter_tahun = trim((string)($_POST['filter_tahun'] ?? ''));
+
+    $redirect_query = [];
+    if ($filter_bulan !== '') {
+        $redirect_query['bulan'] = $filter_bulan;
+    }
+    if ($filter_tahun !== '' && ctype_digit($filter_tahun)) {
+        $redirect_query['tahun'] = $filter_tahun;
+    }
+
+    if ($filter_bulan === '' || $filter_tahun === '' || !ctype_digit($filter_tahun)) {
+        $redirect_query['notice_type'] = 'error';
+        $redirect_query['notice'] = 'Filter bulan dan tahun wajib dipilih sebelum hapus data.';
+        header('Location: hd.php?' . http_build_query($redirect_query));
+        exit;
+    }
+
+    $delete_stmt = $pdo->prepare('DELETE FROM hd WHERE TRIM(LOWER(bulan)) = ? AND tahun = ?');
+    $delete_stmt->execute([$filter_bulan, (int)$filter_tahun]);
+    $deleted = (int)$delete_stmt->rowCount();
+
+    $redirect_query['notice_type'] = $deleted > 0 ? 'success' : 'info';
+    $redirect_query['notice'] = $deleted > 0
+        ? ('Data HD bulan ' . ucfirst($filter_bulan) . ' ' . $filter_tahun . ' berhasil dihapus (' . $deleted . ' baris).')
+        : ('Tidak ada data HD pada bulan ' . ucfirst($filter_bulan) . ' ' . $filter_tahun . ' untuk dihapus.');
+
+    header('Location: hd.php?' . http_build_query($redirect_query));
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_commodity') {
     if (!is_provinsi($user)) {
         http_response_code(403);
@@ -1304,8 +1342,38 @@ $columns = [
                 <i class="mdi mdi-upload-outline"></i>
                 Upload & Isi Data HD
               </button>
+              <button type="button" class="commodity-delete-btn" id="open-delete-month-data" <?php echo ($bulan === '' || $tahun === '' || !ctype_digit((string)$tahun)) ? 'disabled' : ''; ?>>
+                <i class="mdi mdi-delete-alert-outline"></i>
+                Hapus Data Bulan Terfilter
+              </button>
             </form>
-            <div class="upload-kitchen-tip">Kolom yang dibaca: <strong>Kabupaten</strong>, <strong>Nama Komoditas</strong>, <strong>Nama Kualitas</strong>, <strong>Perubahan Rata-rata (%)</strong>.</div>
+            <div class="upload-kitchen-tip">
+              Kolom yang dibaca: <strong>Kabupaten</strong>, <strong>Nama Komoditas</strong>, <strong>Nama Kualitas</strong>, <strong>Perubahan Rata-rata (%)</strong>.
+              <?php if ($bulan === '' || $tahun === '' || !ctype_digit((string)$tahun)): ?>
+                Pilih filter bulan+tahun agar tombol hapus data aktif.
+              <?php endif; ?>
+            </div>
+          </div>
+          <div class="delete-modal" id="delete-month-data-modal" aria-hidden="true">
+            <div class="delete-panel" role="dialog" aria-modal="true" aria-labelledby="delete-month-data-title">
+              <h3 id="delete-month-data-title">Hapus Data HD Bulan Terfilter</h3>
+              <p>Tindakan ini akan menghapus <strong>semua data HD</strong> pada bulan dan tahun yang sedang difilter.</p>
+              <div class="delete-target">
+                Target: <?php echo htmlspecialchars(($bulan !== '' ? ucfirst($bulan) : 'Bulan') . ($tahun !== '' ? ' ' . $tahun : '')); ?>
+              </div>
+              <form method="post" action="hd.php" id="delete-month-data-form">
+                <input type="hidden" name="action" value="delete_filtered_month_data">
+                <input type="hidden" name="filter_bulan" value="<?php echo htmlspecialchars($bulan); ?>">
+                <input type="hidden" name="filter_tahun" value="<?php echo htmlspecialchars($tahun); ?>">
+                <div class="delete-actions" style="margin-top:16px;">
+                  <button type="button" class="delete-cancel-btn" id="close-delete-month-data">Batal</button>
+                  <button type="submit" class="delete-confirm-btn">
+                    <i class="mdi mdi-alert-outline"></i>
+                    Ya, Hapus Semua Data
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
           <div class="delete-modal" id="delete-commodity-modal" aria-hidden="true">
             <div class="delete-panel" role="dialog" aria-modal="true" aria-labelledby="delete-commodity-title">
@@ -1632,6 +1700,9 @@ $columns = [
         var deleteCurrentRadio = deleteCurrentOption ? deleteCurrentOption.querySelector('input[name="delete_scope"]') : null;
         var deleteAllRadio = document.querySelector('#delete-option-all input[name="delete_scope"]');
         var canDeleteCurrent = <?php echo ($bulan !== '' && $tahun !== '' && ctype_digit((string)$tahun)) ? 'true' : 'false'; ?>;
+        var deleteMonthButton = document.getElementById('open-delete-month-data');
+        var deleteMonthModal = document.getElementById('delete-month-data-modal');
+        var closeDeleteMonthButton = document.getElementById('close-delete-month-data');
 
         function syncDeleteUi(name) {
           selectedKomoditas = name || '';
@@ -1665,6 +1736,16 @@ $columns = [
           if (!deleteModal) return;
           deleteModal.classList.remove('open');
           deleteModal.setAttribute('aria-hidden', 'true');
+        }
+        function openDeleteMonthModal() {
+          if (!deleteMonthModal) return;
+          deleteMonthModal.classList.add('open');
+          deleteMonthModal.setAttribute('aria-hidden', 'false');
+        }
+        function closeDeleteMonthModal() {
+          if (!deleteMonthModal) return;
+          deleteMonthModal.classList.remove('open');
+          deleteMonthModal.setAttribute('aria-hidden', 'true');
         }
 
         if (tabsWrap) {
@@ -1700,13 +1781,23 @@ $columns = [
 
         if (deleteButton) deleteButton.addEventListener('click', openDeleteModal);
         if (closeDeleteButton) closeDeleteButton.addEventListener('click', closeDeleteModal);
+        if (deleteMonthButton) deleteMonthButton.addEventListener('click', openDeleteMonthModal);
+        if (closeDeleteMonthButton) closeDeleteMonthButton.addEventListener('click', closeDeleteMonthModal);
         if (deleteModal) {
           deleteModal.addEventListener('click', function (e) {
             if (e.target === deleteModal) closeDeleteModal();
           });
         }
+        if (deleteMonthModal) {
+          deleteMonthModal.addEventListener('click', function (e) {
+            if (e.target === deleteMonthModal) closeDeleteMonthModal();
+          });
+        }
         document.addEventListener('keydown', function (e) {
-          if (e.key === 'Escape') closeDeleteModal();
+          if (e.key === 'Escape') {
+            closeDeleteModal();
+            closeDeleteMonthModal();
+          }
         });
         var deleteForm = document.getElementById('delete-commodity-form');
         if (deleteForm) {
