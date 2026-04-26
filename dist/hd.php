@@ -258,15 +258,27 @@ function parse_hd_upload_rows(string $tmpPath, string $filename): array
 
     $map = [
         'kabupaten' => null,
+        'kecamatan' => null,
+        'nama_kecamatan' => null,
         'nama_komoditas' => null,
+        'harga_bulan_ini_rr' => null,
+        'harga_bulan_lalu_rr' => null,
         'perubahan_rata_rata' => null,
     ];
     foreach ($header as $i => $cell) {
         $h = normalize_hd_header((string)$cell);
         if ($h === 'kabupaten') {
             $map['kabupaten'] = $i;
+        } elseif ($h === 'kecamatan') {
+            $map['kecamatan'] = $i;
+        } elseif ($h === 'nama kecamatan') {
+            $map['nama_kecamatan'] = $i;
         } elseif ($h === 'nama komoditas') {
             $map['nama_komoditas'] = $i;
+        } elseif ($h === 'harga bulan ini rata rata') {
+            $map['harga_bulan_ini_rr'] = $i;
+        } elseif ($h === 'harga bulan sebelumnya rata rata') {
+            $map['harga_bulan_lalu_rr'] = $i;
         } elseif ($h === 'perubahan rata rata') {
             $map['perubahan_rata_rata'] = $i;
         }
@@ -281,6 +293,10 @@ function parse_hd_upload_rows(string $tmpPath, string $filename): array
         $kabRaw = trim((string)($row[$map['kabupaten']] ?? ''));
         $komoditas = normalize_hd_commodity((string)($row[$map['nama_komoditas']] ?? ''));
         $perubahanRaw = (string)($row[$map['perubahan_rata_rata']] ?? '');
+        $kecCode = trim((string)($row[$map['kecamatan']] ?? ''));
+        $kecName = trim((string)($row[$map['nama_kecamatan']] ?? ''));
+        $hargaNow = parse_hd_decimal((string)($row[$map['harga_bulan_ini_rr']] ?? ''));
+        $hargaPrev = parse_hd_decimal((string)($row[$map['harga_bulan_lalu_rr']] ?? ''));
         if ($kabRaw === '' || $komoditas === '') {
             continue;
         }
@@ -302,11 +318,33 @@ function parse_hd_upload_rows(string $tmpPath, string $filename): array
                 'sum' => 0.0,
                 'count' => 0,
                 'values' => [],
+                'sources' => [],
             ];
         }
         $grouped[$key]['sum'] += (float)$perubahan;
         $grouped[$key]['count'] += 1;
         $grouped[$key]['values'][] = (float)$perubahan;
+        if ($kecCode !== '' || $kecName !== '') {
+            $kecKey = ($kecCode !== '' ? $kecCode : '-') . '|' . ($kecName !== '' ? $kecName : '-');
+            if (!isset($grouped[$key]['sources'][$kecKey])) {
+                $grouped[$key]['sources'][$kecKey] = [
+                    'kecamatan' => $kecCode,
+                    'nama_kecamatan' => $kecName,
+                    'sum_harga_now' => 0.0,
+                    'count_harga_now' => 0,
+                    'sum_harga_prev' => 0.0,
+                    'count_harga_prev' => 0,
+                ];
+            }
+            if ($hargaNow !== null) {
+                $grouped[$key]['sources'][$kecKey]['sum_harga_now'] += (float)$hargaNow;
+                $grouped[$key]['sources'][$kecKey]['count_harga_now'] += 1;
+            }
+            if ($hargaPrev !== null) {
+                $grouped[$key]['sources'][$kecKey]['sum_harga_prev'] += (float)$hargaPrev;
+                $grouped[$key]['sources'][$kecKey]['count_harga_prev'] += 1;
+            }
+        }
     }
 
     if (empty($grouped)) {
@@ -411,13 +449,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $inserted++;
             }
             $rawValues = isset($item['values']) && is_array($item['values']) ? array_values($item['values']) : [];
+            $sourceRows = [];
+            if (isset($item['sources']) && is_array($item['sources'])) {
+                foreach ($item['sources'] as $src) {
+                    if (!is_array($src)) {
+                        continue;
+                    }
+                    $countNow = (int)($src['count_harga_now'] ?? 0);
+                    $countPrev = (int)($src['count_harga_prev'] ?? 0);
+                    $sourceRows[] = [
+                        'kecamatan' => (string)($src['kecamatan'] ?? ''),
+                        'nama_kecamatan' => (string)($src['nama_kecamatan'] ?? ''),
+                        'harga_bulan_ini' => $countNow > 0 ? ((float)($src['sum_harga_now'] ?? 0) / $countNow) : null,
+                        'harga_bulan_lalu' => $countPrev > 0 ? ((float)($src['sum_harga_prev'] ?? 0) / $countPrev) : null,
+                    ];
+                }
+            }
+            usort($sourceRows, static function (array $a, array $b): int {
+                $ka = ((string)($a['kecamatan'] ?? '')) . ' ' . ((string)($a['nama_kecamatan'] ?? ''));
+                $kb = ((string)($b['kecamatan'] ?? '')) . ' ' . ((string)($b['nama_kecamatan'] ?? ''));
+                return strcasecmp($ka, $kb);
+            });
+            $sourcePayload = [
+                'values' => $rawValues,
+                'kecamatan_rows' => $sourceRows,
+            ];
             $sourceUpsertStmt->execute([
                 $filterBulan,
                 (int)$filterTahun,
                 $kodeKab,
                 $komoditasVal,
                 count($rawValues),
-                json_encode($rawValues, JSON_UNESCAPED_UNICODE),
+                json_encode($sourcePayload, JSON_UNESCAPED_UNICODE),
                 $avgPerubahan,
             ]);
         }
@@ -745,9 +808,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         exit;
     }
 
-    $values = json_decode((string)($src['source_values_json'] ?? '[]'), true);
-    if (!is_array($values)) {
-        $values = [];
+    $decodedPayload = json_decode((string)($src['source_values_json'] ?? '[]'), true);
+    $values = [];
+    $kecamatanRows = [];
+    if (is_array($decodedPayload) && array_key_exists('values', $decodedPayload)) {
+        $values = is_array($decodedPayload['values']) ? $decodedPayload['values'] : [];
+        $kecamatanRows = is_array($decodedPayload['kecamatan_rows'] ?? null) ? $decodedPayload['kecamatan_rows'] : [];
+    } elseif (is_array($decodedPayload)) {
+        // Backward compatibility with old payload format: plain numeric array.
+        $values = $decodedPayload;
     }
     $formattedValues = [];
     foreach ($values as $v) {
@@ -756,12 +825,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         }
         $formattedValues[] = number_format((float)$v, 2, ',', '.');
     }
+    $formattedRows = [];
+    foreach ($kecamatanRows as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $formattedRows[] = [
+            'kecamatan' => trim((string)($row['kecamatan'] ?? '')),
+            'nama_kecamatan' => trim((string)($row['nama_kecamatan'] ?? '')),
+            'harga_bulan_lalu' => isset($row['harga_bulan_lalu']) && is_numeric($row['harga_bulan_lalu'])
+                ? number_format((float)$row['harga_bulan_lalu'], 2, ',', '.')
+                : '-',
+            'harga_bulan_ini' => isset($row['harga_bulan_ini']) && is_numeric($row['harga_bulan_ini'])
+                ? number_format((float)$row['harga_bulan_ini'], 2, ',', '.')
+                : '-',
+        ];
+    }
     echo json_encode([
         'ok' => true,
         'has_source' => true,
         'count' => (int)($src['source_count'] ?? 0),
         'avg' => isset($src['source_avg']) && is_numeric($src['source_avg']) ? number_format((float)$src['source_avg'], 2, ',', '.') : '-',
         'values' => $formattedValues,
+        'kecamatan_rows' => $formattedRows,
     ]);
     exit;
 }
@@ -1254,6 +1340,28 @@ $columns = [
         color: #4b5563;
         line-height: 1.5;
       }
+      .source-table-wrap { overflow: auto; max-height: 320px; }
+      .source-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      .source-table th {
+        position: sticky;
+        top: 0;
+        background: #f4f7fb;
+        color: #2f3441;
+        font-weight: 700;
+        text-align: left;
+        padding: 8px;
+        border-bottom: 1px solid #e4e8f1;
+      }
+      .source-table td {
+        padding: 8px;
+        border-bottom: 1px solid #eef2f7;
+        color: #374151;
+      }
+      .source-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
       .delete-modal {
         position: fixed;
         inset: 0;
@@ -1854,6 +1962,14 @@ $columns = [
           el.style.height = 'auto';
           el.style.height = el.scrollHeight + 'px';
         }
+        function escapeHtml(v) {
+          return String(v || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        }
         var textareas = document.querySelectorAll('.wrap-textarea');
         textareas.forEach(function (ta) {
           autoResize(ta);
@@ -2281,11 +2397,23 @@ $columns = [
                 return;
               }
               var values = Array.isArray(data.values) ? data.values : [];
+              var sourceRows = Array.isArray(data.kecamatan_rows) ? data.kecamatan_rows : [];
+              var rowsHtml = sourceRows.map(function (r) {
+                var kec = [r.kecamatan || '-', r.nama_kecamatan || ''].filter(Boolean).join(' - ');
+                return '<tr>'
+                  + '<td>' + escapeHtml(kec || '-') + '</td>'
+                  + '<td class="num">' + escapeHtml(r.harga_bulan_lalu || '-') + '</td>'
+                  + '<td class="num">' + escapeHtml(r.harga_bulan_ini || '-') + '</td>'
+                  + '</tr>';
+              }).join('');
               sourceDetailBody.innerHTML =
-                '<strong>Rumus:</strong> rata-rata nilai perubahan yang tidak kosong.<br>' +
-                '<strong>Jumlah data:</strong> ' + (data.count || 0) + '<br>' +
-                '<strong>Daftar nilai:</strong> ' + (values.length ? values.join(', ') : '-') + '<br>' +
-                '<strong>Hasil rata-rata:</strong> ' + (data.avg || '-');
+                '<strong>Rumus:</strong> rata-rata nilai perubahan yang tidak kosong<br>' +
+                '<strong>Jumlah data perubahan:</strong> ' + escapeHtml(data.count || 0) + '<br>' +
+                '<strong>Nilai perubahan:</strong> ' + escapeHtml(values.length ? values.join(', ') : '-') + '<br>' +
+                '<strong>Hasil rata-rata:</strong> ' + escapeHtml(data.avg || '-') + '<hr style="border:none;border-top:1px solid #e8edf4;margin:10px 0;">'
+                + (sourceRows.length
+                  ? ('<div class="source-table-wrap"><table class="source-table"><thead><tr><th>Kecamatan</th><th>Harga Bulan Sebelumnya</th><th>Harga Bulan Ini</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div>')
+                  : '<em>Data daftar kecamatan belum tersedia di sumber upload ini.</em>');
             })
             .catch(function () {
               if (sourceDetailBody) sourceDetailBody.textContent = 'Gagal memuat sumber hitung.';
