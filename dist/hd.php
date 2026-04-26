@@ -1042,6 +1042,13 @@ $columns = [
         background: var(--rh-gradient);
         transition: width .2s ease;
       }
+      .upload-progress-fill.processing {
+        animation: uploadPulse 1.1s ease-in-out infinite alternate;
+      }
+      @keyframes uploadPulse {
+        from { opacity: 0.75; }
+        to { opacity: 1; }
+      }
       .delete-modal {
         position: fixed;
         inset: 0;
@@ -1923,6 +1930,25 @@ $columns = [
               submitBtn.textContent = 'Mengupload...';
             }
             setUploadProgress(0, 'Mulai upload file...');
+            if (uploadProgressFill) uploadProgressFill.classList.remove('processing');
+            var processingTimer = null;
+            function startProcessingPhase() {
+              if (uploadProgressFill) uploadProgressFill.classList.add('processing');
+              if (processingTimer) return;
+              processingTimer = setInterval(function () {
+                if (!uploadProgressFill) return;
+                var current = parseFloat((uploadProgressFill.style.width || '90').replace('%', '')) || 90;
+                var next = Math.min(98, current + 1.2);
+                uploadProgressFill.style.width = next + '%';
+              }, 500);
+            }
+            function stopProcessingPhase() {
+              if (processingTimer) {
+                clearInterval(processingTimer);
+                processingTimer = null;
+              }
+              if (uploadProgressFill) uploadProgressFill.classList.remove('processing');
+            }
 
             var xhr = new XMLHttpRequest();
             xhr.open('POST', uploadKitchenForm.getAttribute('action') || 'hd.php', true);
@@ -1930,9 +1956,15 @@ $columns = [
             xhr.upload.onprogress = function (evt) {
               if (!evt.lengthComputable) return;
               var p = (evt.loaded / evt.total) * 100;
-              setUploadProgress(p, 'Upload file: ' + Math.round(p) + '%');
+              var visual = Math.min(90, p * 0.9);
+              setUploadProgress(visual, 'Upload file: ' + Math.round(p) + '%');
+            };
+            xhr.upload.onload = function () {
+              setUploadProgress(92, 'File selesai diupload. Sedang memproses data di server...');
+              startProcessingPhase();
             };
             xhr.onload = function () {
+              stopProcessingPhase();
               var resp = null;
               try { resp = JSON.parse(xhr.responseText || '{}'); } catch (err) { resp = null; }
               if (xhr.status >= 200 && xhr.status < 300 && resp && typeof resp === 'object') {
@@ -1948,6 +1980,7 @@ $columns = [
               window.location.reload();
             };
             xhr.onerror = function () {
+              stopProcessingPhase();
               setUploadProgress(100, 'Gagal upload. Coba lagi.');
               if (submitBtn) {
                 submitBtn.disabled = false;
