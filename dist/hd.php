@@ -98,6 +98,13 @@ function parse_hd_decimal($value): ?float
     return (float)$raw;
 }
 
+function normalize_hd_commodity(string $value): string
+{
+    $value = trim($value);
+    $value = preg_replace('/\s+/u', ' ', $value) ?? $value;
+    return $value;
+}
+
 function normalize_hd_header(string $value): string
 {
     $value = strtolower(trim($value));
@@ -235,7 +242,7 @@ function parse_hd_upload_rows(string $tmpPath, string $filename): array
     for ($r = $headerIndex + 1; $r < count($rows); $r++) {
         $row = $rows[$r];
         $kabRaw = trim((string)($row[$map['kabupaten']] ?? ''));
-        $komoditas = trim((string)($row[$map['nama_komoditas']] ?? ''));
+        $komoditas = normalize_hd_commodity((string)($row[$map['nama_komoditas']] ?? ''));
         $perubahanRaw = (string)($row[$map['perubahan_rata_rata']] ?? '');
         if ($kabRaw === '' || $komoditas === '') {
             continue;
@@ -322,7 +329,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             SELECT id
             FROM hd
             WHERE kode_kabupaten = ?
-              AND TRIM(LOWER(komoditas)) = TRIM(LOWER(?))
+              AND LOWER(TRIM(REGEXP_REPLACE(komoditas, '\s+', ' ', 'g'))) = LOWER(TRIM(REGEXP_REPLACE(?, '\s+', ' ', 'g')))
               AND TRIM(LOWER(bulan)) = ?
               AND tahun = ?
             ORDER BY id DESC
@@ -644,7 +651,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'source_detail_hd') {
     header('Content-Type: application/json; charset=utf-8');
     $kodeKab = trim((string)($_GET['kode_kabupaten'] ?? ''));
-    $komoditasReq = trim((string)($_GET['komoditas'] ?? ''));
+    $komoditasReq = normalize_hd_commodity((string)($_GET['komoditas'] ?? ''));
     $bulanReq = strtolower(trim((string)($_GET['bulan'] ?? '')));
     $tahunReq = trim((string)($_GET['tahun'] ?? ''));
 
@@ -660,16 +667,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         WHERE TRIM(LOWER(bulan)) = ?
           AND tahun = ?
           AND kode_kabupaten = ?
-          AND TRIM(LOWER(komoditas)) = TRIM(LOWER(?))
+          AND LOWER(TRIM(REGEXP_REPLACE(komoditas, '\s+', ' ', 'g'))) = LOWER(TRIM(REGEXP_REPLACE(?, '\s+', ' ', 'g')))
         LIMIT 1
     ");
     $stmtSrc->execute([$bulanReq, (int)$tahunReq, $kodeKab, $komoditasReq]);
     $src = $stmtSrc->fetch();
     if (!$src) {
+        $stmtExists = $pdo->prepare("
+            SELECT 1
+            FROM hd
+            WHERE kode_kabupaten = ?
+              AND TRIM(LOWER(bulan)) = ?
+              AND tahun = ?
+              AND LOWER(TRIM(REGEXP_REPLACE(komoditas, '\s+', ' ', 'g'))) = LOWER(TRIM(REGEXP_REPLACE(?, '\s+', ' ', 'g')))
+            LIMIT 1
+        ");
+        $stmtExists->execute([$kodeKab, $bulanReq, (int)$tahunReq, $komoditasReq]);
+        $existsHd = (bool)$stmtExists->fetchColumn();
         echo json_encode([
             'ok' => true,
             'has_source' => false,
-            'message' => 'Sumber hitung belum tersedia (mungkin data diinput manual, bukan dari upload).',
+            'message' => $existsHd
+                ? 'Data HD ada, tetapi detail sumber upload belum tersimpan. Silakan upload ulang file untuk bulan ini agar sumber hitung tampil.'
+                : 'Sumber hitung belum tersedia (mungkin data diinput manual, bukan dari upload).',
         ]);
         exit;
     }
