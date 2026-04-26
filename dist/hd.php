@@ -16,6 +16,20 @@ $pdo->exec("
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
 ");
+$pdo->exec("
+    CREATE TABLE IF NOT EXISTS hd_upload_sources (
+        id BIGSERIAL PRIMARY KEY,
+        bulan TEXT NOT NULL,
+        tahun INTEGER NOT NULL,
+        kode_kabupaten TEXT NOT NULL,
+        komoditas TEXT NOT NULL,
+        source_count INTEGER NOT NULL DEFAULT 0,
+        source_values_json TEXT NOT NULL DEFAULT '[]',
+        source_avg NUMERIC(14,4) NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (bulan, tahun, kode_kabupaten, komoditas)
+    )
+");
 
 $bulan_map = [
     'january' => 'januari',
@@ -243,10 +257,12 @@ function parse_hd_upload_rows(string $tmpPath, string $filename): array
                 'komoditas' => $komoditas,
                 'sum' => 0.0,
                 'count' => 0,
+                'values' => [],
             ];
         }
         $grouped[$key]['sum'] += (float)$perubahan;
         $grouped[$key]['count'] += 1;
+        $grouped[$key]['values'][] = (float)$perubahan;
     }
 
     if (empty($grouped)) {
@@ -317,6 +333,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             INSERT INTO hd (kode_kabupaten, nama_kabupaten, bulan, tahun, komoditas, perubahan, catatan, penjelasan, time_stamp)
             VALUES (?, ?, ?, ?, ?, ?, '', '', NOW())
         ");
+        $sourceUpsertStmt = $pdo->prepare("
+            INSERT INTO hd_upload_sources (bulan, tahun, kode_kabupaten, komoditas, source_count, source_values_json, source_avg, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+            ON CONFLICT (bulan, tahun, kode_kabupaten, komoditas)
+            DO UPDATE SET
+                source_count = EXCLUDED.source_count,
+                source_values_json = EXCLUDED.source_values_json,
+                source_avg = EXCLUDED.source_avg,
+                updated_at = NOW()
+        ");
 
         $updated = 0;
         $inserted = 0;
@@ -335,6 +361,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $insertStmt->execute([$kodeKab, $namaKabupaten, $filterBulan, (int)$filterTahun, $komoditasVal, $avgPerubahan]);
                 $inserted++;
             }
+            $rawValues = isset($item['values']) && is_array($item['values']) ? array_values($item['values']) : [];
+            $sourceUpsertStmt->execute([
+                $filterBulan,
+                (int)$filterTahun,
+                $kodeKab,
+                $komoditasVal,
+                count($rawValues),
+                json_encode($rawValues, JSON_UNESCAPED_UNICODE),
+                $avgPerubahan,
+            ]);
         }
         $pdo->commit();
 
@@ -605,6 +641,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'source_detail_hd') {
+    header('Content-Type: application/json; charset=utf-8');
+    $kodeKab = trim((string)($_GET['kode_kabupaten'] ?? ''));
+    $komoditasReq = trim((string)($_GET['komoditas'] ?? ''));
+    $bulanReq = strtolower(trim((string)($_GET['bulan'] ?? '')));
+    $tahunReq = trim((string)($_GET['tahun'] ?? ''));
+
+    if ($kodeKab === '' || $komoditasReq === '' || $bulanReq === '' || $tahunReq === '' || !ctype_digit($tahunReq)) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'message' => 'Parameter belum lengkap.']);
+        exit;
+    }
+
+    $stmtSrc = $pdo->prepare("
+        SELECT source_count, source_values_json, source_avg
+        FROM hd_upload_sources
+        WHERE TRIM(LOWER(bulan)) = ?
+          AND tahun = ?
+          AND kode_kabupaten = ?
+          AND TRIM(LOWER(komoditas)) = TRIM(LOWER(?))
+        LIMIT 1
+    ");
+    $stmtSrc->execute([$bulanReq, (int)$tahunReq, $kodeKab, $komoditasReq]);
+    $src = $stmtSrc->fetch();
+    if (!$src) {
+        echo json_encode([
+            'ok' => true,
+            'has_source' => false,
+            'message' => 'Sumber hitung belum tersedia (mungkin data diinput manual, bukan dari upload).',
+        ]);
+        exit;
+    }
+
+    $values = json_decode((string)($src['source_values_json'] ?? '[]'), true);
+    if (!is_array($values)) {
+        $values = [];
+    }
+    $formattedValues = [];
+    foreach ($values as $v) {
+        if (!is_numeric($v)) {
+            continue;
+        }
+        $formattedValues[] = number_format((float)$v, 2, ',', '.');
+    }
+    echo json_encode([
+        'ok' => true,
+        'has_source' => true,
+        'count' => (int)($src['source_count'] ?? 0),
+        'avg' => isset($src['source_avg']) && is_numeric($src['source_avg']) ? number_format((float)$src['source_avg'], 2, ',', '.') : '-',
+        'values' => $formattedValues,
+    ]);
+    exit;
+}
+
 $where = [];
 $types = '';
 $params = [];
@@ -867,6 +957,28 @@ $columns = [
         align-items: center;
         gap: 8px;
       }
+      .admin-quick-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-right: 2px;
+      }
+      .quick-action-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        border: 1px solid #eef0f4;
+        background: #fff;
+        display: grid;
+        place-items: center;
+        color: #6b7280;
+        box-shadow: 0 8px 18px rgba(56, 65, 80, 0.08);
+        cursor: pointer;
+      }
+      .quick-action-btn:hover {
+        background: #fff6ef;
+        color: #f28b2b;
+      }
       .icon-btn {
         width: 36px;
         height: 36px;
@@ -1049,6 +1161,28 @@ $columns = [
         from { opacity: 0.75; }
         to { opacity: 1; }
       }
+      .kab-source-btn {
+        border: none;
+        background: transparent;
+        padding: 0;
+        font: inherit;
+        color: #2f3441;
+        font-weight: 600;
+        cursor: pointer;
+        text-align: left;
+      }
+      .kab-source-btn:hover { color: #f28b2b; text-decoration: underline; }
+      .source-body {
+        margin-top: 12px;
+        border-radius: 14px;
+        border: 1px solid #edf1f7;
+        background: #fafbfd;
+        padding: 12px;
+        min-height: 90px;
+        font-size: 13px;
+        color: #4b5563;
+        line-height: 1.5;
+      }
       .delete-modal {
         position: fixed;
         inset: 0;
@@ -1069,6 +1203,7 @@ $columns = [
       }
       .delete-panel h3 { margin: 0 0 8px; font-size: 18px; font-weight: 700; color: var(--ink); }
       .delete-panel p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+      .mini-modal-form { margin-top: 14px; display: grid; gap: 10px; }
       .delete-target {
         margin-top: 14px;
         padding: 12px 14px;
@@ -1388,6 +1523,14 @@ $columns = [
             <button type="submit">Filter</button>
           </div>
           <div class="actions">
+            <?php if (is_provinsi($user)): ?>
+              <div class="admin-quick-actions">
+                <button type="button" class="quick-action-btn" id="open-upload-hd-modal" title="Upload Data HD"><i class="mdi mdi-database-import-outline"></i></button>
+                <button type="button" class="quick-action-btn" id="open-add-hd-modal" title="Tambah Komoditas"><i class="mdi mdi-playlist-plus"></i></button>
+                <button type="button" class="quick-action-btn" id="open-delete-month-data" title="Hapus Data Bulan Terfilter" <?php echo ($bulan === '' || $tahun === '' || !ctype_digit((string)$tahun)) ? 'disabled' : ''; ?>><i class="mdi mdi-delete-alert-outline"></i></button>
+                <button type="button" class="quick-action-btn" id="open-delete-commodity" disabled title="Hapus Komoditas Aktif"><i class="mdi mdi-delete-outline"></i></button>
+              </div>
+            <?php endif; ?>
             <div class="user-pill" style="padding:6px 10px;border-radius:999px;background:#fff;border:1px solid #eef0f4;font-size:12px;color:#6b7280;box-shadow:0 6px 14px rgba(56,65,80,0.08);"><?php echo htmlspecialchars($user['email'] ?? ''); ?></div>
             <a class="icon-btn" href="logout.php" title="Logout"><i class="mdi mdi-logout"></i></a>
           </div>
@@ -1398,58 +1541,39 @@ $columns = [
           </div>
         <?php endif; ?>
         <?php if (is_provinsi($user)): ?>
-          <div class="commodity-add-card">
-            <div class="commodity-add-copy">
-              <div class="commodity-add-icon"><i class="mdi mdi-plus-thick"></i></div>
-              <div>
-                <div class="commodity-add-title">Tambah Komoditas HD</div>
-                <div class="commodity-add-subtitle">Otomatis membuat tabel untuk semua kabupaten/kota dari bulan berjalan sampai Desember 2026.</div>
-              </div>
+          <div class="delete-modal" id="add-hd-modal" aria-hidden="true">
+            <div class="delete-panel" role="dialog" aria-modal="true" aria-labelledby="add-hd-title">
+              <h3 id="add-hd-title">Tambah Komoditas HD</h3>
+              <p>Komoditas baru akan dibuat untuk semua kabupaten/kota dari bulan berjalan sampai Desember 2026.</p>
+              <form class="mini-modal-form" method="post" action="hd.php">
+                <input type="hidden" name="action" value="add_commodity">
+                <input type="text" name="commodity_name" class="commodity-add-input" placeholder="Contoh: Gula Kristal" maxlength="100" required>
+                <div class="delete-actions">
+                  <button type="button" class="delete-cancel-btn" id="close-add-hd-modal">Batal</button>
+                  <button type="submit" class="delete-confirm-btn"><i class="mdi mdi-playlist-plus"></i>Tambah Komoditas</button>
+                </div>
+              </form>
             </div>
-            <form class="commodity-add-form" method="post" action="hd.php">
-              <input type="hidden" name="action" value="add_commodity">
-              <input type="text" name="commodity_name" class="commodity-add-input" placeholder="Contoh: Gula Kristal" maxlength="100" required>
-              <button type="submit" class="commodity-add-btn">
-                <i class="mdi mdi-playlist-plus"></i>
-                Tambah Komoditas
-              </button>
-              <button type="button" class="commodity-delete-btn" id="open-delete-commodity" disabled>
-                <i class="mdi mdi-delete-outline"></i>
-                Hapus Komoditas
-              </button>
-              <div class="delete-help" id="delete-help">Pilih tab komoditas yang ingin dihapus terlebih dahulu.</div>
-            </form>
           </div>
-          <div class="upload-kitchen-card">
-            <div class="upload-kitchen-head">
-              <div class="upload-kitchen-title"><i class="mdi mdi-database-import-outline"></i>Dapur Olah Data HD</div>
-              <div class="upload-kitchen-note">Upload file export (`.xls` / `.csv`) untuk update massal nilai HD pada bulan & tahun terfilter.</div>
-            </div>
-            <form class="upload-kitchen-form" id="upload-kitchen-form" method="post" action="hd.php" enctype="multipart/form-data">
-              <input type="hidden" name="action" value="upload_hd_data">
-              <input type="hidden" name="filter_bulan" value="<?php echo htmlspecialchars($bulan); ?>">
-              <input type="hidden" name="filter_tahun" value="<?php echo htmlspecialchars($tahun); ?>">
-              <input type="file" name="hd_upload_file" class="upload-kitchen-input" accept=".xls,.csv,.html,.htm" required>
-              <button type="submit" class="upload-kitchen-btn">
-                <i class="mdi mdi-upload-outline"></i>
-                Upload & Isi Data HD
-              </button>
-              <button type="button" class="commodity-delete-btn" id="open-delete-month-data" <?php echo ($bulan === '' || $tahun === '' || !ctype_digit((string)$tahun)) ? 'disabled' : ''; ?>>
-                <i class="mdi mdi-delete-alert-outline"></i>
-                Hapus Data Bulan Terfilter
-              </button>
-            </form>
-            <div class="upload-kitchen-tip">
-              Kolom yang dibaca: <strong>Kabupaten</strong>, <strong>Nama Komoditas</strong>, <strong>Perubahan Rata-rata (%)</strong>. Kolom catatan akan dikosongkan.
-              <?php if ($bulan === '' || $tahun === '' || !ctype_digit((string)$tahun)): ?>
-                Pilih filter bulan+tahun agar tombol hapus data aktif.
-              <?php endif; ?>
-            </div>
-            <div class="upload-progress-wrap" id="upload-progress-wrap">
-              <div class="upload-progress-text" id="upload-progress-text">Menyiapkan upload...</div>
-              <div class="upload-progress-track">
-                <div class="upload-progress-fill" id="upload-progress-fill"></div>
-              </div>
+          <div class="delete-modal" id="upload-hd-modal" aria-hidden="true">
+            <div class="delete-panel" role="dialog" aria-modal="true" aria-labelledby="upload-hd-title">
+              <h3 id="upload-hd-title">Upload Data HD</h3>
+              <p>Upload file export (`.xls` / `.csv`) untuk update massal nilai HD di bulan & tahun terfilter.</p>
+              <form class="upload-kitchen-form mini-modal-form" id="upload-kitchen-form" method="post" action="hd.php" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="upload_hd_data">
+                <input type="hidden" name="filter_bulan" value="<?php echo htmlspecialchars($bulan); ?>">
+                <input type="hidden" name="filter_tahun" value="<?php echo htmlspecialchars($tahun); ?>">
+                <input type="file" name="hd_upload_file" class="upload-kitchen-input" accept=".xls,.csv,.html,.htm" required>
+                <div class="upload-kitchen-tip">Kolom dibaca: <strong>Kabupaten</strong>, <strong>Nama Komoditas</strong>, <strong>Perubahan Rata-rata (%)</strong>.</div>
+                <div class="upload-progress-wrap" id="upload-progress-wrap">
+                  <div class="upload-progress-text" id="upload-progress-text">Menyiapkan upload...</div>
+                  <div class="upload-progress-track"><div class="upload-progress-fill" id="upload-progress-fill"></div></div>
+                </div>
+                <div class="delete-actions">
+                  <button type="button" class="delete-cancel-btn" id="close-upload-hd-modal">Batal</button>
+                  <button type="submit" class="upload-kitchen-btn"><i class="mdi mdi-upload-outline"></i>Upload & Isi Data HD</button>
+                </div>
+              </form>
             </div>
           </div>
           <div class="delete-modal" id="delete-month-data-modal" aria-hidden="true">
@@ -1512,6 +1636,16 @@ $columns = [
             </div>
           </div>
         <?php endif; ?>
+        <div class="delete-modal" id="source-detail-modal" aria-hidden="true">
+          <div class="delete-panel" role="dialog" aria-modal="true" aria-labelledby="source-detail-title">
+            <h3 id="source-detail-title">Sumber Perhitungan Perubahan</h3>
+            <p id="source-detail-sub">Memuat data sumber...</p>
+            <div class="source-body" id="source-detail-body">Memuat...</div>
+            <div class="delete-actions" style="margin-top:14px;">
+              <button type="button" class="delete-cancel-btn" id="close-source-detail">Tutup</button>
+            </div>
+          </div>
+        </div>
         <?php if (!empty($komoditas_tabs)): ?>
           <div class="tabs" data-selected="<?php echo htmlspecialchars($komoditas_selected); ?>">
             <?php foreach ($komoditas_tabs as $k): ?>
@@ -1617,6 +1751,17 @@ $columns = [
                 <td>
                   <textarea class="form-control form-control-sm editable-cell wrap-textarea" data-field="penjelasan" rows="1" placeholder="Isi penjelasan" <?php echo $disabled_penjelasan; ?>><?php echo htmlspecialchars($value_display); ?></textarea>
                 </td>
+                <?php elseif ($key === 'nama_kabupaten'): ?>
+                  <td>
+                    <button type="button"
+                            class="kab-source-btn"
+                            data-source-kab="<?php echo htmlspecialchars((string)$row_kode); ?>"
+                            data-source-komoditas="<?php echo htmlspecialchars((string)$komoditas); ?>"
+                            data-source-bulan="<?php echo htmlspecialchars((string)($row['bulan'] ?? $bulan)); ?>"
+                            data-source-tahun="<?php echo htmlspecialchars((string)($row['tahun'] ?? $tahun)); ?>">
+                      <?php echo htmlspecialchars($value_display === '' ? '-' : $value_display); ?>
+                    </button>
+                  </td>
                 <?php else: ?>
                   <td><?php echo htmlspecialchars($value_display === '' ? '-' : $value_display); ?></td>
                 <?php endif; ?>
@@ -1801,10 +1946,20 @@ $columns = [
         var deleteMonthButton = document.getElementById('open-delete-month-data');
         var deleteMonthModal = document.getElementById('delete-month-data-modal');
         var closeDeleteMonthButton = document.getElementById('close-delete-month-data');
+        var openUploadHdModalBtn = document.getElementById('open-upload-hd-modal');
+        var closeUploadHdModalBtn = document.getElementById('close-upload-hd-modal');
+        var uploadHdModal = document.getElementById('upload-hd-modal');
+        var openAddHdModalBtn = document.getElementById('open-add-hd-modal');
+        var closeAddHdModalBtn = document.getElementById('close-add-hd-modal');
+        var addHdModal = document.getElementById('add-hd-modal');
         var uploadKitchenForm = document.getElementById('upload-kitchen-form');
         var uploadProgressWrap = document.getElementById('upload-progress-wrap');
         var uploadProgressFill = document.getElementById('upload-progress-fill');
         var uploadProgressText = document.getElementById('upload-progress-text');
+        var sourceDetailModal = document.getElementById('source-detail-modal');
+        var sourceDetailSub = document.getElementById('source-detail-sub');
+        var sourceDetailBody = document.getElementById('source-detail-body');
+        var closeSourceDetail = document.getElementById('close-source-detail');
 
         function setUploadProgress(percent, message) {
           if (!uploadProgressWrap || !uploadProgressFill || !uploadProgressText) return;
@@ -1856,6 +2011,16 @@ $columns = [
           deleteMonthModal.classList.remove('open');
           deleteMonthModal.setAttribute('aria-hidden', 'true');
         }
+        function openSimpleModal(el) {
+          if (!el) return;
+          el.classList.add('open');
+          el.setAttribute('aria-hidden', 'false');
+        }
+        function closeSimpleModal(el) {
+          if (!el) return;
+          el.classList.remove('open');
+          el.setAttribute('aria-hidden', 'true');
+        }
 
         if (tabsWrap) {
           function setActiveTab(name) {
@@ -1892,6 +2057,11 @@ $columns = [
         if (closeDeleteButton) closeDeleteButton.addEventListener('click', closeDeleteModal);
         if (deleteMonthButton) deleteMonthButton.addEventListener('click', openDeleteMonthModal);
         if (closeDeleteMonthButton) closeDeleteMonthButton.addEventListener('click', closeDeleteMonthModal);
+        if (openUploadHdModalBtn) openUploadHdModalBtn.addEventListener('click', function () { openSimpleModal(uploadHdModal); });
+        if (closeUploadHdModalBtn) closeUploadHdModalBtn.addEventListener('click', function () { closeSimpleModal(uploadHdModal); });
+        if (openAddHdModalBtn) openAddHdModalBtn.addEventListener('click', function () { openSimpleModal(addHdModal); });
+        if (closeAddHdModalBtn) closeAddHdModalBtn.addEventListener('click', function () { closeSimpleModal(addHdModal); });
+        if (closeSourceDetail) closeSourceDetail.addEventListener('click', function () { closeSimpleModal(sourceDetailModal); });
         if (deleteModal) {
           deleteModal.addEventListener('click', function (e) {
             if (e.target === deleteModal) closeDeleteModal();
@@ -1902,10 +2072,28 @@ $columns = [
             if (e.target === deleteMonthModal) closeDeleteMonthModal();
           });
         }
+        if (uploadHdModal) {
+          uploadHdModal.addEventListener('click', function (e) {
+            if (e.target === uploadHdModal) closeSimpleModal(uploadHdModal);
+          });
+        }
+        if (addHdModal) {
+          addHdModal.addEventListener('click', function (e) {
+            if (e.target === addHdModal) closeSimpleModal(addHdModal);
+          });
+        }
+        if (sourceDetailModal) {
+          sourceDetailModal.addEventListener('click', function (e) {
+            if (e.target === sourceDetailModal) closeSimpleModal(sourceDetailModal);
+          });
+        }
         document.addEventListener('keydown', function (e) {
           if (e.key === 'Escape') {
             closeDeleteModal();
             closeDeleteMonthModal();
+            closeSimpleModal(uploadHdModal);
+            closeSimpleModal(addHdModal);
+            closeSimpleModal(sourceDetailModal);
           }
         });
         var deleteForm = document.getElementById('delete-commodity-form');
@@ -1990,6 +2178,48 @@ $columns = [
             xhr.send(new FormData(uploadKitchenForm));
           });
         }
+
+        document.addEventListener('click', function (e) {
+          var btn = e.target.closest('.kab-source-btn');
+          if (!btn) return;
+          var kab = btn.getAttribute('data-source-kab') || '';
+          var kom = btn.getAttribute('data-source-komoditas') || '';
+          var bulanSrc = btn.getAttribute('data-source-bulan') || '';
+          var tahunSrc = btn.getAttribute('data-source-tahun') || '';
+          if (!kab || !kom || !bulanSrc || !tahunSrc) return;
+
+          if (sourceDetailSub) sourceDetailSub.textContent = 'Kabupaten ' + kab + ' • ' + kom + ' • ' + bulanSrc + ' ' + tahunSrc;
+          if (sourceDetailBody) sourceDetailBody.textContent = 'Memuat sumber hitung...';
+          openSimpleModal(sourceDetailModal);
+
+          var url = 'hd.php?action=source_detail_hd'
+            + '&kode_kabupaten=' + encodeURIComponent(kab)
+            + '&komoditas=' + encodeURIComponent(kom)
+            + '&bulan=' + encodeURIComponent(bulanSrc)
+            + '&tahun=' + encodeURIComponent(tahunSrc);
+          fetch(url)
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (!sourceDetailBody) return;
+              if (!data || data.ok !== true) {
+                sourceDetailBody.textContent = 'Gagal memuat sumber hitung.';
+                return;
+              }
+              if (!data.has_source) {
+                sourceDetailBody.textContent = data.message || 'Sumber hitung tidak ditemukan.';
+                return;
+              }
+              var values = Array.isArray(data.values) ? data.values : [];
+              sourceDetailBody.innerHTML =
+                '<strong>Rumus:</strong> rata-rata nilai perubahan yang tidak kosong.<br>' +
+                '<strong>Jumlah data:</strong> ' + (data.count || 0) + '<br>' +
+                '<strong>Daftar nilai:</strong> ' + (values.length ? values.join(', ') : '-') + '<br>' +
+                '<strong>Hasil rata-rata:</strong> ' + (data.avg || '-');
+            })
+            .catch(function () {
+              if (sourceDetailBody) sourceDetailBody.textContent = 'Gagal memuat sumber hitung.';
+            });
+        });
 
         function saveCell(el) {
           var row = el.closest('tr');
