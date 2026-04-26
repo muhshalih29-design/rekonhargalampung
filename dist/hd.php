@@ -324,26 +324,14 @@ function parse_hd_upload_rows(string $tmpPath, string $filename): array
         $grouped[$key]['sum'] += (float)$perubahan;
         $grouped[$key]['count'] += 1;
         $grouped[$key]['values'][] = (float)$perubahan;
-        if ($kecCode !== '' || $kecName !== '') {
-            $kecKey = ($kecCode !== '' ? $kecCode : '-') . '|' . ($kecName !== '' ? $kecName : '-');
-            if (!isset($grouped[$key]['sources'][$kecKey])) {
-                $grouped[$key]['sources'][$kecKey] = [
-                    'kecamatan' => $kecCode,
-                    'nama_kecamatan' => $kecName,
-                    'sum_harga_now' => 0.0,
-                    'count_harga_now' => 0,
-                    'sum_harga_prev' => 0.0,
-                    'count_harga_prev' => 0,
-                ];
-            }
-            if ($hargaNow !== null) {
-                $grouped[$key]['sources'][$kecKey]['sum_harga_now'] += (float)$hargaNow;
-                $grouped[$key]['sources'][$kecKey]['count_harga_now'] += 1;
-            }
-            if ($hargaPrev !== null) {
-                $grouped[$key]['sources'][$kecKey]['sum_harga_prev'] += (float)$hargaPrev;
-                $grouped[$key]['sources'][$kecKey]['count_harga_prev'] += 1;
-            }
+        if ($kecCode !== '' || $kecName !== '' || $hargaNow !== null || $hargaPrev !== null) {
+            $grouped[$key]['sources'][] = [
+                'kecamatan' => $kecCode,
+                'nama_kecamatan' => $kecName,
+                'harga_bulan_ini' => $hargaNow,
+                'harga_bulan_lalu' => $hargaPrev,
+                'perubahan' => $perubahan,
+            ];
         }
     }
 
@@ -455,13 +443,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     if (!is_array($src)) {
                         continue;
                     }
-                    $countNow = (int)($src['count_harga_now'] ?? 0);
-                    $countPrev = (int)($src['count_harga_prev'] ?? 0);
                     $sourceRows[] = [
                         'kecamatan' => (string)($src['kecamatan'] ?? ''),
                         'nama_kecamatan' => (string)($src['nama_kecamatan'] ?? ''),
-                        'harga_bulan_ini' => $countNow > 0 ? ((float)($src['sum_harga_now'] ?? 0) / $countNow) : null,
-                        'harga_bulan_lalu' => $countPrev > 0 ? ((float)($src['sum_harga_prev'] ?? 0) / $countPrev) : null,
+                        'harga_bulan_ini' => isset($src['harga_bulan_ini']) && is_numeric($src['harga_bulan_ini']) ? (float)$src['harga_bulan_ini'] : null,
+                        'harga_bulan_lalu' => isset($src['harga_bulan_lalu']) && is_numeric($src['harga_bulan_lalu']) ? (float)$src['harga_bulan_lalu'] : null,
+                        'perubahan' => isset($src['perubahan']) && is_numeric($src['perubahan']) ? (float)$src['perubahan'] : null,
                     ];
                 }
             }
@@ -839,12 +826,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'harga_bulan_ini' => isset($row['harga_bulan_ini']) && is_numeric($row['harga_bulan_ini'])
                 ? number_format((float)$row['harga_bulan_ini'], 2, ',', '.')
                 : '-',
+            'perubahan' => isset($row['perubahan']) && is_numeric($row['perubahan'])
+                ? number_format((float)$row['perubahan'], 2, ',', '.')
+                : '-',
         ];
     }
     echo json_encode([
         'ok' => true,
         'has_source' => true,
-        'count' => (int)($src['source_count'] ?? 0),
+        'count' => count($formattedRows) > 0 ? count($formattedRows) : (int)($src['source_count'] ?? 0),
         'avg' => isset($src['source_avg']) && is_numeric($src['source_avg']) ? number_format((float)$src['source_avg'], 2, ',', '.') : '-',
         'values' => $formattedValues,
         'kecamatan_rows' => $formattedRows,
@@ -2404,6 +2394,7 @@ $columns = [
                   + '<td>' + escapeHtml(kec || '-') + '</td>'
                   + '<td class="num">' + escapeHtml(r.harga_bulan_lalu || '-') + '</td>'
                   + '<td class="num">' + escapeHtml(r.harga_bulan_ini || '-') + '</td>'
+                  + '<td class="num">' + escapeHtml(r.perubahan || '-') + '</td>'
                   + '</tr>';
               }).join('');
               sourceDetailBody.innerHTML =
@@ -2412,7 +2403,7 @@ $columns = [
                 '<strong>Nilai perubahan:</strong> ' + escapeHtml(values.length ? values.join(', ') : '-') + '<br>' +
                 '<strong>Hasil rata-rata:</strong> ' + escapeHtml(data.avg || '-') + '<hr style="border:none;border-top:1px solid #e8edf4;margin:10px 0;">'
                 + (sourceRows.length
-                  ? ('<div class="source-table-wrap"><table class="source-table"><thead><tr><th>Kecamatan</th><th>Harga Bulan Sebelumnya</th><th>Harga Bulan Ini</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div>')
+                  ? ('<div class="source-table-wrap"><table class="source-table"><thead><tr><th>Kecamatan</th><th>Harga Bulan Sebelumnya</th><th>Harga Bulan Ini</th><th>Perubahan (%)</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div>')
                   : '<em>Data daftar kecamatan belum tersedia di sumber upload ini.</em>');
             })
             .catch(function () {
