@@ -30,6 +30,12 @@ $pdo->exec("
         UNIQUE (bulan, tahun, kode_kabupaten, komoditas)
     )
 ");
+try {
+    $pdo->exec("CREATE INDEX IF NOT EXISTS hd_bulan_tahun_idx ON hd (bulan, tahun)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS hd_bulan_tahun_kab_kom_idx ON hd (bulan, tahun, kode_kabupaten, komoditas)");
+} catch (Throwable $e) {
+    // Keep page running if index creation privilege is restricted.
+}
 
 $bulan_map = [
     'january' => 'januari',
@@ -105,6 +111,34 @@ function normalize_hd_commodity(string $value): string
     return $value;
 }
 
+function normalize_hd_commodity_key(string $value): string
+{
+    return strtolower(normalize_hd_commodity($value));
+}
+
+function parse_html_table_rows_fast(string $html): array
+{
+    $rows = [];
+    if (!preg_match_all('/<tr\b[^>]*>(.*?)<\/tr>/is', $html, $trMatches)) {
+        return $rows;
+    }
+    foreach ($trMatches[1] as $trHtml) {
+        if (!preg_match_all('/<t[dh]\b[^>]*>(.*?)<\/t[dh]>/is', $trHtml, $cellMatches)) {
+            continue;
+        }
+        $cells = [];
+        foreach ($cellMatches[1] as $cellHtml) {
+            $plain = html_entity_decode(strip_tags($cellHtml), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $plain = trim(preg_replace('/\s+/u', ' ', $plain) ?? $plain);
+            $cells[] = $plain;
+        }
+        if (!empty($cells)) {
+            $rows[] = $cells;
+        }
+    }
+    return $rows;
+}
+
 function normalize_hd_header(string $value): string
 {
     $value = strtolower(trim($value));
@@ -162,33 +196,36 @@ function parse_hd_upload_rows(string $tmpPath, string $filename): array
     $isHtml = stripos($content, '<table') !== false || stripos($filename, '.xls') !== false;
     $rows = [];
     if ($isHtml) {
-        libxml_use_internal_errors(true);
-        $dom = new DOMDocument();
-        $loaded = $dom->loadHTML($content);
-        libxml_clear_errors();
-        if (!$loaded) {
-            throw new RuntimeException('Format HTML XLS tidak valid.');
-        }
-        $xpath = new DOMXPath($dom);
-        $trNodes = $xpath->query('//table[1]//tr');
-        if (!$trNodes || $trNodes->length === 0) {
-            throw new RuntimeException('Tabel pada file tidak ditemukan.');
-        }
-        foreach ($trNodes as $tr) {
-            $cells = [];
-            foreach ($tr->childNodes as $cell) {
-                if (!($cell instanceof DOMElement)) {
-                    continue;
-                }
-                $tag = strtolower($cell->tagName);
-                if ($tag !== 'th' && $tag !== 'td') {
-                    continue;
-                }
-                $text = trim(preg_replace('/\s+/', ' ', (string)$cell->textContent) ?? '');
-                $cells[] = $text;
+        $rows = parse_html_table_rows_fast($content);
+        if (empty($rows)) {
+            libxml_use_internal_errors(true);
+            $dom = new DOMDocument();
+            $loaded = $dom->loadHTML($content);
+            libxml_clear_errors();
+            if (!$loaded) {
+                throw new RuntimeException('Format HTML XLS tidak valid.');
             }
-            if (!empty($cells)) {
-                $rows[] = $cells;
+            $xpath = new DOMXPath($dom);
+            $trNodes = $xpath->query('//table[1]//tr');
+            if (!$trNodes || $trNodes->length === 0) {
+                throw new RuntimeException('Tabel pada file tidak ditemukan.');
+            }
+            foreach ($trNodes as $tr) {
+                $cells = [];
+                foreach ($tr->childNodes as $cell) {
+                    if (!($cell instanceof DOMElement)) {
+                        continue;
+                    }
+                    $tag = strtolower($cell->tagName);
+                    if ($tag !== 'th' && $tag !== 'td') {
+                        continue;
+                    }
+                    $text = trim(preg_replace('/\s+/', ' ', (string)$cell->textContent) ?? '');
+                    $cells[] = $text;
+                }
+                if (!empty($cells)) {
+                    $rows[] = $cells;
+                }
             }
         }
     } else {
@@ -257,7 +294,7 @@ function parse_hd_upload_rows(string $tmpPath, string $filename): array
         }
         $kabShort = str_pad(substr($kabDigits, -2), 2, '0', STR_PAD_LEFT);
         $kodeKabupaten = '18' . $kabShort;
-        $key = strtolower($kodeKabupaten . '|' . $komoditas);
+        $key = $kodeKabupaten . '|' . normalize_hd_commodity_key($komoditas);
         if (!isset($grouped[$key])) {
             $grouped[$key] = [
                 'kode_kabupaten' => $kodeKabupaten,
@@ -325,16 +362,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $kabupatenNameMap[(string)$kabRow['kode_kabupaten']] = (string)$kabRow['nama_kabupaten'];
         }
 
-        $selectStmt = $pdo->prepare("
-            SELECT id
-            FROM hd
-            WHERE kode_kabupaten = ?
-              AND LOWER(TRIM(REGEXP_REPLACE(komoditas, '\s+', ' ', 'g'))) = LOWER(TRIM(REGEXP_REPLACE(?, '\s+', ' ', 'g')))
-              AND TRIM(LOWER(bulan)) = ?
-              AND tahun = ?
-            ORDER BY id DESC
-            LIMIT 1
-        ");
         $updateStmt = $pdo->prepare("UPDATE hd SET perubahan = ?, catatan = '' WHERE id = ?");
         $insertStmt = $pdo->prepare("
             INSERT INTO hd (kode_kabupaten, nama_kabupaten, bulan, tahun, komoditas, perubahan, catatan, penjelasan, time_stamp)
@@ -354,18 +381,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $updated = 0;
         $inserted = 0;
         $pdo->beginTransaction();
+        $existingMap = [];
+        $existingStmt = $pdo->prepare("
+            SELECT id, kode_kabupaten, komoditas
+            FROM hd
+            WHERE TRIM(LOWER(bulan)) = ?
+              AND tahun = ?
+            ORDER BY id DESC
+        ");
+        $existingStmt->execute([$filterBulan, (int)$filterTahun]);
+        foreach ($existingStmt as $existingRow) {
+            $existingKey = (string)$existingRow['kode_kabupaten'] . '|' . normalize_hd_commodity_key((string)$existingRow['komoditas']);
+            if (!isset($existingMap[$existingKey])) {
+                $existingMap[$existingKey] = (int)$existingRow['id'];
+            }
+        }
         foreach ($groupedRows as $item) {
             $kodeKab = (string)$item['kode_kabupaten'];
             $komoditasVal = (string)$item['komoditas'];
             $avgPerubahan = ((float)$item['sum']) / max(1, (int)$item['count']);
-            $selectStmt->execute([$kodeKab, $komoditasVal, $filterBulan, (int)$filterTahun]);
-            $existing = $selectStmt->fetch();
-            if ($existing) {
-                $updateStmt->execute([$avgPerubahan, (int)$existing['id']]);
+            $lookupKey = $kodeKab . '|' . normalize_hd_commodity_key($komoditasVal);
+            if (isset($existingMap[$lookupKey])) {
+                $updateStmt->execute([$avgPerubahan, (int)$existingMap[$lookupKey]]);
                 $updated++;
             } else {
                 $namaKabupaten = $kabupatenNameMap[$kodeKab] ?? $kodeKab;
                 $insertStmt->execute([$kodeKab, $namaKabupaten, $filterBulan, (int)$filterTahun, $komoditasVal, $avgPerubahan]);
+                $existingMap[$lookupKey] = 0;
                 $inserted++;
             }
             $rawValues = isset($item['values']) && is_array($item['values']) ? array_values($item['values']) : [];
@@ -662,28 +704,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     }
 
     $stmtSrc = $pdo->prepare("
-        SELECT source_count, source_values_json, source_avg
+        SELECT komoditas, source_count, source_values_json, source_avg
         FROM hd_upload_sources
         WHERE TRIM(LOWER(bulan)) = ?
           AND tahun = ?
           AND kode_kabupaten = ?
-          AND LOWER(TRIM(REGEXP_REPLACE(komoditas, '\s+', ' ', 'g'))) = LOWER(TRIM(REGEXP_REPLACE(?, '\s+', ' ', 'g')))
-        LIMIT 1
     ");
-    $stmtSrc->execute([$bulanReq, (int)$tahunReq, $kodeKab, $komoditasReq]);
-    $src = $stmtSrc->fetch();
+    $stmtSrc->execute([$bulanReq, (int)$tahunReq, $kodeKab]);
+    $src = null;
+    $wantedKey = normalize_hd_commodity_key($komoditasReq);
+    foreach ($stmtSrc as $srcRow) {
+        if (normalize_hd_commodity_key((string)$srcRow['komoditas']) === $wantedKey) {
+            $src = $srcRow;
+            break;
+        }
+    }
     if (!$src) {
         $stmtExists = $pdo->prepare("
-            SELECT 1
+            SELECT komoditas
             FROM hd
             WHERE kode_kabupaten = ?
               AND TRIM(LOWER(bulan)) = ?
               AND tahun = ?
-              AND LOWER(TRIM(REGEXP_REPLACE(komoditas, '\s+', ' ', 'g'))) = LOWER(TRIM(REGEXP_REPLACE(?, '\s+', ' ', 'g')))
-            LIMIT 1
         ");
-        $stmtExists->execute([$kodeKab, $bulanReq, (int)$tahunReq, $komoditasReq]);
-        $existsHd = (bool)$stmtExists->fetchColumn();
+        $stmtExists->execute([$kodeKab, $bulanReq, (int)$tahunReq]);
+        $existsHd = false;
+        foreach ($stmtExists as $hdRow) {
+            if (normalize_hd_commodity_key((string)$hdRow['komoditas']) === $wantedKey) {
+                $existsHd = true;
+                break;
+            }
+        }
         echo json_encode([
             'ok' => true,
             'has_source' => false,
