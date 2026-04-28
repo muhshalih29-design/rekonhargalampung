@@ -1020,6 +1020,9 @@ $columns = [
       <main class="main">
         <form class="topbar" method="get" action="hkd.php">
           <div>
+            <div class="title-banner-wrap" style="margin-bottom:10px;max-width:460px;">
+              <img src="assets/images/title-banner.png" alt="Rekon Harga Lampung" style="width:100%;height:auto;display:block;border-radius:14px;box-shadow:0 10px 24px rgba(56,65,80,0.12);">
+            </div>
             <div class="hello">Konfirmasi Perubahan Harga Konsumen Pedesaan</div>
             <div class="subhello">Rekon Harga Perdagangan Besar</div>
           </div>
