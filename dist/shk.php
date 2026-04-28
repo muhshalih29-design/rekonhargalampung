@@ -1024,7 +1024,7 @@ $columns = [
   <body>
     <div class="app">
       <aside class="sidebar">
-        <div class="logo"><img src="assets/images/rh-icon.png" alt="RH" style="width:24px;height:24px;object-fit:contain;display:block;"></div>
+        <div class="logo"><img src="assets/images/rh-icon.png" alt="RH" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"></div>
         <a class="nav-dot" href="index.php" title="Dashboard"><i class="mdi mdi-view-dashboard"></i></a>
         <a class="nav-dot active" href="shk.php" title="SHK"><span class="nav-text">HK</span></a>
         <a class="nav-dot" href="hpb.php" title="HPB"><span class="nav-text">HPB</span></a>

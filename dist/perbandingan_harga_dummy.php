@@ -232,7 +232,7 @@ $user = require_auth();
   <body>
     <div class="page">
       <aside class="sidebar">
-        <div class="logo"><img src="assets/images/rh-icon.png" alt="RH" style="width:24px;height:24px;object-fit:contain;display:block;"></div>
+        <div class="logo"><img src="assets/images/rh-icon.png" alt="RH" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"></div>
         <a class="side-btn active" href="#">P</a>
         <a class="side-btn" href="#">%</a>
         <a class="side-btn" href="#">#</a>
