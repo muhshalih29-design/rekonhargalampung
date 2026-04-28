@@ -1141,10 +1141,8 @@ foreach ($top_attention as $attention_item) {
 
       <main class="main">
         <form class="topbar" method="get" action="perbandingan-harga.php">
-          <div>
-            <div class="title-banner-wrap" style="margin-bottom:10px;display:flex;align-items:center;gap:10px;">
-              <img src="assets/images/rh-icon.png" alt="SIHARGA" style="width:34px;height:34px;object-fit:cover;display:block;border-radius:10px;flex:0 0 auto;">
-              <span style="font-size:11px;font-weight:700;letter-spacing:.12em;color:#8b93a5;text-transform:uppercase;">SIHARGA Lampung</span>
+          <div>8b93a5;text-transform:uppercase;">SIHARGA Lampung</span>
+s*</div>#8b93a5;text-transform:uppercase;">SIHARGA Lampung</span>
             </div>
             <div class="hello">Perbandingan Perubahan Harga</div>
             <div class="subhello">Ringkasan perbandingan harga komoditas.</div>

@@ -333,10 +333,8 @@ $user = require_auth();
 
       <main class="main">
         <div class="topbar">
-          <div>
-            <div class="title-banner-wrap" style="margin-bottom:10px;display:flex;align-items:center;gap:10px;">
-              <img src="assets/images/rh-icon.png" alt="SIHARGA" style="width:34px;height:34px;object-fit:cover;display:block;border-radius:10px;flex:0 0 auto;">
-              <span style="font-size:11px;font-weight:700;letter-spacing:.12em;color:#8b93a5;text-transform:uppercase;">SIHARGA Lampung</span>
+          <div>8b93a5;text-transform:uppercase;">SIHARGA Lampung</span>
+s*</div>#8b93a5;text-transform:uppercase;">SIHARGA Lampung</span>
             </div>
             <div class="hello">Panduan Penggunaan Rekon Harga Lampung</div>
             <div class="subhello">Panduan penggunaan sistem untuk admin kabupaten/kota dan admin provinsi sesuai alur kerja terbaru.</div>

@@ -1103,10 +1103,8 @@ $columns = [
 
       <main class="main">
         <form class="topbar" method="get" action="hpb.php">
-          <div>
-            <div class="title-banner-wrap" style="margin-bottom:10px;display:flex;align-items:center;gap:10px;">
-              <img src="assets/images/rh-icon.png" alt="SIHARGA" style="width:34px;height:34px;object-fit:cover;display:block;border-radius:10px;flex:0 0 auto;">
-              <span style="font-size:11px;font-weight:700;letter-spacing:.12em;color:#8b93a5;text-transform:uppercase;">SIHARGA Lampung</span>
+          <div>8b93a5;text-transform:uppercase;">SIHARGA Lampung</span>
+s*</div>#8b93a5;text-transform:uppercase;">SIHARGA Lampung</span>
             </div>
             <div class="hello">Konfirmasi Perubahan Harga Perdagangan Besar</div>
             <div class="subhello">Rekon Harga Perdagangan Besar</div>
