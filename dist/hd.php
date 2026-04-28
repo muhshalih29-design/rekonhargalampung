@@ -2459,6 +2459,7 @@ $columns = [
             });
         });
 
+        var saveTimers = Object.create(null);
         function saveCell(el) {
           var row = el.closest('tr');
           if (!row) return;
@@ -2476,10 +2477,16 @@ $columns = [
           formData.append('id', id);
           formData.append('field', field);
           formData.append('value', value);
-
-          fetch('hd.php', { method: 'POST', body: formData })
-            .then(function (res) { return res.text(); })
-            .catch(function () { /* silent */ });
+          var key = id + '|' + field;
+          if (saveTimers[key]) {
+            clearTimeout(saveTimers[key]);
+          }
+          saveTimers[key] = setTimeout(function () {
+            fetch('hd.php', { method: 'POST', body: formData })
+              .then(function (res) { return res.text(); })
+              .catch(function () { /* silent */ });
+            delete saveTimers[key];
+          }, 450);
         }
 
         function setEditableValue(el, value) {
