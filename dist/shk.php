@@ -1040,8 +1040,8 @@ $columns = [
       <main class="main">
         <form class="topbar" method="get" action="shk.php">
           <div>
-            <div class="title-banner-wrap" style="margin-bottom:10px;max-width:460px;">
-              <img src="assets/images/title-banner.png" alt="Rekon Harga Lampung" style="width:100%;height:auto;display:block;border-radius:14px;box-shadow:0 10px 24px rgba(56,65,80,0.12);">
+            <div class="title-banner-wrap" style="margin-bottom:12px;display:flex;align-items:center;line-height:0;">
+              <img src="assets/images/title-banner.png" alt="Rekon Harga Lampung" style="width:min(320px,100%);height:auto;display:block;border-radius:18px;box-shadow:0 12px 26px rgba(56,65,80,0.10);">
             </div>
             <div class="hello">Konfirmasi Perubahan Harga Konsumen</div>
             <div class="subhello">Rekon Harga Komoditas</div>
