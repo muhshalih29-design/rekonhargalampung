@@ -261,6 +261,8 @@ function parse_hd_upload_rows(string $tmpPath, string $filename): array
         'kecamatan' => null,
         'nama_kecamatan' => null,
         'nama_komoditas' => null,
+        'kode_kualitas' => null,
+        'nama_kualitas' => null,
         'harga_bulan_ini_rr' => null,
         'harga_bulan_lalu_rr' => null,
         'perubahan_rata_rata' => null,
@@ -275,6 +277,10 @@ function parse_hd_upload_rows(string $tmpPath, string $filename): array
             $map['nama_kecamatan'] = $i;
         } elseif ($h === 'nama komoditas') {
             $map['nama_komoditas'] = $i;
+        } elseif ($h === 'kode kualitas') {
+            $map['kode_kualitas'] = $i;
+        } elseif ($h === 'nama kualitas') {
+            $map['nama_kualitas'] = $i;
         } elseif ($h === 'harga bulan ini rata rata') {
             $map['harga_bulan_ini_rr'] = $i;
         } elseif ($h === 'harga bulan sebelumnya rata rata') {
@@ -295,6 +301,8 @@ function parse_hd_upload_rows(string $tmpPath, string $filename): array
         $perubahanRaw = (string)($row[$map['perubahan_rata_rata']] ?? '');
         $kecCode = trim((string)($row[$map['kecamatan']] ?? ''));
         $kecName = trim((string)($row[$map['nama_kecamatan']] ?? ''));
+        $kualitasKode = trim((string)($row[$map['kode_kualitas']] ?? ''));
+        $kualitasNama = trim((string)($row[$map['nama_kualitas']] ?? ''));
         $hargaNow = parse_hd_decimal((string)($row[$map['harga_bulan_ini_rr']] ?? ''));
         $hargaPrev = parse_hd_decimal((string)($row[$map['harga_bulan_lalu_rr']] ?? ''));
         if ($kabRaw === '' || $komoditas === '') {
@@ -328,6 +336,8 @@ function parse_hd_upload_rows(string $tmpPath, string $filename): array
             $grouped[$key]['sources'][] = [
                 'kecamatan' => $kecCode,
                 'nama_kecamatan' => $kecName,
+                'kode_kualitas' => $kualitasKode,
+                'nama_kualitas' => $kualitasNama,
                 'harga_bulan_ini' => $hargaNow,
                 'harga_bulan_lalu' => $hargaPrev,
                 'perubahan' => $perubahan,
@@ -464,6 +474,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     $sourceRows[] = [
                         'kecamatan' => (string)($src['kecamatan'] ?? ''),
                         'nama_kecamatan' => (string)($src['nama_kecamatan'] ?? ''),
+                        'kode_kualitas' => (string)($src['kode_kualitas'] ?? ''),
+                        'nama_kualitas' => (string)($src['nama_kualitas'] ?? ''),
                         'harga_bulan_ini' => isset($src['harga_bulan_ini']) && is_numeric($src['harga_bulan_ini']) ? (float)$src['harga_bulan_ini'] : null,
                         'harga_bulan_lalu' => isset($src['harga_bulan_lalu']) && is_numeric($src['harga_bulan_lalu']) ? (float)$src['harga_bulan_lalu'] : null,
                         'perubahan' => isset($src['perubahan']) && is_numeric($src['perubahan']) ? (float)$src['perubahan'] : null,
@@ -471,8 +483,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 }
             }
             usort($sourceRows, static function (array $a, array $b): int {
-                $ka = ((string)($a['kecamatan'] ?? '')) . ' ' . ((string)($a['nama_kecamatan'] ?? ''));
-                $kb = ((string)($b['kecamatan'] ?? '')) . ' ' . ((string)($b['nama_kecamatan'] ?? ''));
+                $ka = ((string)($a['kecamatan'] ?? '')) . ' ' . ((string)($a['nama_kecamatan'] ?? '')) . ' ' . ((string)($a['kode_kualitas'] ?? ''));
+                $kb = ((string)($b['kecamatan'] ?? '')) . ' ' . ((string)($b['nama_kecamatan'] ?? '')) . ' ' . ((string)($b['kode_kualitas'] ?? ''));
                 return strcasecmp($ka, $kb);
             });
             $sourcePayload = [
@@ -854,6 +866,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $formattedRows[] = [
             'kecamatan' => trim((string)($row['kecamatan'] ?? '')),
             'nama_kecamatan' => trim((string)($row['nama_kecamatan'] ?? '')),
+            'kualitas' => trim(((string)($row['kode_kualitas'] ?? '')) . (trim((string)($row['nama_kualitas'] ?? '')) !== '' ? (' - ' . trim((string)($row['nama_kualitas'] ?? ''))) : '')),
             'harga_bulan_lalu' => isset($row['harga_bulan_lalu']) && is_numeric($row['harga_bulan_lalu'])
                 ? number_format((float)$row['harga_bulan_lalu'], 2, ',', '.')
                 : '-',
@@ -2426,6 +2439,7 @@ $columns = [
                 var kec = [r.kecamatan || '-', r.nama_kecamatan || ''].filter(Boolean).join(' - ');
                 return '<tr>'
                   + '<td>' + escapeHtml(kec || '-') + '</td>'
+                  + '<td>' + escapeHtml(r.kualitas || '-') + '</td>'
                   + '<td class="num">' + escapeHtml(r.harga_bulan_lalu || '-') + '</td>'
                   + '<td class="num">' + escapeHtml(r.harga_bulan_ini || '-') + '</td>'
                   + '<td class="num">' + escapeHtml(r.perubahan || '-') + '</td>'
@@ -2437,7 +2451,7 @@ $columns = [
                 '<strong>Nilai perubahan:</strong> ' + escapeHtml(values.length ? values.join(', ') : '-') + '<br>' +
                 '<strong>Hasil rata-rata:</strong> ' + escapeHtml(data.avg || '-') + '<hr style="border:none;border-top:1px solid #e8edf4;margin:10px 0;">'
                 + (sourceRows.length
-                  ? ('<div class="source-table-wrap"><table class="source-table"><thead><tr><th>Kecamatan</th><th>Harga Bulan Sebelumnya</th><th>Harga Bulan Ini</th><th>Perubahan (%)</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div>')
+                  ? ('<div class="source-table-wrap"><table class="source-table"><thead><tr><th>Kecamatan</th><th>Kualitas</th><th>Harga Bulan Sebelumnya</th><th>Harga Bulan Ini</th><th>Perubahan (%)</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div>')
                   : '<em>Data daftar kecamatan belum tersedia di sumber upload ini.</em>');
             })
             .catch(function () {
