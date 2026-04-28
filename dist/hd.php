@@ -406,6 +406,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         $updated = 0;
         $inserted = 0;
+        $unchanged = 0;
         $pdo->beginTransaction();
         $existingMap = [];
         $existingStmt = $pdo->prepare("
@@ -420,6 +421,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $existingKey = (string)$existingRow['kode_kabupaten'] . '|' . normalize_hd_commodity_key((string)$existingRow['komoditas']);
             if (!isset($existingMap[$existingKey])) {
                 $existingMap[$existingKey] = (int)$existingRow['id'];
+            }
+        }
+        $existingSourceMap = [];
+        $existingSourceStmt = $pdo->prepare("
+            SELECT kode_kabupaten, komoditas, source_values_json, source_avg
+            FROM hd_upload_sources
+            WHERE TRIM(LOWER(bulan)) = ?
+              AND tahun = ?
+        ");
+        $existingSourceStmt->execute([$filterBulan, (int)$filterTahun]);
+        foreach ($existingSourceStmt as $srcRow) {
+            $srcKey = (string)$srcRow['kode_kabupaten'] . '|' . normalize_hd_commodity_key((string)$srcRow['komoditas']);
+            if (!isset($existingSourceMap[$srcKey])) {
+                $existingSourceMap[$srcKey] = [
+                    'json' => (string)($srcRow['source_values_json'] ?? '[]'),
+                    'avg' => isset($srcRow['source_avg']) && is_numeric($srcRow['source_avg']) ? round((float)$srcRow['source_avg'], 6) : null,
+                ];
             }
         }
         foreach ($groupedRows as $item) {
@@ -461,19 +479,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 'values' => $rawValues,
                 'kecamatan_rows' => $sourceRows,
             ];
+            $payloadJson = json_encode($sourcePayload, JSON_UNESCAPED_UNICODE);
+            $currentAvgRounded = round((float)$avgPerubahan, 6);
+            $existingSrc = $existingSourceMap[$lookupKey] ?? null;
+            $isSameSource = $existingSrc
+                && $existingSrc['avg'] !== null
+                && $existingSrc['avg'] === $currentAvgRounded
+                && (string)$existingSrc['json'] === (string)$payloadJson;
+
+            if ($isSameSource) {
+                $unchanged++;
+                continue;
+            }
             $sourceUpsertStmt->execute([
                 $filterBulan,
                 (int)$filterTahun,
                 $kodeKab,
                 $komoditasVal,
                 count($rawValues),
-                json_encode($sourcePayload, JSON_UNESCAPED_UNICODE),
+                $payloadJson,
                 $avgPerubahan,
             ]);
+            $existingSourceMap[$lookupKey] = [
+                'json' => (string)$payloadJson,
+                'avg' => $currentAvgRounded,
+            ];
         }
         $pdo->commit();
 
-        $noticeMsg = 'Upload berhasil: ' . $updated . ' baris diperbarui, ' . $inserted . ' baris ditambahkan.';
+        $noticeMsg = 'Upload berhasil: ' . $updated . ' baris diperbarui, ' . $inserted . ' baris ditambahkan, ' . $unchanged . ' baris sama (kecamatan & perubahan) sehingga dilewati.';
         $redirect = 'hd.php?bulan=' . urlencode($filterBulan) . '&tahun=' . urlencode($filterTahun) . '&notice_type=success&notice=' . urlencode($noticeMsg);
         $respondUpload('success', $noticeMsg, $redirect);
     } catch (Throwable $e) {
