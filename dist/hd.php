@@ -1706,8 +1706,9 @@ $columns = [
       <main class="main">
         <form class="topbar" method="get" action="hd.php">
           <div>
-            <div class="title-banner-wrap" style="margin-bottom:12px;display:flex;align-items:center;line-height:0;">
-              <img src="assets/images/title-banner.png" alt="Rekon Harga Lampung" style="width:min(320px,100%);height:auto;display:block;border-radius:18px;box-shadow:0 12px 26px rgba(56,65,80,0.10);">
+            <div class="title-banner-wrap" style="margin-bottom:10px;display:flex;align-items:center;gap:10px;">
+              <img src="assets/images/rh-icon.png" alt="SIHARGA" style="width:34px;height:34px;object-fit:cover;display:block;border-radius:10px;flex:0 0 auto;">
+              <span style="font-size:11px;font-weight:700;letter-spacing:.12em;color:#8b93a5;text-transform:uppercase;">SIHARGA Lampung</span>
             </div>
             <div class="hello">Konfirmasi Perubahan Harga Produsen Pedesaan</div>
             <div class="subhello">Rekon Harga Perdagangan Besar</div>
