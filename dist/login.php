@@ -143,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <body>
     <div class="card">
       <div class="brand">
-        <div class="logo">RH</div>
+        <div class="logo"><img src="assets/images/rh-icon.png" alt="RH" style="width:24px;height:24px;object-fit:contain;display:block;"></div>
         <h1>Login Rekon Harga Lampung</h1>
       </div>
       <?php if ($error !== ''): ?>
