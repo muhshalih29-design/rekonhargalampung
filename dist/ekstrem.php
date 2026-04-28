@@ -1275,6 +1275,12 @@ $columns = [
             <?php $row_index++; ?>
           <?php endforeach; ?>
             </tbody></table></div></div>
+          <div class="table-card" style="padding:10px 12px;margin-top:-6px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+              <div id="ekstremRowsInfo" style="font-size:12px;color:#8b90a3;">Menampilkan data...</div>
+              <button type="button" id="ekstremLoadMoreBtn" class="tab-btn" style="box-shadow:none;">Load 100 Baris Lagi</button>
+            </div>
+          </div>
         <?php endif; ?>
       </main>
     </div>
@@ -1484,9 +1490,35 @@ $columns = [
                 var text = getCellValue(cell).toLowerCase();
                 if (text !== f.val) show = false;
               });
-              row.style.display = show ? '' : 'none';
+              row.setAttribute('data-filter-visible', show ? '1' : '0');
             });
           });
+          applyEkstremRowWindow();
+        }
+
+        var ekstremVisibleStep = 100;
+        var ekstremVisibleCount = ekstremVisibleStep;
+        function applyEkstremRowWindow() {
+          var table = document.querySelector('.ekstrem-table');
+          if (!table) return;
+          var bodyRows = Array.prototype.slice.call(table.querySelectorAll('tbody tr'));
+          var visibleFiltered = bodyRows.filter(function (r) { return r.getAttribute('data-filter-visible') !== '0'; });
+          visibleFiltered.forEach(function (row, idx) {
+            row.style.display = idx < ekstremVisibleCount ? '' : 'none';
+          });
+          bodyRows.forEach(function (row) {
+            if (row.getAttribute('data-filter-visible') === '0') {
+              row.style.display = 'none';
+            }
+          });
+          var info = document.getElementById('ekstremRowsInfo');
+          if (info) {
+            info.textContent = 'Menampilkan ' + Math.min(ekstremVisibleCount, visibleFiltered.length) + ' dari ' + visibleFiltered.length + ' baris (hasil filter).';
+          }
+          var btn = document.getElementById('ekstremLoadMoreBtn');
+          if (btn) {
+            btn.style.display = visibleFiltered.length > ekstremVisibleCount ? '' : 'none';
+          }
         }
 
         document.querySelectorAll('.table-card').forEach(function (card) {
@@ -1494,8 +1526,19 @@ $columns = [
         });
         var headerFilters = document.querySelectorAll('.ekstrem-filter');
         headerFilters.forEach(function (sel) {
-          sel.addEventListener('change', applyHeaderFilters);
+          sel.addEventListener('change', function () {
+            ekstremVisibleCount = ekstremVisibleStep;
+            applyHeaderFilters();
+          });
         });
+        var loadMoreBtn = document.getElementById('ekstremLoadMoreBtn');
+        if (loadMoreBtn) {
+          loadMoreBtn.addEventListener('click', function () {
+            ekstremVisibleCount += ekstremVisibleStep;
+            applyEkstremRowWindow();
+          });
+        }
+        applyHeaderFilters();
 
         var saveTimers = Object.create(null);
         function saveCell(el) {
