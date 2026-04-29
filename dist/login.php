@@ -48,10 +48,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="assets/vendors/css/vendor.bundle.base.css">
     <link rel="shortcut icon" href="assets/images/rh-icon.png" />
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
       body {
         margin: 0;
-        font-family: "Open Sans", sans-serif;
+        font-family: "Poppins", sans-serif;
         background: radial-gradient(1200px 600px at 30% 0%, #f7f0f3 0%, #f7f5f6 50%, #f1eaee 100%);
         color: #374151;
         display: grid;
