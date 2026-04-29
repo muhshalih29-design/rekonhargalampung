@@ -946,9 +946,7 @@ $overall_percent = $overall_total > 0 ? (int)round(($overall_filled / $overall_t
 
       <main class="main">
         <form class="topbar" method="get" action="index.php">
-          <div>8b93a5;text-transform:uppercase;">SIHARGA Lampung</span>
-s*</div>#8b93a5;text-transform:uppercase;">SIHARGA Lampung</span>
-            </div>
+          <div>
             <div class="hello">Progres Pengisian Konfirmasi Perubahan Harga</div>
             <div class="subhello">Progress pengisian penjelasan per kabupaten/kota.</div>
           </div>
