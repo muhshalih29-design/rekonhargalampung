@@ -1126,8 +1126,7 @@ foreach ($top_attention as $attention_item) {
   <body>
     <div class="app">
       <aside class="sidebar">
-        <div class="logo"><img src="assets/images/rh-icon.png" alt="RH" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"></div>
-        <a class="nav-dot" href="index.php" title="Dashboard"><i class="mdi mdi-view-dashboard"></i></a>
+                <a class="nav-dot" href="index.php" title="Dashboard"><i class="mdi mdi-view-dashboard"></i></a>
         <a class="nav-dot" href="shk.php" title="SHK"><span class="nav-text">HK</span></a>
         <a class="nav-dot" href="hpb.php" title="HPB"><span class="nav-text">HPB</span></a>
         <a class="nav-dot" href="hd.php" title="HD"><span class="nav-text">HD</span></a>
@@ -1141,22 +1140,12 @@ foreach ($top_attention as $attention_item) {
 
       <main class="main">
         <form class="topbar" method="get" action="perbandingan-harga.php">
-          <div>8b93a5;text-transform:uppercase;">SIHARGA Lampung</span>
-s*</div>#8b93a5;text-transform:uppercase;">SIHARGA Lampung</span>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <img src="assets/images/rh-icon.png" alt="SIHARGA" style="width:52px;height:52px;border-radius:14px;object-fit:cover;display:block;flex:0 0 auto;">
+            <div>
+              <div class="hello">Perbandingan Perubahan Harga</div>
+              <div class="subhello">Ringkasan perbandingan harga komoditas.</div>
             </div>
-            <div class="hello">Perbandingan Perubahan Harga</div>
-            <div class="subhello">Ringkasan perbandingan harga komoditas.</div>
-          </div>
-          <div class="pill" style="min-width:240px;">
-            <i class="mdi mdi-filter-variant"></i>
-            <select name="komoditas" style="min-width: 180px;" onchange="this.form.submit()">
-              <option value="">Semua Komoditas</option>
-              <?php foreach ($komoditas_list as $key): ?>
-                <?php $label = $komoditas_map[$key] ?? $key; ?>
-                <?php $selected = ($komoditas_selected_key === $key) ? 'selected' : ''; ?>
-                <option value="<?php echo htmlspecialchars($key); ?>" <?php echo $selected; ?>><?php echo htmlspecialchars($label); ?></option>
-              <?php endforeach; ?>
-            </select>
           </div>
           <div class="pill">
             <i class="mdi mdi-calendar"></i>

@@ -1004,8 +1004,7 @@ $columns = [
   <body>
     <div class="app">
       <aside class="sidebar">
-        <div class="logo"><img src="assets/images/rh-icon.png" alt="RH" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"></div>
-        <a class="nav-dot" href="index.php" title="Dashboard"><i class="mdi mdi-view-dashboard"></i></a>
+                <a class="nav-dot" href="index.php" title="Dashboard"><i class="mdi mdi-view-dashboard"></i></a>
         <a class="nav-dot" href="shk.php" title="SHK"><span class="nav-text">HK</span></a>
         <a class="nav-dot" href="hpb.php" title="HPB"><span class="nav-text">HPB</span></a>
         <a class="nav-dot" href="hd.php" title="HD"><span class="nav-text">HD</span></a>
@@ -1019,11 +1018,12 @@ $columns = [
 
       <main class="main">
         <form class="topbar" method="get" action="hkd.php">
-          <div>8b93a5;text-transform:uppercase;">SIHARGA Lampung</span>
-s*</div>#8b93a5;text-transform:uppercase;">SIHARGA Lampung</span>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <img src="assets/images/rh-icon.png" alt="SIHARGA" style="width:52px;height:52px;border-radius:14px;object-fit:cover;display:block;flex:0 0 auto;">
+            <div>
+              <div class="hello">Konfirmasi Perubahan Harga Konsumen Pedesaan</div>
+              <div class="subhello">Rekon Harga Perdagangan Besar</div>
             </div>
-            <div class="hello">Konfirmasi Perubahan Harga Konsumen Pedesaan</div>
-            <div class="subhello">Rekon Harga Perdagangan Besar</div>
           </div>
           <div class="pill">
             <i class="mdi mdi-calendar"></i>
