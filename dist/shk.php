@@ -406,7 +406,7 @@ $columns = [
     <link rel="stylesheet" href="assets/vendors/font-awesome/css/font-awesome.min.css">
     <link rel="shortcut icon" href="assets/images/rh-icon.png" />
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap');
 
       :root {
         --bg: #f7f5fb;
@@ -425,7 +425,7 @@ $columns = [
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        font-family: "Poppins", sans-serif;
+        font-family: "Open Sans", sans-serif;
         color: var(--ink);
         background: radial-gradient(1200px 600px at 30% 0%, #f7f0f3 0%, var(--bg) 50%, var(--bg-2) 100%);
       }
