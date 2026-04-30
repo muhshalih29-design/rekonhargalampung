@@ -539,10 +539,16 @@ if ($where) {
     $sql .= ' WHERE ' . implode(' AND ', $where);
 }
 $sql .= " ORDER BY CASE WHEN TRIM(COALESCE(komoditas, '')) = '' THEN 1 ELSE 0 END ASC, komoditas ASC, kab ASC, kecamatan ASC, id ASC";
+$is_all_mode = ($all === '1');
+$max_rows = 400;
+if (!$is_all_mode) {
+    $sql .= " LIMIT " . (int)$max_rows;
+}
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $rows = $stmt->fetchAll();
+$is_truncated = (!$is_all_mode && count($rows) >= $max_rows);
 
 $columns = [
     'subsektor' => 'Subsektor',
@@ -1142,10 +1148,34 @@ $columns = [
           <div class="filters">
             <button type="submit">Filter</button>
           </div>
+          <?php if ($is_all_mode): ?>
+            <input type="hidden" name="all" value="1">
+          <?php endif; ?>
           <div class="actions">
             <a class="icon-btn" href="logout.php" title="Logout"><i class="mdi mdi-logout"></i></a>
           </div>
         </form>
+        <?php if ($is_truncated): ?>
+          <div class="table-card" style="margin-bottom:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+            <div style="font-size:13px;color:#6f7486;">
+              Demi performa, saat ini ditampilkan <strong><?php echo (int)$max_rows; ?> baris pertama</strong>.
+            </div>
+            <a
+              class="tab-btn"
+              style="box-shadow:none;text-decoration:none;"
+              href="ekstrem.php?<?php echo htmlspecialchars(http_build_query(['bulan' => $bulan, 'tahun' => $tahun, 'all' => '1']), ENT_QUOTES, 'UTF-8'); ?>"
+            >Tampilkan Semua Baris</a>
+          </div>
+        <?php elseif ($is_all_mode): ?>
+          <div class="table-card" style="margin-bottom:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+            <div style="font-size:13px;color:#6f7486;">Mode semua baris aktif.</div>
+            <a
+              class="tab-btn"
+              style="box-shadow:none;text-decoration:none;"
+              href="ekstrem.php?<?php echo htmlspecialchars(http_build_query(['bulan' => $bulan, 'tahun' => $tahun]), ENT_QUOTES, 'UTF-8'); ?>"
+            >Kembali ke Mode Cepat</a>
+          </div>
+        <?php endif; ?>
         <?php if (!is_kabupaten($user)): ?>
           <div class="table-card">
             <div class="action-toolbar">
