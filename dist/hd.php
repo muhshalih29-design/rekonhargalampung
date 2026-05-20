@@ -108,6 +108,28 @@ function normalize_hd_commodity(string $value): string
 {
     $value = trim($value);
     $value = preg_replace('/\s+/u', ' ', $value) ?? $value;
+    if ($value === '') {
+        return $value;
+    }
+
+    $key = mb_strtolower($value, 'UTF-8');
+    // keep only letters/numbers/space to make alias matching stable
+    $key = preg_replace('/[^a-z0-9 ]+/u', ' ', $key) ?? $key;
+    $key = preg_replace('/\s+/u', ' ', trim($key)) ?? trim($key);
+
+    // Alias normalization for HD upload sources
+    if ($key === 'ayam kampung bukan ras buras' || $key === 'ayam kampung') {
+        return 'Ayam Kampung';
+    }
+    if (
+        $key === 'gabah kering giling' ||
+        $key === 'gabah kering panen' ||
+        $key === 'gkg gkp' ||
+        $key === 'gkp gkg'
+    ) {
+        return 'GKP GKG';
+    }
+
     return $value;
 }
 
