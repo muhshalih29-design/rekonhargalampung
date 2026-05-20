@@ -620,14 +620,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         exit;
     }
 
-    $delete_stmt = $pdo->prepare('DELETE FROM hd WHERE TRIM(LOWER(bulan)) = ? AND tahun = ?');
-    $delete_stmt->execute([$filter_bulan, (int)$filter_tahun]);
-    $deleted = (int)$delete_stmt->rowCount();
+    // Keep default kabupaten + komoditas rows intact for the month,
+    // only clear editable values.
+    $clear_stmt = $pdo->prepare("
+        UPDATE hd
+        SET perubahan = NULL,
+            catatan = '',
+            penjelasan = '',
+            time_stamp = NOW()
+        WHERE TRIM(LOWER(bulan)) = ?
+          AND tahun = ?
+    ");
+    $clear_stmt->execute([$filter_bulan, (int)$filter_tahun]);
+    $cleared = (int)$clear_stmt->rowCount();
 
-    $redirect_query['notice_type'] = $deleted > 0 ? 'success' : 'info';
-    $redirect_query['notice'] = $deleted > 0
-        ? ('Data HD bulan ' . ucfirst($filter_bulan) . ' ' . $filter_tahun . ' berhasil dihapus (' . $deleted . ' baris).')
-        : ('Tidak ada data HD pada bulan ' . ucfirst($filter_bulan) . ' ' . $filter_tahun . ' untuk dihapus.');
+    // Source details are tied to computed upload result; clear them for this month.
+    $clear_source_stmt = $pdo->prepare('DELETE FROM hd_upload_sources WHERE TRIM(LOWER(bulan)) = ? AND tahun = ?');
+    $clear_source_stmt->execute([$filter_bulan, (int)$filter_tahun]);
+
+    $redirect_query['notice_type'] = $cleared > 0 ? 'success' : 'info';
+    $redirect_query['notice'] = $cleared > 0
+        ? ('Nilai HD bulan ' . ucfirst($filter_bulan) . ' ' . $filter_tahun . ' berhasil dikosongkan (' . $cleared . ' baris). Daftar kabupaten dan komoditas tetap.')
+        : ('Tidak ada data HD pada bulan ' . ucfirst($filter_bulan) . ' ' . $filter_tahun . ' untuk dikosongkan.');
 
     header('Location: hd.php?' . http_build_query($redirect_query));
     exit;
