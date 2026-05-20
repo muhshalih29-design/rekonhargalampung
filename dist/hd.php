@@ -1018,6 +1018,23 @@ foreach ($komoditas_tabs as $k) {
         $pending_items[] = ['label' => $k, 'count' => $count];
     }
 }
+
+$commodity_dropdown_options = [];
+try {
+    $opt_stmt = $pdo->query("SELECT komoditas FROM hd_visible_commodities WHERE TRIM(COALESCE(komoditas, '')) <> '' ORDER BY komoditas ASC");
+    foreach ($opt_stmt as $opt_row) {
+        $name = trim((string)($opt_row['komoditas'] ?? ''));
+        if ($name !== '') {
+            $commodity_dropdown_options[] = $name;
+        }
+    }
+} catch (Throwable $e) {
+    // fallback below
+}
+if (empty($commodity_dropdown_options)) {
+    $commodity_dropdown_options = $komoditas_tabs;
+}
+$commodity_dropdown_options = array_values(array_unique($commodity_dropdown_options));
 $komoditas_selected = isset($_GET['komoditas']) ? trim($_GET['komoditas']) : '';
 if ($komoditas_selected === '' && !empty($komoditas_tabs)) {
     $komoditas_selected = $komoditas_tabs[0];
@@ -1807,10 +1824,15 @@ $columns = [
           <div class="delete-modal" id="add-hd-modal" aria-hidden="true">
             <div class="delete-panel" role="dialog" aria-modal="true" aria-labelledby="add-hd-title">
               <h3 id="add-hd-title">Tambah Komoditas HD</h3>
-              <p>Komoditas baru akan dibuat untuk semua kabupaten/kota dari bulan berjalan sampai Desember 2026.</p>
+              <p>Pilih komoditas dari daftar. Data akan dibuat untuk semua kabupaten/kota dari bulan berjalan sampai Desember 2026.</p>
               <form class="mini-modal-form" method="post" action="hd.php">
                 <input type="hidden" name="action" value="add_commodity">
-                <input type="text" name="commodity_name" class="commodity-add-input" placeholder="Contoh: Gula Kristal" maxlength="100" required>
+                <select name="commodity_name" class="commodity-add-input" required>
+                  <option value="">Pilih komoditas...</option>
+                  <?php foreach ($commodity_dropdown_options as $option_name): ?>
+                    <option value="<?php echo htmlspecialchars($option_name); ?>"><?php echo htmlspecialchars($option_name); ?></option>
+                  <?php endforeach; ?>
+                </select>
                 <div class="delete-actions">
                   <button type="button" class="delete-cancel-btn" id="close-add-hd-modal">Batal</button>
                   <button type="submit" class="delete-confirm-btn"><i class="mdi mdi-playlist-plus"></i>Tambah Komoditas</button>
