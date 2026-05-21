@@ -1148,6 +1148,17 @@ foreach ($top_attention as $attention_item) {
             </div>
           </div>
           <div class="pill">
+            <i class="mdi mdi-filter-variant"></i>
+            <select name="komoditas" onchange="this.form.submit()">
+              <?php foreach ($komoditas_list as $k): ?>
+                <?php $selected = ($komoditas_selected_key === strtolower((string)$k)) ? 'selected' : ''; ?>
+                <option value="<?php echo htmlspecialchars($k); ?>" <?php echo $selected; ?>>
+                  <?php echo htmlspecialchars($komoditas_map[strtolower((string)$k)] ?? $k); ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="pill">
             <i class="mdi mdi-calendar"></i>
             <select name="bulan" onchange="this.form.submit()">
               <option value="">Semua</option>
