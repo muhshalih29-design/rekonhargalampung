@@ -121,8 +121,8 @@ function normalize_hd_commodity(string $value): string
     if ($key === 'ayam kampung bukan ras buras' || $key === 'ayam kampung') {
         return 'Ayam Kampung';
     }
-    if ($key === 'coklat biji' || $key === 'coklat') {
-        return 'Coklat';
+    if ($key === 'coklat biji' || $key === 'kakao') {
+        return 'Kakao';
     }
     if ($key === 'kopi biji kering' || $key === 'kopi') {
         return 'Kopi';
