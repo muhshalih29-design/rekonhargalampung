@@ -130,6 +130,12 @@ function normalize_hd_commodity(string $value): string
     if ($key === 'kelapa belum dikupas' || $key === 'kelapa') {
         return 'Kelapa';
     }
+    if ($key === 'kelapa sawit' || $key === 'tbs') {
+        return 'TBS';
+    }
+    if ($key === 'lada merica' || $key === 'lada' || $key === 'merica') {
+        return 'Lada';
+    }
     if (
         $key === 'gabah kering giling' ||
         $key === 'gabah kering panen' ||
