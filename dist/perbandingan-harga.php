@@ -116,9 +116,15 @@ foreach ($tables as $t) {
 }
 $parts = [];
 foreach ($existing_tables as $t) {
-    $parts[] = "SELECT DISTINCT komoditas FROM {$t}";
+    $parts[] = "SELECT TRIM(LOWER(komoditas)) AS kom_key, TRIM(komoditas) AS komoditas, '{$t}' AS lvl FROM {$t} WHERE TRIM(COALESCE(komoditas, '')) <> ''";
 }
-$sql = $parts ? (implode(' UNION ', $parts) . ' ORDER BY komoditas ASC') : '';
+$sql = $parts ? ("
+    SELECT kom_key, MIN(komoditas) AS komoditas
+    FROM (" . implode(' UNION ALL ', $parts) . ") k
+    GROUP BY kom_key
+    HAVING COUNT(DISTINCT lvl) >= 2
+    ORDER BY MIN(komoditas) ASC
+") : '';
 if ($sql) {
     $cache_key = 'komoditas_list';
     $cached = cache_get($cache_key, $cache_ttl);
@@ -128,18 +134,12 @@ if ($sql) {
     } else {
         $res = $pdo->query($sql);
         foreach ($res as $row) {
-            $k = trim((string)$row['komoditas']);
-            if ($k !== '') {
-                $key = strtolower($k);
-                if (!isset($komoditas_seen[$key])) {
-                    $komoditas_seen[$key] = true;
-                    $komoditas_map[$key] = $k;
-                } else {
-                    $current = $komoditas_map[$key] ?? '';
-                    if ($current !== '' && $current === strtolower($current) && $k !== strtolower($k)) {
-                        $komoditas_map[$key] = $k;
-                    }
-                }
+            $key = trim((string)($row['kom_key'] ?? ''));
+            $k = trim((string)($row['komoditas'] ?? ''));
+            if ($key === '' || $k === '') continue;
+            if (!isset($komoditas_seen[$key])) {
+                $komoditas_seen[$key] = true;
+                $komoditas_map[$key] = $k;
             }
         }
         $komoditas_list = array_keys($komoditas_map);
@@ -150,7 +150,16 @@ if ($sql) {
 
 $komoditas_selected = isset($_GET['komoditas']) ? trim($_GET['komoditas']) : '';
 $komoditas_selected_key = strtolower(trim($komoditas_selected));
-if ($komoditas_selected_key === '') {
+if ($komoditas_selected_key === '' || !in_array($komoditas_selected_key, $komoditas_list, true)) {
+    if (in_array('beras', $komoditas_list, true)) {
+        $komoditas_selected_key = 'beras';
+    } elseif (!empty($komoditas_list)) {
+        $komoditas_selected_key = (string)$komoditas_list[0];
+    } else {
+        $komoditas_selected_key = '';
+    }
+}
+if ($komoditas_selected_key === '' && empty($komoditas_list)) {
     $komoditas_selected_key = 'beras';
 }
 $komoditas_filter = $komoditas_selected_key;
